@@ -344,8 +344,9 @@ function getPartById(partId) {
 /**
  * Check if a part is unlocked
  */
-function isPartUnlocked(partId, currentLevel, isFunMode = false) {
-    if (isFunMode) return true;
+function isPartUnlocked(partId, currentLevel, isFunMode = false, isAdvancedMode = false) {
+    // Fun and Advanced modes unlock all parts
+    if (isFunMode || isAdvancedMode) return true;
     const part = getPartById(partId);
     return part && currentLevel >= part.unlockLevel;
 }

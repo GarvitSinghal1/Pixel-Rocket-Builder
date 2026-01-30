@@ -1290,3 +1290,276 @@ body {
 .prediction-value.warning {
     color: var(--accent-warning);
 }
+
+/* ============================================
+   ADVANCED MODE
+   ============================================ */
+.mode-btn.advanced {
+    background: linear-gradient(180deg, #331100 0%, #220000 100%);
+    color: var(--accent-warning);
+    border-color: var(--accent-warning);
+}
+
+.mode-btn.advanced:hover {
+    background: linear-gradient(180deg, #442200 0%, #331100 100%);
+    box-shadow: 0 0 15px rgba(255, 170, 0, 0.4);
+}
+
+.mode-btn.advanced.active {
+    background: linear-gradient(180deg, #ff6600 0%, #cc4400 100%);
+    color: var(--bg-primary);
+    border-color: var(--accent-warning);
+    box-shadow: 0 0 20px rgba(255, 102, 0, 0.6);
+}
+
+/* Advanced Warning Modal */
+.modal-content.warning {
+    border-color: var(--accent-warning);
+    background: linear-gradient(180deg, var(--bg-secondary) 0%, #1a0a00 100%);
+}
+
+.warning-title {
+    font-size: 16px !important;
+    color: var(--accent-warning) !important;
+    text-shadow: 0 0 20px rgba(255, 170, 0, 0.5);
+}
+
+.warning-subtitle {
+    font-size: 10px;
+    color: var(--accent-danger);
+    text-align: center;
+    margin-bottom: var(--gap-lg);
+    padding: var(--gap-sm);
+    background: rgba(255, 51, 102, 0.1);
+    border: 2px solid var(--accent-danger);
+    border-radius: var(--pixel);
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.warning-features {
+    text-align: left;
+    margin-bottom: var(--gap-lg);
+}
+
+.warning-features h3 {
+    font-size: 9px;
+    color: var(--accent-primary);
+    margin: var(--gap-md) 0 var(--gap-sm);
+}
+
+.warning-features ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.warning-features li {
+    font-size: 8px;
+    color: var(--text-secondary);
+    padding: var(--gap-xs) 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.warning-note {
+    font-size: 8px;
+    color: var(--text-muted);
+    text-align: center;
+    font-style: italic;
+    margin-bottom: var(--gap-lg);
+}
+
+.warning-buttons {
+    display: flex;
+    gap: var(--gap-md);
+    justify-content: center;
+}
+
+.warning-btn {
+    font-family: inherit;
+    font-size: 9px;
+    padding: var(--gap-sm) var(--gap-lg);
+    border-radius: var(--pixel);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.warning-btn.accept {
+    background: linear-gradient(180deg, #ff6600 0%, #cc4400 100%);
+    color: var(--text-primary);
+    border: 2px solid var(--accent-warning);
+}
+
+.warning-btn.accept:hover {
+    box-shadow: 0 0 20px rgba(255, 102, 0, 0.5);
+    transform: scale(1.05);
+}
+
+.warning-btn.cancel {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 2px solid var(--border-color);
+}
+
+.warning-btn.cancel:hover {
+    border-color: var(--text-secondary);
+}
+
+/* Orbital Telemetry */
+.telemetry-row.orbital-data {
+    margin-top: var(--gap-sm);
+    padding-top: var(--gap-sm);
+    border-top: 1px solid var(--accent-warning);
+}
+
+.data-item.orbital .data-label {
+    color: var(--accent-warning);
+}
+
+.data-item.orbital .data-value {
+    color: var(--accent-warning);
+    text-shadow: 0 0 10px rgba(255, 170, 0, 0.5);
+}
+
+/* Apoapsis green, Periapsis red */
+#data-apoapsis {
+    color: var(--accent-success) !important;
+    text-shadow: 0 0 10px rgba(0, 255, 136, 0.5) !important;
+}
+
+#data-periapsis {
+    color: var(--accent-danger) !important;
+    text-shadow: 0 0 10px rgba(255, 51, 102, 0.5) !important;
+}
+
+/* Camera Shake Animation */
+@keyframes cameraShake {
+
+    0%,
+    100% {
+        transform: translate(0, 0);
+    }
+
+    10% {
+        transform: translate(-2px, -1px);
+    }
+
+    20% {
+        transform: translate(2px, 1px);
+    }
+
+    30% {
+        transform: translate(-1px, 2px);
+    }
+
+    40% {
+        transform: translate(1px, -2px);
+    }
+
+    50% {
+        transform: translate(-2px, 1px);
+    }
+
+    60% {
+        transform: translate(2px, -1px);
+    }
+
+    70% {
+        transform: translate(-1px, -2px);
+    }
+
+    80% {
+        transform: translate(1px, 2px);
+    }
+
+    90% {
+        transform: translate(-2px, -1px);
+    }
+}
+
+.shaking {
+    animation: cameraShake 0.1s ease-in-out infinite;
+}
+
+.shaking-intense {
+    animation: cameraShake 0.05s ease-in-out infinite;
+}
+
+/* Engine Status Indicators */
+.engine-status {
+    display: flex;
+    gap: var(--gap-xs);
+    align-items: center;
+    font-size: 7px;
+    padding: 2px 4px;
+    border-radius: var(--pixel);
+}
+
+.engine-status.ignition-failed {
+    background: rgba(255, 0, 0, 0.2);
+    border: 1px solid var(--accent-danger);
+    color: var(--accent-danger);
+}
+
+.engine-status.cavitating {
+    background: rgba(255, 170, 0, 0.2);
+    border: 1px solid var(--accent-warning);
+    color: var(--accent-warning);
+    animation: pulse 0.5s ease-in-out infinite;
+}
+
+/* Throttle Lag Indicator */
+.throttle-lag-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: var(--gap-xs);
+}
+
+.throttle-lag-indicator.synced {
+    background: var(--accent-success);
+}
+
+.throttle-lag-indicator.lagging {
+    background: var(--accent-warning);
+    animation: pulse 0.3s ease-in-out infinite;
+}
+
+/* Planet Selector (Future) */
+.planet-selector {
+    display: flex;
+    gap: var(--gap-sm);
+    margin-bottom: var(--gap-md);
+}
+
+.planet-btn {
+    font-family: inherit;
+    font-size: 8px;
+    padding: var(--gap-sm) var(--gap-md);
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--pixel);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.planet-btn:hover {
+    border-color: var(--accent-primary);
+}
+
+.planet-btn.active {
+    background: var(--accent-primary);
+    color: var(--bg-primary);
+    border-color: var(--accent-primary);
+}
+
+.planet-btn.earth {
+    border-color: #4477ff;
+}
+
+.planet-btn.moon {
+    border-color: #aaaaaa;
+}
+
+.planet-btn.mars {
+    border-color: #ff6644;
+}

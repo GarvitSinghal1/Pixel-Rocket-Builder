@@ -17,6 +17,7 @@
             <div class="mode-buttons">
                 <button id="btn-level-mode" class="mode-btn active">LEVEL MODE</button>
                 <button id="btn-fun-mode" class="mode-btn">FUN MODE</button>
+                <button id="btn-advanced-mode" class="mode-btn advanced">⚠️ ADVANCED</button>
             </div>
             <h1 class="game-title">PIXEL ROCKET</h1>
             <div class="header-actions">
@@ -98,6 +99,21 @@
                             <div class="data-item">
                                 <span class="data-label">TIME</span>
                                 <span id="data-time" class="data-value">0.0s</span>
+                            </div>
+                        </div>
+                        <!-- Advanced Mode Orbital Data -->
+                        <div class="telemetry-row orbital-data" id="orbital-telemetry" style="display: none;">
+                            <div class="data-item orbital">
+                                <span class="data-label">APOAPSIS</span>
+                                <span id="data-apoapsis" class="data-value">-- km</span>
+                            </div>
+                            <div class="data-item orbital">
+                                <span class="data-label">PERIAPSIS</span>
+                                <span id="data-periapsis" class="data-value">-- km</span>
+                            </div>
+                            <div class="data-item orbital">
+                                <span class="data-label">ECCENTRICITY</span>
+                                <span id="data-eccentricity" class="data-value">--</span>
                             </div>
                         </div>
                     </div>
@@ -195,11 +211,42 @@
                 <button id="btn-close-levels" class="modal-close">✕</button>
             </div>
         </div>
+
+        <!-- Advanced Mode Warning Modal -->
+        <div id="advanced-warning-modal" class="modal">
+            <div class="modal-content warning">
+                <h2 class="warning-title">⚠️ ADVANCED MODE</h2>
+                <p class="warning-subtitle">NOT RECOMMENDED FOR NON-EXPERTS</p>
+                <div class="warning-features">
+                    <h3>Realistic Physics:</h3>
+                    <ul>
+                        <li>🛰️ Keplerian orbital mechanics</li>
+                        <li>📍 Apoapsis/Periapsis tracking</li>
+                        <li>🌍 Multiple gravity wells (Earth, Moon, Mars)</li>
+                        <li>🔄 SOI (Sphere of Influence) transitions</li>
+                    </ul>
+                    <h3>Engine Simulation:</h3>
+                    <ul>
+                        <li>📉 ISP curves vs altitude</li>
+                        <li>⏱️ Throttle response lag</li>
+                        <li>💥 Engine ignition failures (5-20% chance)</li>
+                        <li>🌀 Fuel pump cavitation</li>
+                    </ul>
+                </div>
+                <p class="warning-note">All parts unlocked. No hand-holding.</p>
+                <div class="warning-buttons">
+                    <button id="btn-accept-advanced" class="warning-btn accept">I UNDERSTAND THE RISKS</button>
+                    <button id="btn-cancel-advanced" class="warning-btn cancel">CANCEL</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="js/audio.js"></script>
     <script src="js/parts.js"></script>
+    <script src="js/planets.js"></script>
     <script src="js/physics.js"></script>
+    <script src="js/advanced.js"></script>
     <script src="js/editor.js"></script>
     <script src="js/main.js"></script>
 </body>

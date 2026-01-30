@@ -144,6 +144,24 @@ function setupGameEvents() {
         if (typeof playClickSound === 'function') playClickSound();
     });
 
+    // Advanced mode - shows warning first
+    document.getElementById('btn-advanced-mode').addEventListener('click', () => {
+        if (typeof playClickSound === 'function') playClickSound();
+        document.getElementById('advanced-warning-modal').classList.add('active');
+    });
+
+    // Advanced mode warning modal buttons
+    document.getElementById('btn-accept-advanced').addEventListener('click', () => {
+        document.getElementById('advanced-warning-modal').classList.remove('active');
+        setGameMode('advanced');
+        if (typeof playClickSound === 'function') playClickSound();
+    });
+
+    document.getElementById('btn-cancel-advanced').addEventListener('click', () => {
+        document.getElementById('advanced-warning-modal').classList.remove('active');
+        if (typeof playClickSound === 'function') playClickSound();
+    });
+
     // Header actions
     document.getElementById('btn-save').addEventListener('click', saveRocket);
     document.getElementById('btn-load').addEventListener('click', loadRocket);
@@ -208,11 +226,23 @@ function setupGameEvents() {
 function setGameMode(mode) {
     GAME.currentMode = mode;
 
-    // Update UI
+    // Update UI buttons
     document.getElementById('btn-level-mode').classList.toggle('active', mode === 'level');
     document.getElementById('btn-fun-mode').classList.toggle('active', mode === 'fun');
+    document.getElementById('btn-advanced-mode').classList.toggle('active', mode === 'advanced');
 
-    // Refresh parts panel
+    // Enable/disable advanced physics
+    if (typeof setAdvancedMode === 'function') {
+        setAdvancedMode(mode === 'advanced');
+    }
+
+    // Show/hide orbital telemetry
+    const orbitalTelemetry = document.getElementById('orbital-telemetry');
+    if (orbitalTelemetry) {
+        orbitalTelemetry.style.display = mode === 'advanced' ? 'flex' : 'none';
+    }
+
+    // Refresh parts panel (all parts unlocked in fun/advanced)
     renderPartsPanel(EDITOR.currentCategory);
 }
 

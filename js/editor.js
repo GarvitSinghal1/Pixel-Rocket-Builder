@@ -462,10 +462,12 @@ function renderPartsPanel(category) {
 
     const parts = getPartsByCategory(category);
     const isFunMode = document.getElementById('btn-fun-mode').classList.contains('active');
+    const isAdvancedMode = document.getElementById('btn-advanced-mode') &&
+        document.getElementById('btn-advanced-mode').classList.contains('active');
     const currentLevel = GAME ? GAME.currentLevel : 0;
 
     parts.forEach(part => {
-        const isUnlocked = isPartUnlocked(part.id, currentLevel, isFunMode);
+        const isUnlocked = isPartUnlocked(part.id, currentLevel, isFunMode, isAdvancedMode);
 
         const item = document.createElement('div');
         item.className = `part-item${isUnlocked ? '' : ' locked'}`;

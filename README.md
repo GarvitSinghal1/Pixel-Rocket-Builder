@@ -24,7 +24,7 @@
 | Feature | Description |
 |---------|-------------|
 | 🔧 **Drag & Drop Builder** | Intuitive rocket construction with snap-to-grid |
-| 🎮 **Two Game Modes** | Level progression or sandbox creativity |
+| 🎮 **Three Game Modes** | Level progression, sandbox, or realistic simulation |
 | 📊 **Real Physics Engine** | ISA atmosphere, Mach regimes, aerodynamic heating |
 | 🎓 **Educational Analysis** | Pre-launch warnings and post-flight explanations |
 | 💥 **Failure Simulation** | Max Q, G-force, thermal, and impact failures |
@@ -51,12 +51,41 @@ Progress through **10 challenging levels**, each with increasing altitude goals:
 | 9 | Low Orbit | 250,000m | - |
 | 10 | Orbital | 400,000m | Crew Capsule |
 
-### � Fun Mode
+### 🎨 Fun Mode
 **All parts unlocked!** Build whatever you want:
 - Giant multi-engine rockets
 - Experimental designs
 - Test physics limits
 - No restrictions, pure creativity
+
+### ⚠️ Advanced Mode
+
+> **⛔ NOT RECOMMENDED FOR NON-EXPERTS**
+
+For players who want **realistic orbital mechanics** and **simulation-level physics**:
+
+#### Realistic Physics Features
+| Feature | Description |
+|---------|-------------|
+| 🛰️ **Keplerian Orbits** | True orbital mechanics with apoapsis/periapsis |
+| 📍 **Orbital Tracking** | Ap/Pe altitude display during flight |
+| 🌍 **Multi-Body Physics** | Earth, Moon, Mars with unique atmospheres |
+| 🔄 **SOI Transitions** | Sphere of Influence calculations |
+
+#### Engine Simulation
+| Feature | Description |
+|---------|-------------|
+| 📉 **ISP vs Altitude** | Engine efficiency changes with atmosphere |
+| ⏱️ **Throttle Lag** | 0.5s response time for throttle changes |
+| 💥 **Ignition Failures** | 5-20% chance of engine start failure |
+| 🌀 **Fuel Cavitation** | Pump issues at low fuel pressure |
+
+#### Planetary System
+| Body | Surface Gravity | Atmosphere | Scale Height |
+|------|-----------------|------------|--------------|
+| 🌍 **Earth** | 9.81 m/s² | Yes (100km) | 8,500m |
+| 🌑 **Moon** | 1.62 m/s² | None | - |
+| 🔴 **Mars** | 3.72 m/s² | Thin (125km) | 11,100m |
 
 ---
 
