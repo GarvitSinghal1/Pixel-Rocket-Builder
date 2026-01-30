@@ -591,16 +591,19 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--gap-md);
+    gap: var(--gap-sm);
+    padding: var(--gap-sm) var(--gap-md);
     background: var(--bg-secondary);
     border: 2px solid var(--border-color);
     border-radius: var(--pixel);
     margin-top: var(--gap-sm);
+    flex-wrap: wrap;
 }
 
 .stat-group {
     display: flex;
-    gap: var(--gap-lg);
+    gap: var(--gap-md);
+    flex-shrink: 0;
 }
 
 .stat {
@@ -958,54 +961,53 @@ body {
     background: linear-gradient(135deg, rgba(255, 51, 102, 0.1), rgba(0, 0, 0, 0.3));
     border: 2px solid var(--accent-danger);
     border-radius: var(--pixel);
-    padding: var(--gap-md);
-    margin-bottom: var(--gap-lg);
-    max-height: 400px;
+    padding: var(--gap-sm);
+    margin-bottom: var(--gap-md);
+    max-height: 200px;
     overflow-y: auto;
 }
 
 .failure-header {
     display: flex;
     align-items: center;
-    gap: var(--gap-md);
-    margin-bottom: var(--gap-md);
-    padding-bottom: var(--gap-sm);
+    gap: var(--gap-sm);
+    margin-bottom: var(--gap-sm);
+    padding-bottom: var(--gap-xs);
     border-bottom: 1px solid var(--accent-danger);
 }
 
 .failure-icon-large {
-    font-size: 32px;
+    font-size: 24px;
 }
 
 .failure-title {
-    font-size: 14px;
+    font-size: 11px;
     color: var(--accent-danger);
     text-shadow: 0 0 10px var(--accent-danger);
 }
 
 .explanation-section {
-    margin-bottom: var(--gap-md);
+    margin-bottom: var(--gap-sm);
 }
 
 .explanation-label {
-    font-size: 10px;
+    font-size: 8px;
     color: var(--accent-primary);
-    margin-bottom: var(--gap-xs);
+    margin-bottom: 2px;
     text-transform: uppercase;
 }
 
 .explanation-text {
-    font-size: 9px;
+    font-size: 8px;
     color: var(--text-secondary);
-    line-height: 1.8;
-    font-family: 'Courier New', monospace;
+    line-height: 1.5;
 }
 
 .explanation-section.improvements {
     background: rgba(0, 255, 136, 0.1);
     border: 1px solid var(--accent-success);
     border-radius: var(--pixel);
-    padding: var(--gap-sm);
+    padding: var(--gap-xs);
 }
 
 .improvement-list {
@@ -1015,12 +1017,11 @@ body {
 }
 
 .improvement-list li {
-    font-size: 9px;
+    font-size: 8px;
     color: var(--accent-success);
-    padding: var(--gap-xs) 0;
-    padding-left: var(--gap-md);
+    padding: 2px 0;
+    padding-left: var(--gap-sm);
     position: relative;
-    font-family: 'Courier New', monospace;
 }
 
 .improvement-list li::before {
@@ -1028,6 +1029,7 @@ body {
     position: absolute;
     left: 0;
     color: var(--accent-success);
+    font-size: 8px;
 }
 
 /* ============================================
@@ -1037,8 +1039,9 @@ body {
     background: var(--bg-panel);
     border: 2px solid var(--border-color);
     border-radius: var(--pixel);
-    padding: var(--gap-md);
-    margin-top: var(--gap-md);
+    padding: var(--gap-xs) var(--gap-sm);
+    flex-shrink: 0;
+    max-width: 280px;
 }
 
 .educational-toggle {
@@ -1046,10 +1049,9 @@ body {
     align-items: center;
     justify-content: space-between;
     cursor: pointer;
-    padding: var(--gap-sm);
+    padding: var(--gap-xs) var(--gap-sm);
     background: var(--bg-tertiary);
     border-radius: var(--pixel);
-    margin-bottom: var(--gap-sm);
 }
 
 .educational-toggle:hover {
@@ -1099,15 +1101,18 @@ body {
 
 .analysis-content.visible {
     display: block;
+    max-height: 150px;
+    overflow-y: auto;
+    margin-top: var(--gap-xs);
 }
 
 .risk-indicator {
     display: flex;
     align-items: center;
-    gap: var(--gap-sm);
-    padding: var(--gap-sm);
+    gap: var(--gap-xs);
+    padding: var(--gap-xs) var(--gap-sm);
     border-radius: var(--pixel);
-    margin-bottom: var(--gap-md);
+    margin-bottom: var(--gap-xs);
 }
 
 .risk-indicator.low {
@@ -1132,7 +1137,7 @@ body {
 }
 
 .risk-label {
-    font-size: 12px;
+    font-size: 9px;
     font-weight: bold;
 }
 
@@ -1163,12 +1168,12 @@ body {
 
 .warning-item {
     display: flex;
-    gap: var(--gap-sm);
-    padding: var(--gap-sm);
+    gap: var(--gap-xs);
+    padding: var(--gap-xs);
     background: var(--bg-tertiary);
     border-radius: var(--pixel);
-    margin-bottom: var(--gap-xs);
-    border-left: 3px solid;
+    margin-bottom: 2px;
+    border-left: 2px solid;
 }
 
 .warning-item.CRITICAL {
@@ -1187,7 +1192,7 @@ body {
 }
 
 .warning-icon {
-    font-size: 16px;
+    font-size: 12px;
 }
 
 .warning-content {
@@ -1195,9 +1200,8 @@ body {
 }
 
 .warning-title {
-    font-size: 9px;
+    font-size: 8px;
     font-weight: bold;
-    margin-bottom: 2px;
 }
 
 .warning-item.CRITICAL .warning-title {
@@ -1213,23 +1217,24 @@ body {
 }
 
 .warning-message {
-    font-size: 8px;
+    font-size: 7px;
     color: var(--text-secondary);
-    font-family: 'Courier New', monospace;
+    display: none;
+    /* Hide detailed messages to save space */
 }
 
 .suggestion-item {
     display: flex;
-    gap: var(--gap-sm);
-    padding: var(--gap-sm);
+    gap: var(--gap-xs);
+    padding: var(--gap-xs);
     background: rgba(0, 255, 255, 0.05);
     border: 1px solid var(--accent-primary);
     border-radius: var(--pixel);
-    margin-bottom: var(--gap-xs);
+    margin-bottom: 2px;
 }
 
 .suggestion-icon {
-    font-size: 14px;
+    font-size: 10px;
 }
 
 .suggestion-content {
@@ -1237,45 +1242,44 @@ body {
 }
 
 .suggestion-title {
-    font-size: 9px;
+    font-size: 8px;
     color: var(--accent-primary);
-    margin-bottom: 2px;
 }
 
 .suggestion-message {
-    font-size: 8px;
+    font-size: 7px;
     color: var(--text-secondary);
-    font-family: 'Courier New', monospace;
+    display: none;
+    /* Hide to save space */
 }
 
 .suggestion-benefit {
-    font-size: 8px;
+    font-size: 7px;
     color: var(--accent-success);
-    margin-top: 2px;
 }
 
 .predictions-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: var(--gap-xs);
-    margin-top: var(--gap-sm);
+    gap: 2px;
+    margin-top: var(--gap-xs);
 }
 
 .prediction-item {
     background: var(--bg-tertiary);
-    padding: var(--gap-xs) var(--gap-sm);
+    padding: 2px 4px;
     border-radius: var(--pixel);
     text-align: center;
 }
 
 .prediction-label {
-    font-size: 7px;
+    font-size: 6px;
     color: var(--text-muted);
     text-transform: uppercase;
 }
 
 .prediction-value {
-    font-size: 11px;
+    font-size: 9px;
     color: var(--accent-primary);
 }
 
