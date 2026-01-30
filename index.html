@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="css/styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div id="game-container">
         <!-- Header -->
@@ -32,7 +34,7 @@
                     <canvas id="editor-canvas"></canvas>
                     <div id="launch-pad"></div>
                 </div>
-                
+
                 <aside id="parts-panel">
                     <h2 class="panel-title">PARTS</h2>
                     <div id="category-tabs">
@@ -72,6 +74,7 @@
                         <span id="throttle-value">100%</span>
                     </div>
                     <button id="btn-stage" class="control-btn">STAGE</button>
+                    <button id="btn-skip" class="control-btn skip">SKIP ⏩</button>
                     <button id="btn-abort" class="control-btn abort">ABORT</button>
                 </div>
             </div>
@@ -135,9 +138,11 @@
         </div>
     </div>
 
+    <script src="js/audio.js"></script>
     <script src="js/parts.js"></script>
     <script src="js/physics.js"></script>
     <script src="js/editor.js"></script>
     <script src="js/main.js"></script>
 </body>
+
 </html>

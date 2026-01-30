@@ -1,6 +1,6 @@
 /**
  * PIXEL ROCKET BUILDER - Editor
- * Drag-and-drop rocket building interface
+ * Drag-and-drop rocket building interface with snapping and connectivity
  */
 
 const EDITOR = {
@@ -33,7 +33,11 @@ const EDITOR = {
     padWidth: 200,
 
     // Current category
-    currentCategory: 'engines'
+    currentCategory: 'engines',
+
+    // Snapping
+    snapLines: { x: null, y: null },
+    centerX: 0
 };
 
 /**
@@ -70,6 +74,7 @@ function resizeEditorCanvas() {
     // Launch pad position
     EDITOR.padX = EDITOR.width / 2 - EDITOR.padWidth / 2;
     EDITOR.padY = EDITOR.height - 60;
+    EDITOR.centerX = EDITOR.width / 2;
 }
 
 /**
@@ -94,6 +99,7 @@ function setupEditorEvents() {
             tab.classList.add('active');
             EDITOR.currentCategory = tab.dataset.category;
             renderPartsPanel(EDITOR.currentCategory);
+            if (typeof playClickSound === 'function') playClickSound();
         });
     });
 
@@ -144,8 +150,58 @@ function handleCanvasMouseMove(e) {
     if (!EDITOR.isDragging || !EDITOR.dragPart) return;
 
     const rect = EDITOR.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left - EDITOR.dragOffsetX;
-    const y = e.clientY - rect.top - EDITOR.dragOffsetY;
+    let x = e.clientX - rect.left - EDITOR.dragOffsetX;
+    let y = e.clientY - rect.top - EDITOR.dragOffsetY;
+
+    // Smart snap to center and other parts
+    const partDef = getPartById(EDITOR.dragPart.partId);
+    const partW = partDef.width * TILE_SIZE;
+    const partH = partDef.height * TILE_SIZE;
+    const partCenterX = x + partW / 2;
+
+    EDITOR.snapLines = { x: null, y: null };
+
+    // Snap to center line
+    const snapThreshold = 10;
+    if (Math.abs(partCenterX - EDITOR.centerX) < snapThreshold) {
+        x = EDITOR.centerX - partW / 2;
+        EDITOR.snapLines.x = EDITOR.centerX;
+    }
+
+    // Snap to grid
+    x = Math.round(x / EDITOR.gridSize) * EDITOR.gridSize;
+    y = Math.round(y / EDITOR.gridSize) * EDITOR.gridSize;
+
+    // Snap to other parts (align to their edges)
+    EDITOR.placedParts.forEach(other => {
+        const otherDef = getPartById(other.partId);
+        const otherW = otherDef.width * TILE_SIZE;
+        const otherH = otherDef.height * TILE_SIZE;
+        const otherCenterX = other.x + otherW / 2;
+
+        // Horizontal center alignment
+        if (Math.abs((x + partW / 2) - otherCenterX) < snapThreshold) {
+            x = otherCenterX - partW / 2;
+            EDITOR.snapLines.x = otherCenterX;
+        }
+
+        // Vertical snap to attach above/below
+        if (Math.abs(x - other.x) < snapThreshold * 2 ||
+            Math.abs((x + partW) - (other.x + otherW)) < snapThreshold * 2 ||
+            Math.abs((x + partW / 2) - (other.x + otherW / 2)) < snapThreshold * 2) {
+
+            // Snap to bottom of other part
+            if (Math.abs(y - (other.y + otherH)) < snapThreshold) {
+                y = other.y + otherH;
+                EDITOR.snapLines.y = y;
+            }
+            // Snap to top of other part
+            if (Math.abs((y + partH) - other.y) < snapThreshold) {
+                y = other.y - partH;
+                EDITOR.snapLines.y = other.y;
+            }
+        }
+    });
 
     EDITOR.dragPart.x = x;
     EDITOR.dragPart.y = y;
@@ -158,10 +214,6 @@ function handleCanvasMouseMove(e) {
  */
 function handleCanvasMouseUp(e) {
     if (EDITOR.isDragging && EDITOR.dragPart) {
-        // Snap to grid
-        EDITOR.dragPart.x = Math.round(EDITOR.dragPart.x / EDITOR.gridSize) * EDITOR.gridSize;
-        EDITOR.dragPart.y = Math.round(EDITOR.dragPart.y / EDITOR.gridSize) * EDITOR.gridSize;
-
         // Keep within bounds
         const partDef = getPartById(EDITOR.dragPart.partId);
         const partW = partDef.width * TILE_SIZE;
@@ -173,6 +225,9 @@ function handleCanvasMouseUp(e) {
         // Add back to placed parts
         EDITOR.placedParts.push(EDITOR.dragPart);
         EDITOR.selectedPart = EDITOR.dragPart;
+
+        // Clear snap lines
+        EDITOR.snapLines = { x: null, y: null };
 
         updateStats();
     }
@@ -238,17 +293,157 @@ function removePlacedPart(part) {
 }
 
 /**
+ * Check if two parts are touching/connected
+ */
+function arePartsConnected(part1, part2) {
+    const def1 = getPartById(part1.partId);
+    const def2 = getPartById(part2.partId);
+
+    const w1 = def1.width * TILE_SIZE;
+    const h1 = def1.height * TILE_SIZE;
+    const w2 = def2.width * TILE_SIZE;
+    const h2 = def2.height * TILE_SIZE;
+
+    // Check if parts are adjacent (touching on any edge)
+    const tolerance = 2;
+
+    // Horizontal overlap check
+    const hOverlap = !(part1.x + w1 < part2.x - tolerance || part2.x + w2 < part1.x - tolerance);
+
+    // Vertical overlap check
+    const vOverlap = !(part1.y + h1 < part2.y - tolerance || part2.y + h2 < part1.y - tolerance);
+
+    // Check for top/bottom connection
+    const topBottomConnect = hOverlap && (
+        Math.abs((part1.y + h1) - part2.y) <= tolerance ||  // part1 above part2
+        Math.abs((part2.y + h2) - part1.y) <= tolerance     // part2 above part1
+    );
+
+    // Check for left/right connection
+    const leftRightConnect = vOverlap && (
+        Math.abs((part1.x + w1) - part2.x) <= tolerance ||
+        Math.abs((part2.x + w2) - part1.x) <= tolerance
+    );
+
+    return topBottomConnect || leftRightConnect;
+}
+
+/**
+ * Get all connected parts starting from engines at the bottom
+ * Returns only parts that form a connected structure with at least one engine
+ */
+function getConnectedParts() {
+    if (EDITOR.placedParts.length === 0) return [];
+
+    // Find all engine parts
+    const engines = EDITOR.placedParts.filter(p => {
+        const def = getPartById(p.partId);
+        return def.category === 'engines';
+    });
+
+    if (engines.length === 0) return [];
+
+    // BFS from engines to find all connected parts
+    const connected = new Set();
+    const queue = [...engines];
+
+    while (queue.length > 0) {
+        const current = queue.shift();
+        if (connected.has(current.id)) continue;
+        connected.add(current.id);
+
+        // Find all parts connected to this one
+        EDITOR.placedParts.forEach(other => {
+            if (!connected.has(other.id) && arePartsConnected(current, other)) {
+                queue.push(other);
+            }
+        });
+    }
+
+    return EDITOR.placedParts.filter(p => connected.has(p.id));
+}
+
+/**
+ * Check part orientation validity
+ * Returns true if part is in a valid orientation
+ */
+function isPartOrientationValid(placedPart) {
+    const def = getPartById(placedPart.partId);
+
+    // Nose cones must be at the top (no parts above them)
+    if (def.id === 'nose_cone') {
+        const partTop = placedPart.y;
+        const partW = def.width * TILE_SIZE;
+        const partCenterX = placedPart.x + partW / 2;
+
+        // Check if any connected part is above this one
+        return !EDITOR.placedParts.some(other => {
+            if (other.id === placedPart.id) return false;
+            const otherDef = getPartById(other.partId);
+            const otherW = otherDef.width * TILE_SIZE;
+            const otherCenterX = other.x + otherW / 2;
+
+            // Check if parts are roughly aligned horizontally
+            const aligned = Math.abs(partCenterX - otherCenterX) < partW;
+
+            // Check if other part is above
+            return aligned && other.y < partTop;
+        });
+    }
+
+    // Engines must be at the bottom of their connected group
+    if (def.category === 'engines') {
+        const partBottom = placedPart.y + def.height * TILE_SIZE;
+        const partW = def.width * TILE_SIZE;
+        const partCenterX = placedPart.x + partW / 2;
+
+        // Engines can have nothing below them OR other engines
+        const partsBelow = EDITOR.placedParts.filter(other => {
+            if (other.id === placedPart.id) return false;
+            const otherDef = getPartById(other.partId);
+            const otherW = otherDef.width * TILE_SIZE;
+            const otherCenterX = other.x + otherW / 2;
+
+            const aligned = Math.abs(partCenterX - otherCenterX) < partW;
+            return aligned && other.y >= partBottom - 5;
+        });
+
+        // If there are parts below, they must all be engines or fins
+        return partsBelow.every(p => {
+            const d = getPartById(p.partId);
+            return d.category === 'engines' || d.category === 'control';
+        });
+    }
+
+    return true;
+}
+
+/**
  * Add part from palette
  */
 function addPart(partId) {
     const partDef = getPartById(partId);
     if (!partDef) return;
 
+    if (typeof playClickSound === 'function') playClickSound();
+
+    // Place at center, above existing parts or on pad
+    let placeY = EDITOR.padY - partDef.height * TILE_SIZE;
+
+    // Find highest existing part to stack on top
+    if (EDITOR.placedParts.length > 0) {
+        const minY = Math.min(...EDITOR.placedParts.map(p => p.y));
+        const topPart = EDITOR.placedParts.find(p => p.y === minY);
+        if (topPart) {
+            placeY = topPart.y - partDef.height * TILE_SIZE;
+        }
+    }
+
     const newPart = {
         id: Date.now(),
         partId: partId,
-        x: EDITOR.padX + EDITOR.padWidth / 2 - (partDef.width * TILE_SIZE) / 2,
-        y: EDITOR.padY - partDef.height * TILE_SIZE
+        x: EDITOR.centerX - (partDef.width * TILE_SIZE) / 2,
+        y: placeY
     };
 
     EDITOR.placedParts.push(newPart);
@@ -267,7 +462,7 @@ function renderPartsPanel(category) {
 
     const parts = getPartsByCategory(category);
     const isFunMode = document.getElementById('btn-fun-mode').classList.contains('active');
-    const currentLevel = GAME.currentLevel || 0;
+    const currentLevel = GAME ? GAME.currentLevel : 0;
 
     parts.forEach(part => {
         const isUnlocked = isPartUnlocked(part.id, currentLevel, isFunMode);
@@ -330,6 +525,12 @@ function setupCanvasDrop() {
         x = Math.round(x / EDITOR.gridSize) * EDITOR.gridSize;
         y = Math.round(y / EDITOR.gridSize) * EDITOR.gridSize;
 
+        // Snap to center
+        const partCenterX = x + (partDef.width * TILE_SIZE) / 2;
+        if (Math.abs(partCenterX - EDITOR.centerX) < 20) {
+            x = EDITOR.centerX - (partDef.width * TILE_SIZE) / 2;
+        }
+
         const newPart = {
             id: Date.now(),
             partId: partId,
@@ -340,6 +541,7 @@ function setupCanvasDrop() {
         EDITOR.placedParts.push(newPart);
         EDITOR.selectedPart = newPart;
 
+        if (typeof playClickSound === 'function') playClickSound();
         updateStats();
         renderEditor();
     });
@@ -374,9 +576,19 @@ function renderEditor() {
     }
     ctx.globalAlpha = 1;
 
+    // Draw center alignment line (subtle)
+    ctx.strokeStyle = 'rgba(0, 255, 255, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([5, 10]);
+    ctx.beginPath();
+    ctx.moveTo(EDITOR.centerX, 0);
+    ctx.lineTo(EDITOR.centerX, EDITOR.height);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
     // Draw grid (subtle)
     if (EDITOR.showGrid) {
-        ctx.strokeStyle = 'rgba(100, 150, 200, 0.1)';
+        ctx.strokeStyle = 'rgba(100, 150, 200, 0.08)';
         ctx.lineWidth = 1;
 
         for (let x = 0; x < EDITOR.width; x += EDITOR.gridSize) {
@@ -394,10 +606,54 @@ function renderEditor() {
         }
     }
 
+    // Get connected parts for rendering
+    const connectedParts = getConnectedParts();
+    const connectedIds = new Set(connectedParts.map(p => p.id));
+
     // Draw placed parts
     EDITOR.placedParts.forEach(placed => {
         const partDef = getPartById(placed.partId);
+        const isConnected = connectedIds.has(placed.id);
+        const isValidOrientation = isPartOrientationValid(placed);
+
+        // Draw part
+        ctx.globalAlpha = isConnected ? 1 : 0.4;
         drawPart(ctx, partDef, placed.x, placed.y);
+        ctx.globalAlpha = 1;
+
+        // Draw connection warning for disconnected parts
+        if (!isConnected && EDITOR.placedParts.some(p => {
+            const d = getPartById(p.partId);
+            return d.category === 'engines';
+        })) {
+            ctx.strokeStyle = '#ff6600';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([3, 3]);
+            ctx.strokeRect(placed.x - 1, placed.y - 1,
+                partDef.width * TILE_SIZE + 2,
+                partDef.height * TILE_SIZE + 2);
+            ctx.setLineDash([]);
+
+            // Warning icon
+            ctx.fillStyle = '#ff6600';
+            ctx.font = '12px Arial';
+            ctx.fillText('⚠', placed.x + partDef.width * TILE_SIZE - 12, placed.y + 14);
+        }
+
+        // Draw orientation warning
+        if (!isValidOrientation) {
+            ctx.strokeStyle = '#ff3366';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([2, 2]);
+            ctx.strokeRect(placed.x - 1, placed.y - 1,
+                partDef.width * TILE_SIZE + 2,
+                partDef.height * TILE_SIZE + 2);
+            ctx.setLineDash([]);
+
+            ctx.fillStyle = '#ff3366';
+            ctx.font = '10px Arial';
+            ctx.fillText('↕', placed.x + 2, placed.y + 12);
+        }
 
         // Selection highlight
         if (placed === EDITOR.selectedPart) {
@@ -414,6 +670,29 @@ function renderEditor() {
         }
     });
 
+    // Draw snap lines while dragging
+    if (EDITOR.isDragging) {
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+
+        if (EDITOR.snapLines.x !== null) {
+            ctx.beginPath();
+            ctx.moveTo(EDITOR.snapLines.x, 0);
+            ctx.lineTo(EDITOR.snapLines.x, EDITOR.height);
+            ctx.stroke();
+        }
+
+        if (EDITOR.snapLines.y !== null) {
+            ctx.beginPath();
+            ctx.moveTo(0, EDITOR.snapLines.y);
+            ctx.lineTo(EDITOR.width, EDITOR.snapLines.y);
+            ctx.stroke();
+        }
+
+        ctx.setLineDash([]);
+    }
+
     // Draw dragging part
     if (EDITOR.isDragging && EDITOR.dragPart) {
         const partDef = getPartById(EDITOR.dragPart.partId);
@@ -424,18 +703,23 @@ function renderEditor() {
 }
 
 /**
- * Update stats display
+ * Update stats display - now uses only connected parts
  */
 function updateStats() {
-    const parts = EDITOR.placedParts;
+    // Get only connected parts for calculations
+    const connectedParts = getConnectedParts();
+    const allParts = EDITOR.placedParts;
 
-    // Calculate stats
-    const twr = calculateTWR(parts);
-    const mass = calculateTotalMass(parts, calculateTotalFuel(parts));
-    const thrust = calculateTotalThrust(parts);
-    const deltaV = calculateDeltaV(parts);
-    const altitude = estimateAltitude(parts);
-    const efficiency = calculateEfficiency(parts);
+    // Calculate stats from connected parts only
+    const twr = calculateTWR(connectedParts);
+    const mass = calculateTotalMass(connectedParts, calculateTotalFuel(connectedParts));
+    const thrust = calculateTotalThrust(connectedParts);
+    const deltaV = calculateDeltaV(connectedParts);
+    const altitude = estimateAltitude(connectedParts);
+    const efficiency = calculateEfficiency(connectedParts);
+
+    // Count disconnected parts
+    const disconnectedCount = allParts.length - connectedParts.length;
 
     // Update display
     document.getElementById('stat-twr').textContent = twr.toFixed(2);
@@ -455,9 +739,15 @@ function updateStats() {
         twrEl.style.color = '#00ffff';
     }
 
-    // Enable/disable launch button
+    // Show warning if disconnected parts
+    if (disconnectedCount > 0) {
+        document.getElementById('stat-mass').textContent += ` (${disconnectedCount} ⚠)`;
+    }
+
+    // Enable/disable launch button - require valid connected rocket
     const launchBtn = document.getElementById('btn-launch');
-    launchBtn.disabled = twr < 1 || parts.length === 0;
+    const hasValidRocket = twr >= 1 && connectedParts.length > 0;
+    launchBtn.disabled = !hasValidRocket;
 }
 
 /**
@@ -496,6 +786,7 @@ function saveRocket() {
     savedRockets.push(saveData);
     localStorage.setItem('pixelRockets', JSON.stringify(savedRockets));
 
+    if (typeof playClickSound === 'function') playClickSound();
     alert('Rocket saved!');
 }
 
@@ -514,10 +805,18 @@ function loadRocket() {
     EDITOR.placedParts = lastSave.parts;
     EDITOR.selectedPart = null;
 
+    if (typeof playClickSound === 'function') playClickSound();
     updateStats();
     renderEditor();
 
     alert('Rocket loaded!');
+}
+
+/**
+ * Get connected parts for physics (exported for use by main.js)
+ */
+function getValidRocketParts() {
+    return getConnectedParts();
 }
 
 // Initialize drag and drop on canvas
