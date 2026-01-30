@@ -21,7 +21,11 @@ const GAME = {
     clouds: [],
 
     // Skip simulation flag
-    skipRequested: false
+    skipRequested: false,
+
+    // Store the actual rocket parts for rendering during flight
+    launchParts: [],
+    rocketBounds: { minX: 0, maxX: 0, minY: 0, maxY: 0, width: 0, height: 0 }
 };
 
 // Level definitions
@@ -253,6 +257,34 @@ function startLaunch() {
 
     // Play ignition sound
     if (typeof playIgnitionSound === 'function') playIgnitionSound();
+
+    // Store the rocket parts for rendering during flight
+    GAME.launchParts = connectedParts.map(p => ({
+        ...p,
+        partDef: getPartById(p.partId)
+    }));
+
+    // Calculate rocket bounding box
+    if (GAME.launchParts.length > 0) {
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+
+        GAME.launchParts.forEach(p => {
+            const w = p.partDef.width * TILE_SIZE;
+            const h = p.partDef.height * TILE_SIZE;
+            minX = Math.min(minX, p.x);
+            maxX = Math.max(maxX, p.x + w);
+            minY = Math.min(minY, p.y);
+            maxY = Math.max(maxY, p.y + h);
+        });
+
+        GAME.rocketBounds = {
+            minX, maxX, minY, maxY,
+            width: maxX - minX,
+            height: maxY - minY,
+            centerX: (minX + maxX) / 2
+        };
+    }
 
     // Initialize physics with CONNECTED parts only
     startSimulation(connectedParts);
@@ -534,70 +566,94 @@ function drawCloud(ctx, x, y, w, h) {
 }
 
 /**
- * Draw rocket at launch position
+ * Draw rocket at launch position - NOW RENDERS ACTUAL PARTS
  */
 function drawRocketAtPosition(ctx, x, y, throttle) {
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
 
-    // Simple rocket representation
-    const rocketWidth = 40;
-    const rocketHeight = getRocketHeight();
+    // Calculate scale to fit rocket nicely on screen
+    const maxHeight = 200; // Max visual height
+    const scale = Math.min(1.5, maxHeight / Math.max(GAME.rocketBounds.height, 50));
 
-    // Rocket body
-    ctx.fillStyle = '#ccccdd';
-    ctx.fillRect(x - rocketWidth / 2, y, rocketWidth, rocketHeight * 0.7);
+    // Get rocket dimensions
+    const rocketWidth = GAME.rocketBounds.width * scale;
+    const rocketHeight = GAME.rocketBounds.height * scale;
 
-    // Nose cone
-    ctx.fillStyle = '#ee4444';
-    ctx.beginPath();
-    ctx.moveTo(x, y - 20);
-    ctx.lineTo(x + rocketWidth / 2, y);
-    ctx.lineTo(x - rocketWidth / 2, y);
-    ctx.closePath();
-    ctx.fill();
+    // Position rocket centered at x, with top at y
+    const drawX = x - rocketWidth / 2;
+    const drawY = y;
 
-    // Fins
-    ctx.fillStyle = '#888899';
-    ctx.beginPath();
-    ctx.moveTo(x - rocketWidth / 2, y + rocketHeight * 0.5);
-    ctx.lineTo(x - rocketWidth / 2 - 15, y + rocketHeight * 0.7 + 15);
-    ctx.lineTo(x - rocketWidth / 2, y + rocketHeight * 0.7);
-    ctx.closePath();
-    ctx.fill();
+    // Draw each part in the rocket
+    GAME.launchParts.forEach(placedPart => {
+        const partDef = placedPart.partDef;
 
-    ctx.beginPath();
-    ctx.moveTo(x + rocketWidth / 2, y + rocketHeight * 0.5);
-    ctx.lineTo(x + rocketWidth / 2 + 15, y + rocketHeight * 0.7 + 15);
-    ctx.lineTo(x + rocketWidth / 2, y + rocketHeight * 0.7);
-    ctx.closePath();
-    ctx.fill();
+        // Calculate relative position within rocket
+        const relX = (placedPart.x - GAME.rocketBounds.minX) * scale;
+        const relY = (placedPart.y - GAME.rocketBounds.minY) * scale;
 
-    // Engine flame
+        // Draw the part
+        drawPart(ctx, partDef, drawX + relX, drawY + relY, scale);
+    });
+
+    // Draw engine flame for all engines
     if (throttle > 0 && PHYSICS.fuel > 0) {
-        const flameHeight = 30 + throttle * 40 + Math.random() * 20;
-        const flameGradient = ctx.createLinearGradient(x, y + rocketHeight * 0.7, x, y + rocketHeight * 0.7 + flameHeight);
-        flameGradient.addColorStop(0, '#ffffff');
-        flameGradient.addColorStop(0.2, '#ffff00');
-        flameGradient.addColorStop(0.5, '#ff8800');
-        flameGradient.addColorStop(1, 'rgba(255, 68, 0, 0)');
+        GAME.launchParts.forEach(placedPart => {
+            const partDef = placedPart.partDef;
+            if (partDef.category !== 'engines') return;
 
-        ctx.fillStyle = flameGradient;
-        ctx.beginPath();
-        ctx.moveTo(x - rocketWidth / 3, y + rocketHeight * 0.7);
-        ctx.lineTo(x, y + rocketHeight * 0.7 + flameHeight);
-        ctx.lineTo(x + rocketWidth / 3, y + rocketHeight * 0.7);
-        ctx.closePath();
-        ctx.fill();
+            const relX = (placedPart.x - GAME.rocketBounds.minX) * scale;
+            const relY = (placedPart.y - GAME.rocketBounds.minY) * scale;
+            const partW = partDef.width * TILE_SIZE * scale;
+            const partH = partDef.height * TILE_SIZE * scale;
+
+            const flameX = drawX + relX + partW / 2;
+            const flameY = drawY + relY + partH;
+            const flameHeight = (20 + throttle * 30 + Math.random() * 15) * scale;
+            const flameWidth = partW * 0.6;
+
+            // Flame gradient
+            const flameGradient = ctx.createLinearGradient(flameX, flameY, flameX, flameY + flameHeight);
+            flameGradient.addColorStop(0, '#ffffff');
+            flameGradient.addColorStop(0.15, '#ffffaa');
+            flameGradient.addColorStop(0.3, '#ffff00');
+            flameGradient.addColorStop(0.5, '#ff8800');
+            flameGradient.addColorStop(0.8, '#ff4400');
+            flameGradient.addColorStop(1, 'rgba(255, 68, 0, 0)');
+
+            ctx.fillStyle = flameGradient;
+            ctx.beginPath();
+            ctx.moveTo(flameX - flameWidth / 2, flameY);
+            ctx.quadraticCurveTo(flameX - flameWidth / 4, flameY + flameHeight * 0.5, flameX, flameY + flameHeight);
+            ctx.quadraticCurveTo(flameX + flameWidth / 4, flameY + flameHeight * 0.5, flameX + flameWidth / 2, flameY);
+            ctx.closePath();
+            ctx.fill();
+
+            // Inner hot core
+            const coreGradient = ctx.createLinearGradient(flameX, flameY, flameX, flameY + flameHeight * 0.6);
+            coreGradient.addColorStop(0, '#ffffff');
+            coreGradient.addColorStop(0.5, '#ffffdd');
+            coreGradient.addColorStop(1, 'rgba(255, 255, 200, 0)');
+
+            ctx.fillStyle = coreGradient;
+            ctx.beginPath();
+            ctx.moveTo(flameX - flameWidth / 4, flameY);
+            ctx.quadraticCurveTo(flameX, flameY + flameHeight * 0.4, flameX, flameY + flameHeight * 0.6);
+            ctx.quadraticCurveTo(flameX, flameY + flameHeight * 0.4, flameX + flameWidth / 4, flameY);
+            ctx.closePath();
+            ctx.fill();
+        });
     }
 
     ctx.restore();
 }
 
 /**
- * Get rocket visual height
+ * Get rocket visual height - now uses actual rocket bounds
  */
 function getRocketHeight() {
-    return 80;
+    const scale = Math.min(1.5, 200 / Math.max(GAME.rocketBounds.height, 50));
+    return GAME.rocketBounds.height * scale;
 }
 
 /**
