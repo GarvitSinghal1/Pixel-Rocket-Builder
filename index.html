@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Rocket Builder</title>
+    <meta name="description" content="Build and launch pixel rockets in this browser-based rocket building game">
+    <link rel="stylesheet" href="css/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Header -->
+        <header id="game-header">
+            <div class="mode-buttons">
+                <button id="btn-level-mode" class="mode-btn active">LEVEL MODE</button>
+                <button id="btn-fun-mode" class="mode-btn">FUN MODE</button>
+            </div>
+            <h1 class="game-title">PIXEL ROCKET</h1>
+            <div class="header-actions">
+                <button id="btn-save" class="action-btn">SAVE</button>
+                <button id="btn-load" class="action-btn">LOAD</button>
+                <button id="btn-clear" class="action-btn">CLEAR</button>
+            </div>
+        </header>
+
+        <!-- Main Game Area -->
+        <main id="game-main">
+            <!-- Editor Screen -->
+            <div id="editor-screen" class="screen active">
+                <div id="build-area">
+                    <canvas id="editor-canvas"></canvas>
+                    <div id="launch-pad"></div>
+                </div>
+                
+                <aside id="parts-panel">
+                    <h2 class="panel-title">PARTS</h2>
+                    <div id="category-tabs">
+                        <button class="cat-tab active" data-category="engines">🔥</button>
+                        <button class="cat-tab" data-category="fuel">⛽</button>
+                        <button class="cat-tab" data-category="structure">🏗️</button>
+                        <button class="cat-tab" data-category="control">🎛️</button>
+                        <button class="cat-tab" data-category="payload">📦</button>
+                    </div>
+                    <div id="parts-list"></div>
+                </aside>
+            </div>
+
+            <!-- Launch Screen -->
+            <div id="launch-screen" class="screen">
+                <canvas id="launch-canvas"></canvas>
+                <div id="launch-overlay">
+                    <div id="flight-data">
+                        <div class="data-item">
+                            <span class="data-label">ALTITUDE</span>
+                            <span id="data-altitude" class="data-value">0 m</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">VELOCITY</span>
+                            <span id="data-velocity" class="data-value">0 m/s</span>
+                        </div>
+                        <div class="data-item">
+                            <span class="data-label">FUEL</span>
+                            <span id="data-fuel" class="data-value">100%</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="launch-controls">
+                    <div class="throttle-control">
+                        <span>THROTTLE</span>
+                        <input type="range" id="throttle-slider" min="0" max="100" value="100">
+                        <span id="throttle-value">100%</span>
+                    </div>
+                    <button id="btn-stage" class="control-btn">STAGE</button>
+                    <button id="btn-abort" class="control-btn abort">ABORT</button>
+                </div>
+            </div>
+
+            <!-- Results Screen -->
+            <div id="results-screen" class="screen">
+                <div id="results-content">
+                    <h2 id="results-title">FLIGHT COMPLETE</h2>
+                    <div id="results-stars"></div>
+                    <div id="results-stats"></div>
+                    <div id="results-unlock"></div>
+                    <div id="results-actions">
+                        <button id="btn-retry" class="result-btn">TRY AGAIN</button>
+                        <button id="btn-edit" class="result-btn">EDIT ROCKET</button>
+                        <button id="btn-next" class="result-btn primary">NEXT LEVEL</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Stats Bar -->
+        <footer id="stats-bar">
+            <div class="stat-group">
+                <div class="stat">
+                    <span class="stat-label">TWR</span>
+                    <span id="stat-twr" class="stat-value">0.00</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">MASS</span>
+                    <span id="stat-mass" class="stat-value">0 kg</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">THRUST</span>
+                    <span id="stat-thrust" class="stat-value">0 kN</span>
+                </div>
+            </div>
+            <div class="stat-group">
+                <div class="stat">
+                    <span class="stat-label">Δv</span>
+                    <span id="stat-deltav" class="stat-value">0 m/s</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">EST. ALT</span>
+                    <span id="stat-altitude" class="stat-value">0 m</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">EFFICIENCY</span>
+                    <span id="stat-efficiency" class="stat-value">--%</span>
+                </div>
+            </div>
+            <button id="btn-launch" class="launch-btn">🚀 LAUNCH</button>
+        </footer>
+
+        <!-- Level Select Modal -->
+        <div id="level-modal" class="modal">
+            <div class="modal-content">
+                <h2>SELECT LEVEL</h2>
+                <div id="level-grid"></div>
+                <button id="btn-close-levels" class="modal-close">✕</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/parts.js"></script>
+    <script src="js/physics.js"></script>
+    <script src="js/editor.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
