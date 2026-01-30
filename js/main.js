@@ -687,9 +687,17 @@ function drawRocketAtPosition(ctx, x, y, throttle) {
     const rocketWidth = GAME.rocketBounds.width * scale;
     const rocketHeight = GAME.rocketBounds.height * scale;
 
+    // Get stress levels for visual effects
+    const stressLevels = typeof getStressLevels === 'function' ? getStressLevels() : { heat: 0, gForce: 0, pressure: 0 };
+
+    // Apply shake effect based on G-force and pressure stress
+    const shakeIntensity = (stressLevels.gForce * 3 + stressLevels.pressure * 2);
+    const shakeX = (Math.random() - 0.5) * shakeIntensity;
+    const shakeY = (Math.random() - 0.5) * shakeIntensity;
+
     // Position rocket centered at x, with top at y
-    const drawX = x - rocketWidth / 2;
-    const drawY = y;
+    const drawX = x - rocketWidth / 2 + shakeX;
+    const drawY = y + shakeY;
 
     // Draw each part in the rocket
     GAME.launchParts.forEach(placedPart => {
@@ -702,6 +710,80 @@ function drawRocketAtPosition(ctx, x, y, throttle) {
         // Draw the part
         drawPart(ctx, partDef, drawX + relX, drawY + relY, scale);
     });
+
+    // Draw heat glow overlay when hot
+    if (stressLevels.heat > 0.1) {
+        const heatIntensity = stressLevels.heat;
+
+        // Create hot glow around rocket
+        ctx.save();
+
+        // Heat color transitions: yellow -> orange -> red -> white hot
+        let heatColor;
+        if (heatIntensity < 0.3) {
+            heatColor = `rgba(255, 200, 50, ${heatIntensity * 0.5})`;
+        } else if (heatIntensity < 0.6) {
+            heatColor = `rgba(255, 100, 0, ${heatIntensity * 0.6})`;
+        } else if (heatIntensity < 0.9) {
+            heatColor = `rgba(255, 50, 0, ${heatIntensity * 0.7})`;
+        } else {
+            heatColor = `rgba(255, 255, 200, ${heatIntensity * 0.8})`;
+        }
+
+        // Draw heat glow
+        const glowSize = 10 + heatIntensity * 20;
+        const gradient = ctx.createRadialGradient(
+            x, drawY + rocketHeight / 2, rocketWidth / 2,
+            x, drawY + rocketHeight / 2, rocketWidth + glowSize
+        );
+        gradient.addColorStop(0, heatColor);
+        gradient.addColorStop(1, 'rgba(255, 100, 0, 0)');
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x - rocketWidth - glowSize, drawY - glowSize,
+            rocketWidth * 2 + glowSize * 2, rocketHeight + glowSize * 2);
+
+        // Draw heat streaks on nose cone area
+        if (heatIntensity > 0.3) {
+            const streakCount = Math.floor(heatIntensity * 5);
+            for (let i = 0; i < streakCount; i++) {
+                const streakX = x + (Math.random() - 0.5) * rocketWidth;
+                const streakY = drawY + Math.random() * 20;
+                const streakLength = 10 + heatIntensity * 30;
+
+                const streakGrad = ctx.createLinearGradient(streakX, streakY, streakX, streakY + streakLength);
+                streakGrad.addColorStop(0, `rgba(255, 200, 100, ${heatIntensity})`);
+                streakGrad.addColorStop(1, 'rgba(255, 100, 0, 0)');
+
+                ctx.strokeStyle = streakGrad;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(streakX, streakY);
+                ctx.lineTo(streakX + (Math.random() - 0.5) * 5, streakY + streakLength);
+                ctx.stroke();
+            }
+        }
+
+        ctx.restore();
+    }
+
+    // Draw pressure distortion effect when high Q
+    if (stressLevels.pressure > 0.5) {
+        ctx.save();
+        ctx.strokeStyle = `rgba(100, 150, 255, ${stressLevels.pressure * 0.3})`;
+        ctx.lineWidth = 2 + stressLevels.pressure * 3;
+        ctx.setLineDash([5, 5]);
+
+        // Draw stress lines
+        ctx.beginPath();
+        ctx.moveTo(x - rocketWidth / 2 - 5, drawY);
+        ctx.lineTo(x - rocketWidth / 2 - 10, drawY + rocketHeight);
+        ctx.moveTo(x + rocketWidth / 2 + 5, drawY);
+        ctx.lineTo(x + rocketWidth / 2 + 10, drawY + rocketHeight);
+        ctx.stroke();
+
+        ctx.restore();
+    }
 
     // Draw engine flame for all engines
     if (throttle > 0 && PHYSICS.fuel > 0) {
@@ -911,14 +993,52 @@ function showResults() {
         </div>
     `;
 
-    // Add failure reason if applicable
-    if (results.failed && results.failureMessage) {
-        statsHTML = `
-            <div class="result-stat" style="border-color: var(--accent-danger);">
-                <span class="result-stat-label" style="color: var(--accent-danger);">Cause of Failure</span>
-                <span class="result-stat-value fail">${results.failureMessage}</span>
-            </div>
-        ` + statsHTML;
+    // Add detailed failure explanation if applicable
+    if (results.failed && results.failureReason) {
+        const explanation = typeof getFailureExplanation === 'function' ?
+            getFailureExplanation(results.failureReason) : null;
+
+        if (explanation) {
+            let improvementsHTML = explanation.improvements.map(tip =>
+                `<li>${tip}</li>`
+            ).join('');
+
+            statsHTML = `
+                <div class="failure-explanation">
+                    <div class="failure-header">
+                        <span class="failure-icon-large">${explanation.icon}</span>
+                        <span class="failure-title">${explanation.title}</span>
+                    </div>
+                    
+                    <div class="explanation-section">
+                        <div class="explanation-label">What Happened:</div>
+                        <div class="explanation-text">${explanation.whatHappened}</div>
+                    </div>
+                    
+                    <div class="explanation-section">
+                        <div class="explanation-label">📚 The Physics:</div>
+                        <div class="explanation-text">${explanation.physics}</div>
+                    </div>
+                    
+                    <div class="explanation-section">
+                        <div class="explanation-label">🌍 Real World:</div>
+                        <div class="explanation-text">${explanation.realWorld}</div>
+                    </div>
+                    
+                    <div class="explanation-section improvements">
+                        <div class="explanation-label">💡 How to Improve:</div>
+                        <ul class="improvement-list">${improvementsHTML}</ul>
+                    </div>
+                </div>
+            ` + statsHTML;
+        } else {
+            statsHTML = `
+                <div class="result-stat" style="border-color: var(--accent-danger);">
+                    <span class="result-stat-label" style="color: var(--accent-danger);">Cause of Failure</span>
+                    <span class="result-stat-value fail">${results.failureMessage}</span>
+                </div>
+            ` + statsHTML;
+        }
     }
 
     statsContainer.innerHTML = statsHTML;

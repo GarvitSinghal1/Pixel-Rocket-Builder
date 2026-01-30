@@ -735,6 +735,8 @@ function updateStats() {
         twrEl.style.color = '#ff3366';
     } else if (twr < 1.3) {
         twrEl.style.color = '#ffaa00';
+    } else if (twr > 5) {
+        twrEl.style.color = '#ff3366'; // Danger - too high!
     } else {
         twrEl.style.color = '#00ffff';
     }
@@ -748,7 +750,135 @@ function updateStats() {
     const launchBtn = document.getElementById('btn-launch');
     const hasValidRocket = twr >= 1 && connectedParts.length > 0;
     launchBtn.disabled = !hasValidRocket;
+
+    // Update educational pre-launch analysis
+    updatePreLaunchAnalysis(connectedParts);
 }
+
+/**
+ * Update educational pre-launch analysis panel
+ */
+function updatePreLaunchAnalysis(parts) {
+    const analysisContent = document.getElementById('analysis-content');
+    if (!analysisContent) return;
+
+    // Get analysis from physics engine
+    const analysis = typeof preLaunchAnalysis === 'function' ?
+        preLaunchAnalysis(parts) : null;
+
+    if (!analysis) return;
+
+    // Update risk indicator
+    const riskIndicator = document.getElementById('risk-indicator');
+    if (riskIndicator) {
+        riskIndicator.className = `risk-indicator ${analysis.overallRisk.toLowerCase()}`;
+
+        const riskIcons = {
+            'LOW': '✓',
+            'MEDIUM': '⚠️',
+            'HIGH': '⛔',
+            'CRITICAL': '🚫'
+        };
+
+        riskIndicator.innerHTML = `
+            <span class="risk-icon">${riskIcons[analysis.overallRisk] || '?'}</span>
+            <span class="risk-label">RISK: ${analysis.overallRisk}</span>
+        `;
+    }
+
+    // Update warnings
+    const warningsContainer = document.getElementById('analysis-warnings');
+    if (warningsContainer && analysis.warnings.length > 0) {
+        warningsContainer.innerHTML = '<div style="font-size: 9px; color: var(--text-muted); margin-bottom: 4px;">WARNINGS:</div>' +
+            analysis.warnings.map(w => `
+                <div class="warning-item ${w.severity}">
+                    <span class="warning-icon">${w.icon}</span>
+                    <div class="warning-content">
+                        <div class="warning-title">${w.title}</div>
+                        <div class="warning-message">${w.message}</div>
+                    </div>
+                </div>
+            `).join('');
+    } else if (warningsContainer) {
+        warningsContainer.innerHTML = '';
+    }
+
+    // Update suggestions
+    const suggestionsContainer = document.getElementById('analysis-suggestions');
+    if (suggestionsContainer && analysis.suggestions.length > 0) {
+        suggestionsContainer.innerHTML = '<div style="font-size: 9px; color: var(--text-muted); margin: 8px 0 4px 0;">SUGGESTIONS:</div>' +
+            analysis.suggestions.map(s => `
+                <div class="suggestion-item">
+                    <span class="suggestion-icon">${s.icon}</span>
+                    <div class="suggestion-content">
+                        <div class="suggestion-title">${s.title}</div>
+                        <div class="suggestion-message">${s.message}</div>
+                        <div class="suggestion-benefit">→ ${s.benefit}</div>
+                    </div>
+                </div>
+            `).join('');
+    } else if (suggestionsContainer) {
+        suggestionsContainer.innerHTML = '';
+    }
+
+    // Update predictions
+    const predictionsGrid = document.getElementById('predictions-grid');
+    if (predictionsGrid && analysis.predictions) {
+        const p = analysis.predictions;
+
+        predictionsGrid.innerHTML = `
+            <div class="prediction-item">
+                <div class="prediction-label">Predicted Max G</div>
+                <div class="prediction-value ${p.predictedMaxG > PHYSICS.MAX_G_LIMIT ? 'danger' : p.predictedMaxG > 7 ? 'warning' : ''}">${p.predictedMaxG.toFixed(1)}g</div>
+            </div>
+            <div class="prediction-item">
+                <div class="prediction-label">Predicted Max Q</div>
+                <div class="prediction-value ${p.predictedMaxQ > PHYSICS.MAX_Q_LIMIT ? 'danger' : p.predictedMaxQ > 25000 ? 'warning' : ''}">${(p.predictedMaxQ / 1000).toFixed(0)} kPa</div>
+            </div>
+            <div class="prediction-item">
+                <div class="prediction-label">Nose Cone</div>
+                <div class="prediction-value ${!p.hasNoseCone ? 'warning' : ''}">${p.hasNoseCone ? '✓ YES' : '✗ NO'}</div>
+            </div>
+            <div class="prediction-item">
+                <div class="prediction-label">Delta-V</div>
+                <div class="prediction-value ${p.deltaV < 1000 ? 'warning' : ''}">${Math.round(p.deltaV)} m/s</div>
+            </div>
+        `;
+    }
+}
+
+/**
+ * Setup educational toggle
+ */
+function setupEducationalToggle() {
+    const toggle = document.getElementById('edu-toggle');
+    const switchEl = document.getElementById('edu-switch');
+    const content = document.getElementById('analysis-content');
+
+    if (toggle && switchEl && content) {
+        // Load saved preference
+        const savedState = localStorage.getItem('eduAnalysisEnabled');
+        if (savedState === 'true') {
+            switchEl.classList.add('active');
+            content.classList.add('visible');
+        }
+
+        toggle.addEventListener('click', () => {
+            switchEl.classList.toggle('active');
+            content.classList.toggle('visible');
+
+            // Save preference
+            localStorage.setItem('eduAnalysisEnabled', switchEl.classList.contains('active'));
+
+            if (typeof playClickSound === 'function') playClickSound();
+        });
+    }
+}
+
+// Initialize educational toggle when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(setupEducationalToggle, 200);
+});
 
 /**
  * Format altitude for display

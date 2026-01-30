@@ -803,3 +803,268 @@ function getTelemetry() {
         }
     };
 }
+
+/**
+ * Get detailed failure explanation with improvement suggestions
+ * @param {string} failureReason - The failure reason code
+ * @returns {object} Detailed explanation with tips
+ */
+function getFailureExplanation(failureReason) {
+    const explanations = {
+        'MAX_Q': {
+            title: 'Structural Failure - Max Q Exceeded',
+            icon: '💨',
+            whatHappened: 'Dynamic pressure (Q) exceeded the structural limits of your rocket. Q = ½ρv² represents the aerodynamic force on your rocket. At high speeds in dense atmosphere, this force tore the rocket apart.',
+            physics: 'Max Q typically occurs 1-2 minutes after launch when the rocket is traveling fast but still in thick atmosphere. This is the most stressful moment for the rocket structure.',
+            realWorld: 'Apollo and Space Shuttle missions carefully throttled down engines during Max Q to reduce stress. SpaceX Falcon 9 announces "Max Q" during every launch.',
+            improvements: [
+                'Add a nose cone to reduce drag coefficient by 50%',
+                'Reduce initial throttle to 70-80% until past Max Q altitude (~12km)',
+                'Add more structural parts to increase strength rating',
+                'Use a fairing to streamline your payload'
+            ]
+        },
+        'G_FORCE': {
+            title: 'Structural Failure - G-Force Limit Exceeded',
+            icon: '🏋️',
+            whatHappened: 'Your rocket accelerated too quickly, exceeding structural and/or crew limits. The forces bent and broke the rocket frame.',
+            physics: 'G-force = Acceleration / 9.81. A thrust-to-weight ratio (TWR) of 3 means 3g acceleration at launch. Higher TWR = higher g-forces. Most rockets have TWR of 1.2-1.5 at launch.',
+            realWorld: 'Astronauts experience about 3g during launch. Fighter pilots can handle up to 9g briefly. Most rocket structures are rated for 10-15g.',
+            improvements: [
+                'Add more fuel tanks to increase mass (lower TWR)',
+                'Use a smaller/weaker engine',
+                'Reduce throttle - you don\'t need maximum thrust after initial liftoff',
+                'Target TWR of 1.3-2.0 for a safe ascent profile'
+            ]
+        },
+        'THERMAL': {
+            title: 'Thermal Failure - Hull Overheated',
+            icon: '🔥',
+            whatHappened: 'Aerodynamic heating raised your hull temperature above material limits. Air friction at hypersonic speeds generates extreme heat.',
+            physics: 'Stagnation temperature: T_stag = T_ambient × (1 + 0.2 × Mach²). At Mach 5, temperatures can exceed 1000K. At Mach 10, over 2000K.',
+            realWorld: 'This is why spacecraft need heat shields for reentry. The Space Shuttle used ceramic tiles rated to 1600°C. SpaceX Starship uses hexagonal heat tiles.',
+            improvements: [
+                'Add a heat-resistant nose cone',
+                'Gain altitude before accelerating to hypersonic speeds',
+                'The thinner atmosphere at high altitude = less heating',
+                'Don\'t push to maximum velocity in thick atmosphere'
+            ]
+        },
+        'IMPACT': {
+            title: 'Crash Landing - Impact Too Hard',
+            icon: '💥',
+            whatHappened: 'Your rocket hit the ground too fast. Safe landing requires velocity under 10 m/s (about 36 km/h).',
+            physics: 'Kinetic energy = ½mv². Doubling impact velocity = 4x the impact force. Even small velocity increases dramatically raise destructive force.',
+            realWorld: 'SpaceX lands boosters at about 2-3 m/s. Parachutes slow capsules to about 5-8 m/s. Some early rockets crashed because they ran out of fuel before landing.',
+            improvements: [
+                'Save fuel for landing burns (about 10% reserve)',
+                'Add parachutes or landing legs (advanced parts)',
+                'Plan your ascent to coast to apogee, not powered descent',
+                'Monitor fuel gauge - don\'t let it hit 0% at high altitude'
+            ]
+        }
+    };
+
+    return explanations[failureReason] || {
+        title: 'Unknown Failure',
+        icon: '❓',
+        whatHappened: 'An unknown failure occurred during the mission.',
+        physics: 'Unable to determine the specific physics involved.',
+        realWorld: 'Space is hard - many things can go wrong!',
+        improvements: ['Check all systems and try again']
+    };
+}
+
+/**
+ * Pre-launch analysis - Predict potential issues before launch
+ * @param {Array} parts - Array of placed parts
+ * @returns {object} Analysis results with warnings and suggestions
+ */
+function preLaunchAnalysis(parts) {
+    const analysis = {
+        canLaunch: true,
+        overallRisk: 'LOW', // LOW, MEDIUM, HIGH, CRITICAL
+        warnings: [],
+        suggestions: [],
+        predictions: {}
+    };
+
+    // Get rocket stats
+    const twr = calculateTWR(parts);
+    const deltaV = calculateDeltaV(parts);
+    const totalMass = calculateTotalMass(parts, calculateTotalFuel(parts));
+    const totalThrust = calculateTotalThrust(parts);
+    const hasNoseCone = parts.some(p => p.partId === 'nose_cone');
+    const hasFairing = parts.some(p => p.partId === 'fairing');
+    const hasEngines = parts.some(p => {
+        const def = getPartById(p.partId);
+        return def && def.category === 'engines';
+    });
+    const hasFuel = calculateTotalFuel(parts) > 0;
+
+    // Store predictions
+    analysis.predictions = {
+        twr: twr,
+        deltaV: deltaV,
+        mass: totalMass,
+        thrust: totalThrust,
+        hasNoseCone: hasNoseCone,
+        predictedMaxG: twr, // At launch, G = TWR
+        predictedMaxQ: estimateMaxQ(parts, twr, hasNoseCone)
+    };
+
+    // Critical checks - can't launch
+    if (!hasEngines) {
+        analysis.canLaunch = false;
+        analysis.overallRisk = 'CRITICAL';
+        analysis.warnings.push({
+            severity: 'CRITICAL',
+            icon: '🚫',
+            title: 'No Engines',
+            message: 'Your rocket has no engines! Add at least one engine to generate thrust.'
+        });
+    }
+
+    if (!hasFuel) {
+        analysis.canLaunch = false;
+        analysis.overallRisk = 'CRITICAL';
+        analysis.warnings.push({
+            severity: 'CRITICAL',
+            icon: '⛽',
+            title: 'No Fuel',
+            message: 'Your rocket has no fuel! Add fuel tanks to power your engines.'
+        });
+    }
+
+    if (twr < 1 && hasEngines && hasFuel) {
+        analysis.canLaunch = false;
+        analysis.overallRisk = 'CRITICAL';
+        analysis.warnings.push({
+            severity: 'CRITICAL',
+            icon: '⚖️',
+            title: 'TWR Too Low',
+            message: `TWR is ${twr.toFixed(2)} - rocket is too heavy to lift off! Need TWR > 1.0. Add more engines or remove mass.`
+        });
+    }
+
+    // High risk checks
+    if (twr > 5) {
+        analysis.overallRisk = 'HIGH';
+        analysis.warnings.push({
+            severity: 'HIGH',
+            icon: '🏋️',
+            title: 'Extreme G-Forces Expected',
+            message: `TWR of ${twr.toFixed(1)} will cause ${twr.toFixed(1)}g acceleration at launch - exceeding safe limits (10g). Reduce throttle immediately after liftoff or add mass.`,
+            predictedValue: twr,
+            limit: PHYSICS.MAX_G_LIMIT
+        });
+    } else if (twr > 3) {
+        if (analysis.overallRisk !== 'HIGH') analysis.overallRisk = 'MEDIUM';
+        analysis.warnings.push({
+            severity: 'MEDIUM',
+            icon: '⚠️',
+            title: 'High G-Forces',
+            message: `TWR of ${twr.toFixed(1)} will cause significant G-forces. Consider reducing throttle after initial ascent.`,
+            predictedValue: twr,
+            limit: PHYSICS.MAX_G_LIMIT
+        });
+    }
+
+    // Max Q predictions
+    const estimatedMaxQ = analysis.predictions.predictedMaxQ;
+    if (estimatedMaxQ > PHYSICS.MAX_Q_LIMIT) {
+        analysis.overallRisk = 'HIGH';
+        analysis.warnings.push({
+            severity: 'HIGH',
+            icon: '💨',
+            title: 'Max Q Will Exceed Limits',
+            message: `Predicted Max Q of ${(estimatedMaxQ / 1000).toFixed(0)} kPa exceeds structural limit (35 kPa). Add nose cone or reduce throttle during ascent.`,
+            predictedValue: estimatedMaxQ,
+            limit: PHYSICS.MAX_Q_LIMIT
+        });
+    } else if (estimatedMaxQ > PHYSICS.MAX_Q_LIMIT * 0.7) {
+        if (analysis.overallRisk === 'LOW') analysis.overallRisk = 'MEDIUM';
+        analysis.warnings.push({
+            severity: 'MEDIUM',
+            icon: '💨',
+            title: 'High Max Q Expected',
+            message: `Predicted Max Q of ${(estimatedMaxQ / 1000).toFixed(0)} kPa is close to limits. Watch the Q indicator during ascent.`,
+            predictedValue: estimatedMaxQ,
+            limit: PHYSICS.MAX_Q_LIMIT
+        });
+    }
+
+    // Suggestions for improvement
+    if (!hasNoseCone) {
+        analysis.suggestions.push({
+            icon: '🔺',
+            title: 'Add Nose Cone',
+            message: 'A nose cone reduces aerodynamic drag by 50%, lowering Max Q and improving efficiency.',
+            benefit: 'Reduces Max Q by ~50%'
+        });
+    }
+
+    if (twr > 2 && twr < 5) {
+        analysis.suggestions.push({
+            icon: '🎚️',
+            title: 'Use Throttle Control',
+            message: 'Reduce throttle to 50-70% after clearing the launch pad to manage G-forces and Max Q.',
+            benefit: 'Controls acceleration and stress'
+        });
+    }
+
+    if (deltaV < 1000) {
+        analysis.suggestions.push({
+            icon: '⛽',
+            title: 'More Delta-V Needed',
+            message: `Delta-V of ${Math.round(deltaV)} m/s is low. Add more fuel or use more efficient engines for higher altitudes.`,
+            benefit: 'Reach higher altitudes'
+        });
+    }
+
+    if (twr > 1 && twr < 1.3) {
+        analysis.suggestions.push({
+            icon: '🚀',
+            title: 'Low TWR',
+            message: `TWR of ${twr.toFixed(2)} means slow liftoff. Consider more thrust for quicker acceleration through thick atmosphere.`,
+            benefit: 'Faster ascent, less gravity loss'
+        });
+    }
+
+    return analysis;
+}
+
+/**
+ * Estimate maximum dynamic pressure based on rocket config
+ */
+function estimateMaxQ(parts, twr, hasNoseCone) {
+    // Simplified Max Q estimation
+    // Real Max Q depends on trajectory, but we can estimate based on TWR
+    // Higher TWR = faster through dense atmosphere = higher Max Q
+
+    const dragMultiplier = hasNoseCone ? 0.5 : 1.0;
+
+    // Estimate velocity at ~10km (where Max Q typically occurs)
+    // v ≈ sqrt(2 * (TWR-1) * g * altitude) simplified
+    const estimatedVelocity = Math.sqrt(2 * (twr - 1) * 9.81 * 10000);
+
+    // Air density at ~10km ≈ 0.4 kg/m³
+    const densityAt10km = 0.4;
+
+    // Q = 0.5 * ρ * v² * Cd
+    const maxQ = 0.5 * densityAt10km * estimatedVelocity * estimatedVelocity * 0.5 * dragMultiplier;
+
+    return Math.min(maxQ, 100000); // Cap at 100 kPa for estimation
+}
+
+/**
+ * Get visual stress level for rendering
+ * Returns values from 0-1 for heat, g-force, and pressure
+ */
+function getStressLevels() {
+    return {
+        heat: Math.min(1, (PHYSICS.surfaceTemperature - 288) / (PHYSICS.MAX_TEMP_LIMIT - 288)),
+        gForce: Math.min(1, Math.abs(PHYSICS.gForce) / PHYSICS.MAX_G_LIMIT),
+        pressure: Math.min(1, PHYSICS.dynamicPressure / PHYSICS.MAX_Q_LIMIT)
+    };
+}
