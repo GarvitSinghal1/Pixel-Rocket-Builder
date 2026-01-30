@@ -422,7 +422,30 @@ function animateLaunch() {
     // Render launch scene
     renderLaunchScene(dt);
 
-    // Check if simulation ended
+    // Check if rocket failed
+    if (PHYSICS.hasFailed) {
+        // Stop sounds
+        if (typeof stopThrustSound === 'function') stopThrustSound();
+
+        // Play explosion sound
+        if (typeof playExplosionSound === 'function') playExplosionSound();
+
+        // Show failure overlay
+        const failureOverlay = document.getElementById('failure-overlay');
+        const failureText = document.getElementById('failure-text');
+        if (failureOverlay && failureText) {
+            failureText.textContent = PHYSICS.failureMessage || 'MISSION FAILED';
+            failureOverlay.classList.remove('hidden');
+        }
+
+        // Wait a moment then show results
+        setTimeout(() => {
+            showResults();
+        }, 2000);
+        return;
+    }
+
+    // Check if simulation ended normally
     if (!PHYSICS.isRunning) {
         // Stop sounds
         if (typeof stopThrustSound === 'function') stopThrustSound();
@@ -440,14 +463,98 @@ function animateLaunch() {
 }
 
 /**
- * Update flight data display
+ * Update flight data display with full telemetry
  */
 function updateFlightData() {
+    // Get telemetry from physics engine
+    const telemetry = typeof getTelemetry === 'function' ? getTelemetry() : null;
+
+    // Basic data
     document.getElementById('data-altitude').textContent = formatAltitude(PHYSICS.altitude);
     document.getElementById('data-velocity').textContent = `${Math.round(PHYSICS.velocity)} m/s`;
 
+    // Mach number
+    const machEl = document.getElementById('data-mach');
+    if (machEl) {
+        const mach = telemetry ? telemetry.machNumber : 0;
+        machEl.textContent = mach.toFixed(2);
+
+        // Color coding for speed regime
+        machEl.classList.remove('supersonic', 'hypersonic');
+        if (mach >= 5) {
+            machEl.classList.add('hypersonic');
+        } else if (mach >= 1) {
+            machEl.classList.add('supersonic');
+        }
+    }
+
+    // Dynamic Pressure (Q)
+    const qEl = document.getElementById('data-q');
+    const qIndicator = document.getElementById('q-indicator');
+    const qFill = document.getElementById('q-fill');
+    if (qEl && telemetry) {
+        const q = telemetry.dynamicPressure / 1000; // Convert to kPa
+        qEl.textContent = q.toFixed(1);
+
+        // Update warning bar
+        const qPercent = Math.min(100, (telemetry.dynamicPressure / PHYSICS.MAX_Q_LIMIT) * 100);
+        if (qFill) qFill.style.width = qPercent + '%';
+
+        // Update warning class
+        if (qIndicator) {
+            qIndicator.classList.remove('warning', 'danger');
+            if (telemetry.warnings.q === 2) qIndicator.classList.add('danger');
+            else if (telemetry.warnings.q === 1) qIndicator.classList.add('warning');
+        }
+    }
+
+    // G-Force
+    const gEl = document.getElementById('data-g');
+    const gIndicator = document.getElementById('g-indicator');
+    const gFill = document.getElementById('g-fill');
+    if (gEl && telemetry) {
+        gEl.textContent = telemetry.gForce.toFixed(1) + ' g';
+
+        // Update warning bar
+        const gPercent = Math.min(100, (Math.abs(telemetry.gForce) / PHYSICS.MAX_G_LIMIT) * 100);
+        if (gFill) gFill.style.width = gPercent + '%';
+
+        // Update warning class
+        if (gIndicator) {
+            gIndicator.classList.remove('warning', 'danger');
+            if (telemetry.warnings.g === 2) gIndicator.classList.add('danger');
+            else if (telemetry.warnings.g === 1) gIndicator.classList.add('warning');
+        }
+    }
+
+    // Surface Temperature
+    const tempEl = document.getElementById('data-temp');
+    const tempIndicator = document.getElementById('temp-indicator');
+    const tempFill = document.getElementById('temp-fill');
+    if (tempEl && telemetry) {
+        tempEl.textContent = Math.round(telemetry.surfaceTemp);
+
+        // Update warning bar
+        const tempPercent = Math.min(100, (telemetry.surfaceTemp / PHYSICS.MAX_TEMP_LIMIT) * 100);
+        if (tempFill) tempFill.style.width = tempPercent + '%';
+
+        // Update warning class
+        if (tempIndicator) {
+            tempIndicator.classList.remove('warning', 'danger');
+            if (telemetry.warnings.temp === 2) tempIndicator.classList.add('danger');
+            else if (telemetry.warnings.temp === 1) tempIndicator.classList.add('warning');
+        }
+    }
+
+    // Fuel
     const fuelPercent = PHYSICS.maxFuel > 0 ? Math.round((PHYSICS.fuel / PHYSICS.maxFuel) * 100) : 0;
     document.getElementById('data-fuel').textContent = `${fuelPercent}%`;
+
+    // Time
+    const timeEl = document.getElementById('data-time');
+    if (timeEl) {
+        timeEl.textContent = PHYSICS.time.toFixed(1) + 's';
+    }
 }
 
 /**
@@ -729,6 +836,10 @@ function showResults() {
     // Stop any sounds
     if (typeof stopThrustSound === 'function') stopThrustSound();
 
+    // Hide failure overlay
+    const failureOverlay = document.getElementById('failure-overlay');
+    if (failureOverlay) failureOverlay.classList.add('hidden');
+
     const level = LEVELS[GAME.currentLevel - 1];
     const targetAltitude = level ? level.targetAltitude : 10000;
     const results = getFlightResults(targetAltitude);
@@ -738,24 +849,36 @@ function showResults() {
         playSuccessSound();
     }
 
-    // Update title
+    // Update title based on success or failure type
     const title = document.getElementById('results-title');
-    title.textContent = results.success ? 'MISSION SUCCESS!' : 'MISSION FAILED';
-    title.style.color = results.success ? '#00ffff' : '#ff3366';
-
-    // Stars
-    const starsContainer = document.getElementById('results-stars');
-    starsContainer.innerHTML = '';
-    for (let i = 0; i < 3; i++) {
-        const star = document.createElement('span');
-        star.textContent = i < results.stars ? '⭐' : '☆';
-        star.style.opacity = i < results.stars ? 1 : 0.3;
-        starsContainer.appendChild(star);
+    if (results.failed) {
+        title.textContent = 'ROCKET DESTROYED!';
+        title.style.color = '#ff3366';
+    } else if (results.success) {
+        title.textContent = 'MISSION SUCCESS!';
+        title.style.color = '#00ffff';
+    } else {
+        title.textContent = 'MISSION FAILED';
+        title.style.color = '#ff3366';
     }
 
-    // Stats
+    // Stars (none if failed)
+    const starsContainer = document.getElementById('results-stars');
+    starsContainer.innerHTML = '';
+    if (!results.failed) {
+        for (let i = 0; i < 3; i++) {
+            const star = document.createElement('span');
+            star.textContent = i < results.stars ? '⭐' : '☆';
+            star.style.opacity = i < results.stars ? 1 : 0.3;
+            starsContainer.appendChild(star);
+        }
+    } else {
+        starsContainer.innerHTML = '💥';
+    }
+
+    // Stats - include more physics data for educational purposes
     const statsContainer = document.getElementById('results-stats');
-    statsContainer.innerHTML = `
+    let statsHTML = `
         <div class="result-stat">
             <span class="result-stat-label">Max Altitude</span>
             <span class="result-stat-value ${results.maxAltitude >= targetAltitude ? 'success' : 'fail'}">
@@ -767,6 +890,18 @@ function showResults() {
             <span class="result-stat-value">${Math.round(results.maxVelocity)} m/s</span>
         </div>
         <div class="result-stat">
+            <span class="result-stat-label">Max Q (Dynamic Pressure)</span>
+            <span class="result-stat-value ${results.maxQ > PHYSICS.MAX_Q_LIMIT ? 'fail' : ''}">${(results.maxQ / 1000).toFixed(1)} kPa</span>
+        </div>
+        <div class="result-stat">
+            <span class="result-stat-label">Max G-Force</span>
+            <span class="result-stat-value ${results.maxG > PHYSICS.MAX_G_LIMIT ? 'fail' : ''}">${results.maxG.toFixed(1)} g</span>
+        </div>
+        <div class="result-stat">
+            <span class="result-stat-label">Max Temperature</span>
+            <span class="result-stat-value ${results.maxTemp > PHYSICS.MAX_TEMP_LIMIT ? 'fail' : ''}">${Math.round(results.maxTemp)} K</span>
+        </div>
+        <div class="result-stat">
             <span class="result-stat-label">Flight Time</span>
             <span class="result-stat-value">${formatTime(results.flightTime)}</span>
         </div>
@@ -775,6 +910,18 @@ function showResults() {
             <span class="result-stat-value ${results.fuelRemaining > 5 ? 'success' : ''}">${Math.round(results.fuelRemaining)}%</span>
         </div>
     `;
+
+    // Add failure reason if applicable
+    if (results.failed && results.failureMessage) {
+        statsHTML = `
+            <div class="result-stat" style="border-color: var(--accent-danger);">
+                <span class="result-stat-label" style="color: var(--accent-danger);">Cause of Failure</span>
+                <span class="result-stat-value fail">${results.failureMessage}</span>
+            </div>
+        ` + statsHTML;
+    }
+
+    statsContainer.innerHTML = statsHTML;
 
     // Unlock message
     const unlockContainer = document.getElementById('results-unlock');

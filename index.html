@@ -53,17 +53,58 @@
                 <canvas id="launch-canvas"></canvas>
                 <div id="launch-overlay">
                     <div id="flight-data">
-                        <div class="data-item">
-                            <span class="data-label">ALTITUDE</span>
-                            <span id="data-altitude" class="data-value">0 m</span>
+                        <div class="telemetry-row">
+                            <div class="data-item">
+                                <span class="data-label">ALTITUDE</span>
+                                <span id="data-altitude" class="data-value">0 m</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">VELOCITY</span>
+                                <span id="data-velocity" class="data-value">0 m/s</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">MACH</span>
+                                <span id="data-mach" class="data-value">0.00</span>
+                            </div>
                         </div>
-                        <div class="data-item">
-                            <span class="data-label">VELOCITY</span>
-                            <span id="data-velocity" class="data-value">0 m/s</span>
+                        <div class="telemetry-row critical">
+                            <div class="data-item" id="q-indicator">
+                                <span class="data-label">Q (kPa)</span>
+                                <span id="data-q" class="data-value">0.0</span>
+                                <div class="limit-bar">
+                                    <div class="limit-fill" id="q-fill"></div>
+                                </div>
+                            </div>
+                            <div class="data-item" id="g-indicator">
+                                <span class="data-label">G-FORCE</span>
+                                <span id="data-g" class="data-value">1.0 g</span>
+                                <div class="limit-bar">
+                                    <div class="limit-fill" id="g-fill"></div>
+                                </div>
+                            </div>
+                            <div class="data-item" id="temp-indicator">
+                                <span class="data-label">TEMP (K)</span>
+                                <span id="data-temp" class="data-value">288</span>
+                                <div class="limit-bar">
+                                    <div class="limit-fill" id="temp-fill"></div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="data-item">
-                            <span class="data-label">FUEL</span>
-                            <span id="data-fuel" class="data-value">100%</span>
+                        <div class="telemetry-row">
+                            <div class="data-item">
+                                <span class="data-label">FUEL</span>
+                                <span id="data-fuel" class="data-value">100%</span>
+                            </div>
+                            <div class="data-item">
+                                <span class="data-label">TIME</span>
+                                <span id="data-time" class="data-value">0.0s</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="failure-overlay" class="hidden">
+                        <div class="failure-message">
+                            <span class="failure-icon">💥</span>
+                            <span id="failure-text">FAILURE</span>
                         </div>
                     </div>
                 </div>

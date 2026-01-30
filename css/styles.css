@@ -822,3 +822,131 @@ body {
 .glow {
     animation: glow 2s ease-in-out infinite;
 }
+
+/* ============================================
+   TELEMETRY PANEL (Educational Physics)
+   ============================================ */
+#flight-data {
+    flex-direction: column;
+    gap: var(--gap-sm);
+}
+
+.telemetry-row {
+    display: flex;
+    justify-content: center;
+    gap: var(--gap-lg);
+}
+
+.telemetry-row.critical {
+    background: rgba(0, 0, 0, 0.3);
+    padding: var(--gap-sm);
+    border-radius: var(--pixel);
+    border: 1px solid var(--border-color);
+}
+
+.telemetry-row .data-item {
+    min-width: 100px;
+    position: relative;
+}
+
+/* Limit bars for critical values */
+.limit-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-tertiary);
+    border-radius: 2px;
+    margin-top: var(--gap-xs);
+    overflow: hidden;
+}
+
+.limit-fill {
+    height: 100%;
+    background: var(--accent-success);
+    transition: width 0.1s ease, background-color 0.3s ease;
+    width: 0%;
+}
+
+/* Warning states */
+.data-item.warning .limit-fill {
+    background: var(--accent-warning);
+}
+
+.data-item.warning .data-value {
+    color: var(--accent-warning);
+    text-shadow: 0 0 10px var(--accent-warning);
+}
+
+.data-item.danger .limit-fill {
+    background: var(--accent-danger);
+    animation: pulse 0.3s infinite;
+}
+
+.data-item.danger .data-value {
+    color: var(--accent-danger);
+    text-shadow: 0 0 15px var(--accent-danger);
+    animation: pulse 0.3s infinite;
+}
+
+/* Failure overlay */
+#failure-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    pointer-events: none;
+    animation: flash-red 0.5s ease;
+}
+
+#failure-overlay.hidden {
+    display: none;
+}
+
+.failure-message {
+    background: rgba(0, 0, 0, 0.9);
+    border: 4px solid var(--accent-danger);
+    border-radius: var(--pixel);
+    padding: var(--gap-xl);
+    text-align: center;
+    box-shadow: 0 0 50px rgba(255, 51, 102, 0.5);
+}
+
+.failure-icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: var(--gap-md);
+}
+
+#failure-text {
+    font-size: 12px;
+    color: var(--accent-danger);
+    text-shadow: 0 0 20px var(--accent-danger);
+    max-width: 400px;
+    display: block;
+}
+
+@keyframes flash-red {
+    0% {
+        background: rgba(255, 0, 0, 0.8);
+    }
+
+    100% {
+        background: rgba(255, 0, 0, 0.3);
+    }
+}
+
+/* Mach indicator special styling */
+.data-item .data-value.supersonic {
+    color: #ff8800;
+    text-shadow: 0 0 15px #ff8800;
+}
+
+.data-item .data-value.hypersonic {
+    color: #ff4400;
+    text-shadow: 0 0 20px #ff4400;
+}
