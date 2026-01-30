@@ -351,104 +351,266 @@ function isPartUnlocked(partId, currentLevel, isFunMode = false) {
 }
 
 /**
- * Draw a part on canvas (pixel art style)
+ * Draw a part on canvas (enhanced pixel art style)
  */
 function drawPart(ctx, part, x, y, scale = 1) {
     const w = part.width * TILE_SIZE * scale;
     const h = part.height * TILE_SIZE * scale;
-    
+    const pixelSize = Math.max(1, 2 * scale); // Pixel size for details
+
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    
-    // Main body
-    ctx.fillStyle = part.color;
-    ctx.fillRect(x, y, w, h);
-    
-    // Border/outline
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2 * scale;
-    ctx.strokeRect(x, y, w, h);
-    
-    // Accent details based on category
-    ctx.fillStyle = part.accentColor;
-    
+
+    // Helper for drawing pixel details
+    const drawPixel = (px, py, color) => {
+        ctx.fillStyle = color;
+        ctx.fillRect(x + px * pixelSize, y + py * pixelSize, pixelSize, pixelSize);
+    };
+
+    // Lighter and darker versions of main color
+    const lighten = (hex, amt) => {
+        const num = parseInt(hex.slice(1), 16);
+        const r = Math.min(255, (num >> 16) + amt);
+        const g = Math.min(255, ((num >> 8) & 0xff) + amt);
+        const b = Math.min(255, (num & 0xff) + amt);
+        return `rgb(${r},${g},${b})`;
+    };
+    const darken = (hex, amt) => lighten(hex, -amt);
+
     switch (part.category) {
         case 'engines':
-            // Engine nozzle
-            const nozzleH = h * 0.3;
-            ctx.fillRect(x + w * 0.2, y + h - nozzleH, w * 0.6, nozzleH);
-            // Highlight
-            ctx.fillStyle = 'rgba(255,255,255,0.3)';
-            ctx.fillRect(x + 2*scale, y + 2*scale, w * 0.3, h * 0.1);
+            // Engine body with metallic gradient
+            const engGrad = ctx.createLinearGradient(x, y, x + w, y);
+            engGrad.addColorStop(0, darken(part.color, 30));
+            engGrad.addColorStop(0.3, lighten(part.color, 20));
+            engGrad.addColorStop(0.5, part.color);
+            engGrad.addColorStop(0.7, lighten(part.color, 20));
+            engGrad.addColorStop(1, darken(part.color, 30));
+            ctx.fillStyle = engGrad;
+            ctx.fillRect(x, y, w, h * 0.6);
+
+            // Nozzle bell
+            ctx.fillStyle = part.accentColor;
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.2, y + h * 0.6);
+            ctx.lineTo(x + w * 0.1, y + h);
+            ctx.lineTo(x + w * 0.9, y + h);
+            ctx.lineTo(x + w * 0.8, y + h * 0.6);
+            ctx.closePath();
+            ctx.fill();
+
+            // Nozzle inner dark
+            ctx.fillStyle = '#222222';
+            ctx.beginPath();
+            ctx.moveTo(x + w * 0.3, y + h * 0.65);
+            ctx.lineTo(x + w * 0.25, y + h * 0.95);
+            ctx.lineTo(x + w * 0.75, y + h * 0.95);
+            ctx.lineTo(x + w * 0.7, y + h * 0.65);
+            ctx.closePath();
+            ctx.fill();
+
+            // Highlights
+            ctx.fillStyle = 'rgba(255,255,255,0.4)';
+            ctx.fillRect(x + pixelSize, y + pixelSize, w * 0.2, h * 0.1);
+
+            // Mounting bolts
+            ctx.fillStyle = '#333344';
+            for (let i = 0; i < 3; i++) {
+                ctx.fillRect(x + w * 0.2 + i * w * 0.25, y + h * 0.55, pixelSize * 2, pixelSize * 2);
+            }
             break;
-            
+
         case 'fuel':
-            // Tank stripes
-            const stripeH = h * 0.15;
-            ctx.fillRect(x, y + h * 0.2, w, stripeH);
-            ctx.fillRect(x, y + h * 0.6, w, stripeH);
-            // Highlight
-            ctx.fillStyle = 'rgba(255,255,255,0.2)';
-            ctx.fillRect(x + 2*scale, y + 2*scale, w * 0.15, h - 4*scale);
+            // Tank body gradient (cylindrical look)
+            const tankGrad = ctx.createLinearGradient(x, y, x + w, y);
+            tankGrad.addColorStop(0, darken(part.color, 40));
+            tankGrad.addColorStop(0.15, darken(part.color, 20));
+            tankGrad.addColorStop(0.35, lighten(part.color, 30));
+            tankGrad.addColorStop(0.5, lighten(part.color, 40));
+            tankGrad.addColorStop(0.65, lighten(part.color, 30));
+            tankGrad.addColorStop(0.85, darken(part.color, 20));
+            tankGrad.addColorStop(1, darken(part.color, 40));
+            ctx.fillStyle = tankGrad;
+            ctx.fillRect(x, y, w, h);
+
+            // Tank stripes/bands
+            ctx.fillStyle = part.accentColor;
+            const bandH = h * 0.08;
+            ctx.fillRect(x, y + h * 0.15, w, bandH);
+            ctx.fillRect(x, y + h * 0.8, w, bandH);
+
+            // Rivets along bands
+            ctx.fillStyle = darken(part.accentColor, 30);
+            const rivetSpacing = w / 5;
+            for (let i = 1; i < 5; i++) {
+                ctx.fillRect(x + i * rivetSpacing - pixelSize / 2, y + h * 0.15 + bandH / 2 - pixelSize / 2, pixelSize, pixelSize);
+                ctx.fillRect(x + i * rivetSpacing - pixelSize / 2, y + h * 0.8 + bandH / 2 - pixelSize / 2, pixelSize, pixelSize);
+            }
+
+            // Vertical highlight
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.fillRect(x + w * 0.15, y + pixelSize * 2, pixelSize * 2, h - pixelSize * 4);
+
+            // Panel lines
+            ctx.strokeStyle = darken(part.color, 50);
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x, y + h * 0.5);
+            ctx.lineTo(x + w, y + h * 0.5);
+            ctx.stroke();
             break;
-            
+
         case 'structure':
             if (part.id === 'nose_cone') {
-                // Draw cone shape
-                ctx.fillStyle = part.color;
+                // Nose cone with smooth gradient
+                const noseGrad = ctx.createLinearGradient(x, y, x + w, y);
+                noseGrad.addColorStop(0, darken(part.color, 30));
+                noseGrad.addColorStop(0.3, lighten(part.color, 20));
+                noseGrad.addColorStop(0.5, part.color);
+                noseGrad.addColorStop(1, darken(part.color, 30));
+                ctx.fillStyle = noseGrad;
                 ctx.beginPath();
-                ctx.moveTo(x + w/2, y);
+                ctx.moveTo(x + w / 2, y);
+                ctx.quadraticCurveTo(x + w * 0.3, y + h * 0.3, x, y + h);
                 ctx.lineTo(x + w, y + h);
-                ctx.lineTo(x, y + h);
+                ctx.quadraticCurveTo(x + w * 0.7, y + h * 0.3, x + w / 2, y);
                 ctx.closePath();
                 ctx.fill();
-                ctx.stroke();
+
+                // Tip highlight
+                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.beginPath();
+                ctx.arc(x + w / 2 - pixelSize, y + pixelSize * 2, pixelSize * 1.5, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Edge highlight
+                ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.4, y + h * 0.1);
+                ctx.quadraticCurveTo(x + w * 0.25, y + h * 0.5, x + pixelSize, y + h);
+                ctx.lineTo(x + w * 0.15, y + h);
+                ctx.quadraticCurveTo(x + w * 0.3, y + h * 0.4, x + w * 0.45, y + h * 0.1);
+                ctx.closePath();
+                ctx.fill();
             } else if (part.id === 'decoupler') {
-                // Decoupler line
-                ctx.fillStyle = part.accentColor;
-                ctx.fillRect(x, y + h * 0.4, w, h * 0.2);
+                // Decoupler body
+                ctx.fillStyle = part.color;
+                ctx.fillRect(x, y, w, h);
+
+                // Separation line (yellow/black hazard stripe)
+                const stripeW = w / 10;
+                for (let i = 0; i < 10; i++) {
+                    ctx.fillStyle = i % 2 === 0 ? '#ffcc00' : '#222222';
+                    ctx.fillRect(x + i * stripeW, y + h * 0.35, stripeW, h * 0.3);
+                }
+            } else {
+                // Generic structure
+                ctx.fillStyle = part.color;
+                ctx.fillRect(x, y, w, h);
+                ctx.strokeStyle = darken(part.color, 40);
+                ctx.lineWidth = 2 * scale;
+                ctx.strokeRect(x, y, w, h);
             }
             break;
-            
+
         case 'control':
             if (part.id.includes('fins')) {
-                // Fin shapes
-                ctx.fillStyle = part.color;
+                // Metallic fin gradient
+                const finGrad = ctx.createLinearGradient(x, y, x + w, y);
+                finGrad.addColorStop(0, darken(part.color, 20));
+                finGrad.addColorStop(0.5, lighten(part.color, 30));
+                finGrad.addColorStop(1, darken(part.color, 20));
+                ctx.fillStyle = finGrad;
+
+                // Left fin
                 ctx.beginPath();
                 ctx.moveTo(x, y + h);
-                ctx.lineTo(x + w * 0.3, y);
-                ctx.lineTo(x + w * 0.5, y);
-                ctx.lineTo(x + w * 0.5, y + h);
+                ctx.lineTo(x + w * 0.2, y);
+                ctx.lineTo(x + w * 0.4, y);
+                ctx.lineTo(x + w * 0.45, y + h);
                 ctx.closePath();
                 ctx.fill();
-                
+
+                // Center bar
+                ctx.fillRect(x + w * 0.4, y + h * 0.3, w * 0.2, h * 0.7);
+
+                // Right fin
                 ctx.beginPath();
                 ctx.moveTo(x + w, y + h);
-                ctx.lineTo(x + w * 0.7, y);
-                ctx.lineTo(x + w * 0.5, y);
-                ctx.lineTo(x + w * 0.5, y + h);
+                ctx.lineTo(x + w * 0.8, y);
+                ctx.lineTo(x + w * 0.6, y);
+                ctx.lineTo(x + w * 0.55, y + h);
                 ctx.closePath();
                 ctx.fill();
-            } else {
-                // Circle for reaction wheel
+
+                // Fin edge highlights
+                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                ctx.lineWidth = 1;
                 ctx.beginPath();
-                ctx.arc(x + w/2, y + h/2, Math.min(w, h) * 0.35, 0, Math.PI * 2);
+                ctx.moveTo(x + w * 0.2, y);
+                ctx.lineTo(x, y + h);
+                ctx.stroke();
+            } else {
+                // Reaction wheel / gimbal
+                ctx.fillStyle = part.color;
+                ctx.fillRect(x, y, w, h);
+
+                // Inner circle (tech detail)
+                ctx.fillStyle = part.accentColor;
+                ctx.beginPath();
+                ctx.arc(x + w / 2, y + h / 2, Math.min(w, h) * 0.35, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Tech glow
+                ctx.fillStyle = 'rgba(0,255,255,0.3)';
+                ctx.beginPath();
+                ctx.arc(x + w / 2, y + h / 2, Math.min(w, h) * 0.25, 0, Math.PI * 2);
                 ctx.fill();
             }
             break;
-            
+
         case 'payload':
-            // Windows/lights
+            // Base with gradient
+            const payloadGrad = ctx.createLinearGradient(x, y, x + w, y);
+            payloadGrad.addColorStop(0, darken(part.color, 30));
+            payloadGrad.addColorStop(0.35, lighten(part.color, 20));
+            payloadGrad.addColorStop(0.5, part.color);
+            payloadGrad.addColorStop(1, darken(part.color, 30));
+            ctx.fillStyle = payloadGrad;
+            ctx.fillRect(x, y, w, h);
+
+            // Windows/lights (glowing effect)
             ctx.fillStyle = part.accentColor;
-            const dotSize = 4 * scale;
-            ctx.fillRect(x + w/2 - dotSize/2, y + h * 0.3, dotSize, dotSize);
+            ctx.shadowColor = part.accentColor;
+            ctx.shadowBlur = 5 * scale;
+            const windowSize = pixelSize * 2;
+
             if (part.id === 'crew_capsule') {
-                ctx.fillRect(x + w * 0.25, y + h * 0.5, dotSize, dotSize);
-                ctx.fillRect(x + w * 0.65, y + h * 0.5, dotSize, dotSize);
+                // Multiple windows
+                ctx.fillRect(x + w * 0.2, y + h * 0.3, windowSize, windowSize);
+                ctx.fillRect(x + w * 0.5 - windowSize / 2, y + h * 0.3, windowSize, windowSize);
+                ctx.fillRect(x + w * 0.8 - windowSize, y + h * 0.3, windowSize, windowSize);
+            } else {
+                // Single indicator
+                ctx.fillRect(x + w / 2 - windowSize / 2, y + h * 0.3, windowSize, windowSize);
             }
+            ctx.shadowBlur = 0;
+
+            // Panel detail lines
+            ctx.strokeStyle = darken(part.color, 40);
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
             break;
     }
-    
+
+    // Common outline
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = Math.max(1, 2 * scale);
+
+    if (part.id !== 'nose_cone') {
+        ctx.strokeRect(x, y, w, h);
+    }
+
     ctx.restore();
 }
 
@@ -461,14 +623,14 @@ function createPartIcon(part) {
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d');
-    
+
     const scale = Math.min(size / (part.width * TILE_SIZE), size / (part.height * TILE_SIZE)) * 0.8;
     const drawW = part.width * TILE_SIZE * scale;
     const drawH = part.height * TILE_SIZE * scale;
     const offsetX = (size - drawW) / 2;
     const offsetY = (size - drawH) / 2;
-    
+
     drawPart(ctx, part, offsetX, offsetY, scale);
-    
+
     return canvas.toDataURL();
 }
