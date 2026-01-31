@@ -98,7 +98,10 @@ const PHYSICS = {
     // Failure state
     hasFailed: false,
     failureReason: null,
-    failureMessage: null
+    failureMessage: null,
+
+    // Liftoff tracking
+    hasLiftedOff: false
 };
 
 // ============================================
@@ -585,6 +588,7 @@ function initPhysics(placedParts) {
     PHYSICS.hasFailed = false;
     PHYSICS.failureReason = null;
     PHYSICS.failureMessage = null;
+    PHYSICS.hasLiftedOff = false;
 }
 
 /**
@@ -668,12 +672,17 @@ function physicsStep(dt) {
 
     // ============================================
     // TRACK MAXIMUM VALUES
-    // ============================================
+    // ============================================    // Track maximum values
     PHYSICS.maxAltitude = Math.max(PHYSICS.maxAltitude, PHYSICS.altitude);
     PHYSICS.maxVelocity = Math.max(PHYSICS.maxVelocity, Math.abs(PHYSICS.velocity));
     PHYSICS.maxQ = Math.max(PHYSICS.maxQ, PHYSICS.dynamicPressure);
     PHYSICS.maxG = Math.max(PHYSICS.maxG, Math.abs(PHYSICS.gForce));
     PHYSICS.maxTemp = Math.max(PHYSICS.maxTemp, PHYSICS.surfaceTemperature);
+
+    // Track liftoff
+    if (PHYSICS.altitude > 1.0) {
+        PHYSICS.hasLiftedOff = true;
+    }
 
     // ============================================
     // CHECK FAILURE CONDITIONS
@@ -690,10 +699,28 @@ function physicsStep(dt) {
     // ============================================
     // CHECK FOR LANDING/CRASH
     // ============================================
-    if (PHYSICS.altitude <= 0) {
+    // Only check landing if we've actually lifted off and are now on/below ground
+    if (PHYSICS.altitude <= 0 && PHYSICS.hasLiftedOff && PHYSICS.velocity < 0) {
         PHYSICS.altitude = 0;
         PHYSICS.velocity = 0;
+
+        // Check if it was a hard landing
+        if (Math.abs(PHYSICS.velocity) > PHYSICS.MAX_LANDING_VELOCITY) {
+            const crash = {
+                failed: true,
+                reason: 'IMPACT',
+                message: `CRASH: Impact velocity too high! (${Math.abs(PHYSICS.velocity).toFixed(1)} m/s > ${PHYSICS.MAX_LANDING_VELOCITY} m/s safe limit)`
+            };
+            PHYSICS.hasFailed = true;
+            PHYSICS.failureReason = crash.reason;
+            PHYSICS.failureMessage = crash.message;
+        }
+
         PHYSICS.isRunning = false;
+    } else if (PHYSICS.altitude < 0) {
+        // Clamp to ground while on pad
+        PHYSICS.altitude = 0;
+        PHYSICS.velocity = Math.max(0, PHYSICS.velocity);
     }
 
     // Update time

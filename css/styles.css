@@ -409,6 +409,9 @@ body {
     padding: var(--gap-md);
     background: var(--bg-panel);
     border-top: 2px solid var(--border-color);
+    /* Ensure controls are clickable above overlays */
+    position: relative;
+    z-index: 200;
 }
 
 .throttle-control {
@@ -820,6 +823,84 @@ body {
 
 .float {
     animation: float 3s ease-in-out infinite;
+}
+
+/* Ignition Overlay */
+.ignition-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 70px;
+    /* Leave space for controls at bottom */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 20, 40, 0.5);
+    z-index: 100;
+    pointer-events: none;
+}
+
+.ignition-overlay.hidden {
+    display: none;
+}
+
+.ignition-status {
+    font-family: 'Courier New', monospace;
+    color: #00ffff;
+    font-size: 24px;
+    margin-bottom: 20px;
+    text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+    letter-spacing: 2px;
+}
+
+.ignition-btn {
+    background: linear-gradient(135deg, #ff3300, #aa0000);
+    border: 2px solid #ffcc00;
+    color: white;
+    font-family: 'Impact', sans-serif;
+    font-size: 32px;
+    padding: 20px 60px;
+    border-radius: 50px;
+    cursor: pointer;
+    box-shadow: 0 0 20px rgba(255, 50, 0, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    transition: all 0.2s ease;
+    pointer-events: auto;
+    /* Enable clicking button */
+    animation: pulse-red 2s infinite;
+}
+
+.ignition-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px rgba(255, 50, 0, 0.9);
+}
+
+.ignition-btn:active {
+    transform: scale(0.95);
+}
+
+.ignition-hint {
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 15px;
+    font-size: 14px;
+    font-family: 'Courier New', monospace;
+}
+
+@keyframes pulse-red {
+    0% {
+        box-shadow: 0 0 20px rgba(255, 50, 0, 0.6);
+    }
+
+    50% {
+        box-shadow: 0 0 40px rgba(255, 50, 0, 0.9);
+    }
+
+    100% {
+        box-shadow: 0 0 20px rgba(255, 50, 0, 0.6);
+    }
 }
 
 .glow {

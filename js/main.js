@@ -173,6 +173,12 @@ function setupGameEvents() {
     // Launch button
     document.getElementById('btn-launch').addEventListener('click', startLaunch);
 
+    // Ignition button
+    const btnIgnition = document.getElementById('btn-ignition');
+    if (btnIgnition) {
+        btnIgnition.addEventListener('click', startIgnition);
+    }
+
     // Launch controls
     document.getElementById('throttle-slider').addEventListener('input', (e) => {
         const value = e.target.value / 100;
@@ -288,13 +294,38 @@ function startLaunch() {
     // Play ignition sound
     if (typeof playIgnitionSound === 'function') playIgnitionSound();
 
-    // Store the rocket parts for rendering during flight
+    // Prepare for launch but waiting for IGNITION
     GAME.launchParts = connectedParts.map(p => ({
         ...p,
         partDef: getPartById(p.partId)
     }));
 
-    // Calculate rocket bounding box
+    // Initialize physics but don't start running yet
+    initPhysics(connectedParts);
+
+    // Setup launch canvas and render initial state
+    const canvas = document.getElementById('launch-canvas');
+    const controls = document.getElementById('launch-controls');
+    GAME.launchCtx = canvas.getContext('2d');
+    canvas.width = canvas.parentElement.clientWidth;
+    // Reserve space for controls at bottom
+    const controlsHeight = controls ? controls.offsetHeight || 80 : 80;
+    canvas.height = canvas.parentElement.clientHeight - controlsHeight;
+
+    GAME.rocketY = canvas.height - 150;
+    GAME.smokeParticles = [];
+    GAME.clouds = generateClouds(canvas.width, canvas.height);
+
+    // Reset inputs - start at 30% throttle for reliable liftoff
+    document.getElementById('throttle-slider').value = 30;
+    document.getElementById('throttle-value').textContent = '30%';
+    setThrottle(0.3);
+
+    // Show Ignition Overlay
+    const ignitionOverlay = document.getElementById('ignition-overlay');
+    ignitionOverlay.classList.remove('hidden');
+
+    // Calculate rocket bounds
     if (GAME.launchParts.length > 0) {
         let minX = Infinity, maxX = -Infinity;
         let minY = Infinity, maxY = -Infinity;
@@ -316,28 +347,27 @@ function startLaunch() {
         };
     }
 
-    // Initialize physics with CONNECTED parts only
-    startSimulation(connectedParts);
+    // Initial Render
+    renderLaunch();
+}
 
-    // Start thrust sound
+/**
+ * Start actual ignition and physics
+ */
+function startIgnition() {
+    // Hide overlay
+    document.getElementById('ignition-overlay').classList.add('hidden');
+
+    // Play ignition sound
+    if (typeof playIgnitionSound === 'function') playIgnitionSound();
+
+    // Start physics
+    PHYSICS.isRunning = true;
+
+    // Start thrust sound after delay
     setTimeout(() => {
         if (typeof startThrustSound === 'function') startThrustSound();
     }, 500);
-
-    // Setup launch canvas
-    const canvas = document.getElementById('launch-canvas');
-    GAME.launchCtx = canvas.getContext('2d');
-    canvas.width = canvas.parentElement.clientWidth;
-    canvas.height = canvas.parentElement.clientHeight;
-
-    // Reset visual state
-    GAME.rocketY = canvas.height - 150;
-    GAME.smokeParticles = [];
-    GAME.clouds = generateClouds(canvas.width, canvas.height);
-
-    // Reset throttle slider
-    document.getElementById('throttle-slider').value = 100;
-    document.getElementById('throttle-value').textContent = '100%';
 
     // Start animation loop
     GAME.lastTime = performance.now();
