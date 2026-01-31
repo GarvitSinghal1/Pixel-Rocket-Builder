@@ -381,7 +381,7 @@ function startLaunch() {
     }
 
     // Initial Render
-    renderLaunch();
+    renderLaunchScene(0);
 }
 
 /**

@@ -490,7 +490,26 @@ function renderPartsPanel(category) {
         `;
 
         if (isUnlocked) {
-            item.addEventListener('click', () => addPart(part.id));
+            // Click handling with debounce for double-click support
+            let clickTimeout;
+
+            item.addEventListener('click', () => {
+                if (clickTimeout) clearTimeout(clickTimeout);
+                clickTimeout = setTimeout(() => {
+                    addPart(part.id);
+                    clickTimeout = null;
+                }, 250);
+            });
+
+            // Double click for auto-build
+            item.addEventListener('dblclick', (e) => {
+                if (clickTimeout) {
+                    clearTimeout(clickTimeout);
+                    clickTimeout = null;
+                }
+                e.preventDefault();
+                handlePartDoubleClick(part.id);
+            });
 
             // Make draggable
             item.draggable = true;
@@ -506,6 +525,188 @@ function renderPartsPanel(category) {
 
         container.appendChild(item);
     });
+}
+
+/**
+ * Handle double click on part - Auto Build
+ */
+function handlePartDoubleClick(partId) {
+    if (partId === 'decoupler') {
+        autoAddDecouplers();
+    } else if (partId === 'strut') {
+        autoAddStruts();
+    }
+}
+
+/**
+ * Auto-add decouplers below engines
+ */
+function autoAddDecouplers() {
+    const DECOUPLER_HEIGHT = 1; // In tiles (32px)
+    const decouplerHeightPx = DECOUPLER_HEIGHT * TILE_SIZE;
+
+    // Find all engines
+    const engines = EDITOR.placedParts.filter(p => {
+        const def = getPartById(p.partId);
+        return def.category === 'engines';
+    });
+
+    if (engines.length === 0) return;
+
+    // Sort engines by Y descending (bottom to top) to avoid shifting affecting checks
+    engines.sort((a, b) => b.y - a.y);
+
+    let addedCount = 0;
+
+    engines.forEach(engine => {
+        const engineDef = getPartById(engine.partId);
+        const engineBottom = engine.y + (engineDef.height * TILE_SIZE);
+        const engineWidth = engineDef.width * TILE_SIZE;
+
+        // Check if there are parts directly below this engine
+        const partsBelow = EDITOR.placedParts.filter(other => {
+            // Ignore the engine itself
+            if (other.id === engine.id) return false;
+
+            // Must be exactly below
+            const isBelow = Math.abs(other.y - engineBottom) < 5;
+
+            // Must overlap horizontally
+            const otherDef = getPartById(other.partId);
+            const otherWidth = otherDef.width * TILE_SIZE;
+
+            const horizontalOverlap = !(
+                engine.x + engineWidth <= other.x + 5 ||
+                other.x + otherWidth <= engine.x + 5
+            );
+
+            return isBelow && horizontalOverlap;
+        });
+
+        if (partsBelow.length > 0) {
+            // Check if one of them is already a decoupler
+            const hasDecoupler = partsBelow.some(p => p.partId === 'decoupler');
+
+            if (!hasDecoupler) {
+                // Determine insertion (shift parts down)
+                EDITOR.placedParts.forEach(p => {
+                    if (p.y >= engineBottom - 5 && p.id !== engine.id) {
+                        p.y += decouplerHeightPx;
+                    }
+                });
+
+                // Insert Decoupler
+                const decouplerDef = getPartById('decoupler');
+                const decouplerWidth = decouplerDef.width * TILE_SIZE;
+                // Center relative to engine
+                const centerX = engine.x + engineWidth / 2 - decouplerWidth / 2;
+
+                const newDecoupler = {
+                    id: Date.now() + Math.random(),
+                    partId: 'decoupler',
+                    x: centerX,
+                    y: engineBottom,
+                    width: decouplerDef.width,
+                    height: decouplerDef.height
+                };
+
+                EDITOR.placedParts.push(newDecoupler);
+                addedCount++;
+            }
+        }
+    });
+
+    if (addedCount > 0) {
+        if (typeof playClickSound === 'function') playClickSound();
+        updateStats();
+        renderEditor();
+        console.log(`Auto-added ${addedCount} decouplers.`);
+    }
+}
+
+/**
+ * Auto-add struts to side stacks
+ */
+function autoAddStruts() {
+    let addedCount = 0;
+    const columns = {};
+
+    EDITOR.placedParts.forEach(part => {
+        const def = getPartById(part.partId);
+        const centerX = Math.round(part.x + (def.width * TILE_SIZE) / 2);
+        if (!columns[centerX]) columns[centerX] = [];
+        columns[centerX].push(part);
+    });
+
+    Object.keys(columns).forEach(colX => {
+        const x = parseInt(colX);
+        if (Math.abs(x - EDITOR.centerX) < 20) return; // Skip center
+
+        const colParts = columns[colX];
+        // Sort by Y ascending to find top part
+        colParts.sort((a, b) => a.y - b.y);
+        const topPart = colParts[0];
+
+        if (!topPart) return;
+        const def = getPartById(topPart.partId);
+        const strutDef = getPartById('strut');
+
+        // Try placing in GAP towards center first
+        const toCenter = x < EDITOR.centerX ? 1 : -1;
+        const gapX = toCenter > 0
+            ? topPart.x + (def.width * TILE_SIZE)
+            : topPart.x - (strutDef.width * TILE_SIZE);
+        const strutY = topPart.y;
+
+        // Check if gap spot is free
+        const isGapFree = !getPartAtPosition(gapX + 1, strutY + 1);
+
+        // Raycast to check for core existence
+        const coreCheckX = toCenter > 0
+            ? gapX + (strutDef.width * TILE_SIZE) + 5
+            : gapX - 5;
+        const hitsCore = getPartAtPosition(coreCheckX, strutY + 5);
+
+        let finalX = null;
+        let finalY = null;
+
+        if (isGapFree && hitsCore) {
+            // Perfect spot: in the gap connecting to core
+            finalX = gapX;
+            finalY = strutY;
+        } else {
+            // Fallback: Place ON TOP of the side stack (capping it)
+            // This ensures "Visual Struts" even if touching
+            const topX = topPart.x + (def.width * TILE_SIZE) / 2 - (strutDef.width * TILE_SIZE) / 2;
+            const topY = topPart.y - (strutDef.height * TILE_SIZE);
+
+            // Check if top spot is free
+            if (!getPartAtPosition(topX + 1, topY + 1)) {
+                finalX = topX;
+                finalY = topY;
+            }
+        }
+
+        if (finalX !== null) {
+            const newStrut = {
+                id: Date.now() + Math.random(),
+                partId: 'strut',
+                x: finalX,
+                y: finalY,
+                width: strutDef.width,
+                height: strutDef.height
+            };
+            EDITOR.placedParts.push(newStrut);
+            addedCount++;
+        }
+    });
+
+    if (addedCount > 0) {
+        if (typeof playClickSound === 'function') playClickSound();
+        updateStats();
+        renderEditor();
+        console.log(`Auto-added ${addedCount} struts.`);
+    }
 }
 
 /**
