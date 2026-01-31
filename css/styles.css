@@ -1648,3 +1648,31 @@ body {
 .planet-btn.mars {
     border-color: #ff6644;
 }
+/* Planet Selector */
+.planet-select {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 8px;
+    padding: var(--gap-sm) var(--gap-md);
+    background: var(--bg-tertiary);
+    color: var(--accent-primary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--pixel);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    outline: none;
+    appearance: none;
+    text-align: center;
+}
+
+.planet-select:hover {
+    background: var(--bg-panel);
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
+}
+
+.planet-select option {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 10px;
+    padding: 10px;
+}

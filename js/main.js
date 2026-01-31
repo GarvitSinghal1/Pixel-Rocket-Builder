@@ -244,6 +244,44 @@ function setupGameEvents() {
     document.getElementById('btn-close-levels').addEventListener('click', () => {
         document.getElementById('level-modal').classList.remove('active');
     });
+
+    // Planet Selector
+    const planetSelector = document.getElementById('planet-selector');
+    if (planetSelector) {
+        planetSelector.addEventListener('change', (e) => {
+            const planetId = e.target.value;
+            setCurrentPlanet(planetId);
+            updatePlanetVisuals();
+
+            // Recalculate stats with new gravity
+            if (typeof updateStats === 'function') updateStats();
+
+            // Re-run analysis if available
+            if (typeof analyzeRocket === 'function') analyzeRocket(EDITOR.placedParts);
+
+            if (typeof playClickSound === 'function') playClickSound();
+        });
+
+        // Initial set
+        updatePlanetVisuals();
+    }
+}
+
+/**
+ * Update visual elements based on current planet
+ */
+function updatePlanetVisuals() {
+    // Current Planet is already set in planets.js
+    // We might want to force a re-render of clouds or background color
+
+    // Reset clouds for new planet atmosphere
+    const canvas = document.getElementById('launch-canvas');
+    if (canvas) {
+        GAME.clouds = [];
+        if (typeof generateClouds === 'function') {
+            GAME.clouds = generateClouds(canvas.width, canvas.height);
+        }
+    }
 }
 
 /**

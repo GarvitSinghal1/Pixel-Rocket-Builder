@@ -113,63 +113,47 @@ const PHYSICS = {
  * @param {number} altitude - Altitude in meters
  * @returns {number} Temperature in Kelvin
  */
+// ============================================
+// ATMOSPHERIC MODEL (Delegated to planets.js)
+// ============================================
+
+/**
+ * Get temperature at altitude
+ * @param {number} altitude - Altitude in meters
+ * @returns {number} Temperature in Kelvin
+ */
 function getTemperature(altitude) {
-    if (altitude < 0) altitude = 0;
-
-    if (altitude <= PHYSICS.TROPOPAUSE_ALT) {
-        // Troposphere: temperature decreases linearly
-        return PHYSICS.SEA_LEVEL_TEMP - PHYSICS.TEMP_LAPSE_RATE * altitude;
-    } else if (altitude <= 20000) {
-        // Lower stratosphere: isothermal
-        return PHYSICS.TROPOPAUSE_TEMP;
-    } else if (altitude <= 32000) {
-        // Upper stratosphere: temperature increases
-        return PHYSICS.TROPOPAUSE_TEMP + 0.001 * (altitude - 20000);
-    } else if (altitude <= PHYSICS.ATMOSPHERE_HEIGHT) {
-        // Mesosphere and above: continues to vary
-        return 228.65 + 0.0028 * (altitude - 32000);
+    if (typeof getPlanetAtmosphere === 'function') {
+        return getPlanetAtmosphere(altitude).temperature;
     }
-
-    // Above atmosphere
-    return 2.7; // Cosmic background temperature
+    // Fallback (Earth ISA)
+    if (altitude < 0) altitude = 0;
+    if (altitude <= 11000) return 288.15 - 0.0065 * altitude;
+    return 216.65;
 }
 
 /**
- * Get air pressure at altitude using barometric formula
+ * Get air pressure at altitude
  * @param {number} altitude - Altitude in meters
  * @returns {number} Pressure in Pascals
  */
 function getPressure(altitude) {
-    if (altitude < 0) altitude = 0;
-    if (altitude >= PHYSICS.ATMOSPHERE_HEIGHT) return 0;
-
-    if (altitude <= PHYSICS.TROPOPAUSE_ALT) {
-        // Troposphere: use barometric formula with lapse rate
-        const temp = getTemperature(altitude);
-        const exponent = PHYSICS.GRAVITY * PHYSICS.MOLAR_MASS_AIR /
-            (PHYSICS.GAS_CONSTANT * PHYSICS.TEMP_LAPSE_RATE);
-        return PHYSICS.SEA_LEVEL_PRESSURE * Math.pow(temp / PHYSICS.SEA_LEVEL_TEMP, exponent);
-    } else {
-        // Above tropopause: use exponential approximation
-        const tropopausePressure = getPressure(PHYSICS.TROPOPAUSE_ALT);
-        const scaleHeight = PHYSICS.SPECIFIC_GAS_CONSTANT * PHYSICS.TROPOPAUSE_TEMP / PHYSICS.GRAVITY;
-        return tropopausePressure * Math.exp(-(altitude - PHYSICS.TROPOPAUSE_ALT) / scaleHeight);
+    if (typeof getPlanetAtmosphere === 'function') {
+        return getPlanetAtmosphere(altitude).pressure;
     }
+    return 0;
 }
 
 /**
- * Get air density at altitude using ideal gas law
+ * Get air density at altitude
  * @param {number} altitude - Altitude in meters
  * @returns {number} Density in kg/m³
  */
 function getAirDensity(altitude) {
-    if (altitude >= PHYSICS.ATMOSPHERE_HEIGHT) return 0;
-
-    const pressure = getPressure(altitude);
-    const temperature = getTemperature(altitude);
-
-    // Ideal gas law: ρ = P / (R_specific * T)
-    return pressure / (PHYSICS.SPECIFIC_GAS_CONSTANT * temperature);
+    if (typeof getPlanetAtmosphere === 'function') {
+        return getPlanetAtmosphere(altitude).density;
+    }
+    return 0;
 }
 
 /**
@@ -178,9 +162,10 @@ function getAirDensity(altitude) {
  * @returns {number} Speed of sound in m/s
  */
 function getSpeedOfSound(altitude) {
-    const temperature = getTemperature(altitude);
-    // a = sqrt(γ * R_specific * T)
-    return Math.sqrt(PHYSICS.SPECIFIC_HEAT_RATIO * PHYSICS.SPECIFIC_GAS_CONSTANT * temperature);
+    if (typeof getPlanetAtmosphere === 'function') {
+        return getPlanetAtmosphere(altitude).speedOfSound;
+    }
+    return 340.3;
 }
 
 /**
@@ -189,6 +174,10 @@ function getSpeedOfSound(altitude) {
  * @returns {number} Gravity in m/s²
  */
 function getGravity(altitude) {
+    if (typeof getGravityAtAltitude === 'function') {
+        return getGravityAtAltitude(altitude);
+    }
+    // Fallback if planets.js logic fails
     const r = PHYSICS.EARTH_RADIUS + altitude;
     return PHYSICS.GRAVITY * Math.pow(PHYSICS.EARTH_RADIUS / r, 2);
 }
@@ -455,7 +444,10 @@ function calculateTWR(parts, fuel = null) {
     }
     const mass = calculateTotalMass(parts, fuel);
     const thrust = calculateTotalThrust(parts) * 1000; // kN to N
-    const weight = mass * PHYSICS.GRAVITY;
+
+    // Use surface gravity of current planet
+    const surfaceGravity = getGravity(0);
+    const weight = mass * surfaceGravity;
 
     if (weight === 0) return 0;
     return thrust / weight;
@@ -704,11 +696,12 @@ function initPhysics(placedParts) {
     PHYSICS.velocity = 0;
     PHYSICS.acceleration = 0;
 
-    // Reset atmospheric
-    PHYSICS.airDensity = PHYSICS.SEA_LEVEL_DENSITY;
-    PHYSICS.airPressure = PHYSICS.SEA_LEVEL_PRESSURE;
-    PHYSICS.airTemperature = PHYSICS.SEA_LEVEL_TEMP;
-    PHYSICS.speedOfSound = 340.3;
+    // Reset atmospheric values using current planet (Earth/Moon/Mars)
+    // We already refactored getAirDensity etc to use planets.js
+    PHYSICS.airDensity = getAirDensity(0);
+    PHYSICS.airPressure = getPressure(0);
+    PHYSICS.airTemperature = getTemperature(0);
+    PHYSICS.speedOfSound = getSpeedOfSound(0);
     PHYSICS.machNumber = 0;
 
     // Reset forces
@@ -720,7 +713,7 @@ function initPhysics(placedParts) {
     // Reset critical parameters
     PHYSICS.dynamicPressure = 0;
     PHYSICS.gForce = 0;
-    PHYSICS.surfaceTemperature = PHYSICS.SEA_LEVEL_TEMP;
+    PHYSICS.surfaceTemperature = getTemperature(0); // Start at ambient temp
     PHYSICS.heatFlux = 0;
 
     // Reset max tracking
