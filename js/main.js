@@ -800,8 +800,13 @@ function drawRocketAtPosition(ctx, x, y, throttle) {
         const relX = (placedPart.x - GAME.rocketBounds.minX) * scale;
         const relY = (placedPart.y - GAME.rocketBounds.minY) * scale;
 
+        // Calculate flip based on position relative to rocket center
+        const partW = partDef.width * TILE_SIZE;
+        const partCX = placedPart.x + partW / 2;
+        const flipX = partCX < GAME.rocketBounds.centerX - 1;
+
         // Draw the part
-        drawPart(ctx, partDef, drawX + relX, drawY + relY, scale);
+        drawPart(ctx, partDef, drawX + relX, drawY + relY, scale, flipX);
     });
 
     // Draw heat glow overlay when hot

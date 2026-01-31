@@ -83,15 +83,34 @@ function validateRocketDesign(parts) {
         }
     }
 
-    // 6. Engines must be at or near the bottom
+    // 6. Engines must not be blocked from below
     engines.forEach(engine => {
         const engineDef = getPartById(engine.partId);
         const engineBottom = engine.y + (engineDef.height * TILE_SIZE);
+        const engineLeft = engine.x;
+        const engineRight = engine.x + (engineDef.width * TILE_SIZE);
 
-        // Engine bottom should be within 2 tiles of rocket bottom
-        if (engineBottom < bottommostY - (TILE_SIZE * 2)) {
-            errors.push('Engines must be at the BOTTOM of the rocket. Thrust pushes from below.');
-            return { valid: false, errors };
+        // Check if any other part is directly below this engine
+        const isBlocked = parts.some(other => {
+            if (other === engine) return false;
+
+            const otherDef = getPartById(other.partId);
+            const otherTop = other.y;
+            const otherLeft = other.x;
+            const otherRight = other.x + (otherDef.width * TILE_SIZE);
+
+            // Check horizontal overlap
+            const horizontalOverlap = !(engineRight - 5 <= otherLeft || engineLeft + 5 >= otherRight);
+
+            // Check if it's below
+            const isBelow = otherTop >= engineBottom - 5; // Allow small overlap
+
+            return horizontalOverlap && isBelow;
+        });
+
+        if (isBlocked) {
+            errors.push('Engine exhaust is BLOCKED! There is a part directly below an engine.');
+            // Don't return early, check all
         }
     });
 
@@ -127,29 +146,76 @@ function validateRocketDesign(parts) {
         const partBottom = part.y + (def.height * TILE_SIZE);
 
         // Check if there's a part below supporting this one
-        const hasSupport = parts.some(other => {
+        const hasVerticalSupport = parts.some(other => {
             if (other === part) return false;
 
             const otherDef = getPartById(other.partId);
             const otherTop = other.y;
             const otherBottom = other.y + (otherDef.height * TILE_SIZE);
 
-            // Check if other part is directly below and touching
+            // Check horizontal overlap (support from below)
             const horizontalOverlap = !(
                 part.x + (def.width * TILE_SIZE) <= other.x ||
                 other.x + (otherDef.width * TILE_SIZE) <= part.x
             );
 
+            // Must be touching top to bottom
             const isTouching = Math.abs(partBottom - otherTop) < 5;
 
-            return horizontalOverlap && isTouching && other.y > part.y;
+            return horizontalOverlap && isTouching;
         });
 
+        // Check for side support (for radial parts, fins, boosters)
+        let hasSideSupport = false;
+
+        // Check LEFT side support
+        if (def.attachPoints && def.attachPoints.left) {
+            hasSideSupport = hasSideSupport || parts.some(other => {
+                if (other === part) return false;
+                const otherDef = getPartById(other.partId);
+                const otherRight = other.x + (otherDef.width * TILE_SIZE);
+
+                // Touching side: other.right == part.left
+                const isTouchingSide = Math.abs(otherRight - part.x) < 5;
+
+                // Vertical overlap
+                const verticalOverlap = !(
+                    part.y + (def.height * TILE_SIZE) <= other.y ||
+                    other.y + (otherDef.height * TILE_SIZE) <= part.y
+                );
+
+                return isTouchingSide && verticalOverlap;
+            });
+        }
+
+        // Check RIGHT side support
+        if (def.attachPoints && def.attachPoints.right) {
+            hasSideSupport = hasSideSupport || parts.some(other => {
+                if (other === part) return false;
+                const otherDef = getPartById(other.partId);
+                const otherLeft = other.x;
+
+                // Touching side: part.right == other.left
+                const isTouchingSide = Math.abs((part.x + def.width * TILE_SIZE) - otherLeft) < 5;
+
+                // Vertical overlap
+                const verticalOverlap = !(
+                    part.y + (def.height * TILE_SIZE) <= other.y ||
+                    other.y + (otherDef.height * TILE_SIZE) <= part.y
+                );
+
+                return isTouchingSide && verticalOverlap;
+            });
+        }
+
         // Engines at bottom don't need support
-        const isSupported = hasSupport || partBottom >= bottommostY - 5;
+        // ALSO: Allow parts that are simply at the bottom-most level (like landing legs or side boosters touching ground)
+        const isAtBottom = partBottom >= bottommostY - 5;
+
+        const isSupported = hasVerticalSupport || hasSideSupport || isAtBottom;
 
         if (!isSupported && def.category !== 'engines') {
-            errors.push(`Floating parts detected. Part "${def.name}" has no support below it.`);
+            errors.push(`Floating parts detected. Part "${def.name}" has no support.`);
         }
     });
 

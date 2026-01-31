@@ -623,9 +623,16 @@ function renderEditor() {
         const isConnected = connectedIds.has(placed.id);
         const isValidOrientation = isPartOrientationValid(placed);
 
+        // Calculate flip based on position relative to center
+        const partWidth = partDef.width * TILE_SIZE;
+        const partCenterX = placed.x + partWidth / 2;
+        // Flip if on the left side of the rocket (and not centered)
+        // using a small epsilon for float comparison safety
+        const flipX = partCenterX < EDITOR.centerX - 1;
+
         // Draw part
         ctx.globalAlpha = isConnected ? 1 : 0.4;
-        drawPart(ctx, partDef, placed.x, placed.y);
+        drawPart(ctx, partDef, placed.x, placed.y, 1, flipX);
         ctx.globalAlpha = 1;
 
         // Draw connection warning for disconnected parts
@@ -703,8 +710,12 @@ function renderEditor() {
     // Draw dragging part
     if (EDITOR.isDragging && EDITOR.dragPart) {
         const partDef = getPartById(EDITOR.dragPart.partId);
+        const partW = partDef.width * TILE_SIZE;
+        const partCX = EDITOR.dragPart.x + partW / 2;
+        const flipDrag = partCX < EDITOR.centerX - 1;
+
         ctx.globalAlpha = 0.7;
-        drawPart(ctx, partDef, EDITOR.dragPart.x, EDITOR.dragPart.y);
+        drawPart(ctx, partDef, EDITOR.dragPart.x, EDITOR.dragPart.y, 1, flipDrag);
         ctx.globalAlpha = 1;
     }
 }

@@ -424,12 +424,20 @@ function isPartUnlocked(partId, currentLevel, isFunMode = false, isAdvancedMode 
 /**
  * Draw a part on canvas (enhanced pixel art style)
  */
-function drawPart(ctx, part, x, y, scale = 1) {
+function drawPart(ctx, part, x, y, scale = 1, flipX = false) {
     const w = part.width * TILE_SIZE * scale;
     const h = part.height * TILE_SIZE * scale;
     const pixelSize = Math.max(1, 2 * scale); // Pixel size for details
 
     ctx.save();
+
+    // Apply horizontal flip if requested
+    if (flipX) {
+        ctx.translate(x + w / 2, y + h / 2);
+        ctx.scale(-1, 1);
+        ctx.translate(-(x + w / 2), -(y + h / 2));
+    }
+
     ctx.imageSmoothingEnabled = false;
 
     // Helper for drawing pixel details
