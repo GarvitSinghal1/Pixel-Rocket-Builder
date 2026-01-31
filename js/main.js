@@ -190,6 +190,15 @@ function setupGameEvents() {
         if (typeof playClickSound === 'function') playClickSound();
     });
 
+    // Validation modal close
+    const closeValidationBtn = document.getElementById('close-validation-modal');
+    if (closeValidationBtn) {
+        closeValidationBtn.addEventListener('click', () => {
+            document.getElementById('validation-modal').classList.remove('active');
+            if (typeof playClickSound === 'function') playClickSound();
+        });
+    }
+
     // Launch controls
     document.getElementById('throttle-slider').addEventListener('input', (e) => {
         const value = e.target.value / 100;
@@ -287,6 +296,19 @@ function startLaunch() {
     if (connectedParts.length === 0) {
         alert('Add some parts to your rocket first! Make sure they are connected.');
         return;
+    }
+
+    // STRICT PHYSICS VALIDATION
+    if (typeof validateRocketDesign === 'function') {
+        const validation = validateRocketDesign(EDITOR.placedParts);
+        if (!validation.valid) {
+            showValidationErrors(validation.errors, validation.warnings);
+            return; // BLOCK LAUNCH
+        }
+        // Show warnings even if valid
+        if (validation.warnings && validation.warnings.length > 0) {
+            console.warn('Launch warnings:', validation.warnings);
+        }
     }
 
     const twr = calculateTWR(connectedParts);

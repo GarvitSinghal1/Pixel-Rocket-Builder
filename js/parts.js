@@ -254,7 +254,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: false, left: false, right: false },
             unlockLevel: 0,
             color: '#888899',
-            accentColor: '#666677'
+            accentColor: '#666677',
+            description: 'Aerodynamic stabilizers',
+            tooltip: 'Increases stability by 20%. Prevents rocket from tumbling. Mass: 10kg'
         },
         large_fins: {
             id: 'large_fins',
@@ -267,7 +269,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: false, left: false, right: false },
             unlockLevel: 4,
             color: '#777788',
-            accentColor: '#555566'
+            accentColor: '#555566',
+            description: 'Heavy-duty stabilizers',
+            tooltip: 'Increases stability by 50%. Essential for large rockets. Mass: 25kg'
         },
         reaction_wheel: {
             id: 'reaction_wheel',
@@ -280,7 +284,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: true, left: true, right: true },
             unlockLevel: 8,
             color: '#333344',
-            accentColor: '#00ffff'
+            accentColor: '#00ffff',
+            description: 'Active attitude control',
+            tooltip: 'Provides 50Nm torque for precise control. Works in space. Mass: 40kg'
         },
         gimbal: {
             id: 'gimbal',
@@ -293,7 +299,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: true, left: false, right: false },
             unlockLevel: 6,
             color: '#445566',
-            accentColor: '#667788'
+            accentColor: '#667788',
+            description: 'Engine vectoring system',
+            tooltip: '±15° gimbal range. Allows engine to pivot for thrust vectoring. Mass: 30kg'
         }
     },
 
@@ -313,7 +321,9 @@ const PARTS = {
             attachPoints: { top: false, bottom: true, left: false, right: false },
             unlockLevel: 10,
             color: '#334455',
-            accentColor: '#00ccff'
+            accentColor: '#00ccff',
+            description: 'Manned spacecraft',
+            tooltip: 'Carries crew to space. High value (100pts). Very heavy. Mass: 500kg'
         },
         satellite: {
             id: 'satellite',
@@ -327,7 +337,9 @@ const PARTS = {
             attachPoints: { top: false, bottom: true, left: false, right: false },
             unlockLevel: 5,
             color: '#225588',
-            accentColor: '#44aaff'
+            accentColor: '#44aaff',
+            description: 'Communications satellite',
+            tooltip: 'Medium payload (50pts). Orbital deployment. Mass: 200kg'
         },
         probe: {
             id: 'probe',
@@ -341,7 +353,9 @@ const PARTS = {
             attachPoints: { top: false, bottom: true, left: false, right: false },
             unlockLevel: 0,
             color: '#447755',
-            accentColor: '#66aa77'
+            accentColor: '#66aa77',
+            description: 'Unmanned science probe',
+            tooltip: 'Lightweight payload (30pts). Good for testing. Mass: 100kg'
         },
         cargo_bay: {
             id: 'cargo_bay',
@@ -355,7 +369,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: true, left: false, right: false },
             unlockLevel: 3,
             color: '#556666',
-            accentColor: '#778888'
+            accentColor: '#778888',
+            description: 'Cargo storage module',
+            tooltip: 'Small payload (20pts). Can stack parts. Connects top/bottom. Mass: 50kg'
         }
     }
 };

@@ -8,6 +8,7 @@
     <meta name="description" content="Build and launch pixel rockets in this browser-based rocket building game">
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/tooltip-presets.css">
+    <link rel="stylesheet" href="css/validation.css">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 
@@ -259,10 +260,22 @@
                 <button class="modal-btn" id="close-preset-modal">Close</button>
             </div>
         </div>
+
+        <!-- Validation Error Modal -->
+        <div id="validation-modal" class="modal">
+            <div class="modal-content error">
+                <h2 style="color: #ff3366;">⚠️ INVALID ROCKET DESIGN</h2>
+                <p style="color: #ffaa00; margin-bottom: 16px;">This rocket violates basic physics principles and cannot
+                    launch:</p>
+                <div id="validation-errors" style="text-align: left;"></div>
+                <button class="modal-btn" id="close-validation-modal">Fix Rocket Design</button>
+            </div>
+        </div>
     </div>
 
     <script src="js/audio.js"></script>
     <script src="js/parts.js"></script>
+    <script src="js/validation.js"></script>
     <script src="js/presets.js"></script>
     <script src="js/tooltips.js"></script>
     <script src="js/preset-modal.js"></script>

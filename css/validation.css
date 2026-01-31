@@ -1,0 +1,31 @@
+/* Validation Error Modal */
+.validation-error {
+    background: rgba(255, 51, 102, 0.1);
+    border-left: 3px solid #ff3366;
+    padding: var(--gap-sm) var(--gap-md);
+    margin-bottom: var(--gap-sm);
+    color: var(--text-primary);
+    font-size: 9px;
+    line-height: 1.5;
+}
+
+.modal-content.error {
+    border-color: #ff3366;
+    box-shadow: 0 0 30px rgba(255, 51, 102, 0.5);
+}
+
+.modal-content.error h2 {
+    color: #ff3366;
+    font-size: 14px;
+    margin-bottom: var(--gap-md);
+}
+
+.modal-content.error .modal-btn {
+    background: linear-gradient(135deg, #ff3366, #cc0044);
+    border-color: #ff3366;
+}
+
+.modal-content.error .modal-btn:hover {
+    background: linear-gradient(135deg, #ff5588, #ff3366);
+    box-shadow: 0 0 15px rgba(255, 51, 102, 0.6);
+}
