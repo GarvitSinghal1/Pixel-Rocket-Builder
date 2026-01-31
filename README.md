@@ -4,7 +4,21 @@
 
 # 🚀 Pixel Rocket Builder
 
+<p align="center">
+  <img src="https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white" alt="HTML5">
+  <img src="https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white" alt="CSS3">
+  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black" alt="JavaScript">
+  <img src="https://img.shields.io/badge/Canvas-API-orange" alt="Canvas API">
+  <img src="https://img.shields.io/badge/No%20Dependencies-green" alt="No Dependencies">
+</p>
+
 ### **A browser-based Kerbal Space Program built from scratch in vanilla JavaScript.**
+
+## ⚡ Quick Summary
+- **Built from scratch**: Hand-coded rocket simulator using zero external libraries or frameworks.
+- **Realistic Physics**: Real-time ISA atmospheric modeling, Mach-dependent drag, and orbital mechanics.
+- **Advanced Engineering**: Modular part system with graph-based staging validation and structural checks.
+- **Educational Impact**: Dynamic failure modeling and pre-launch analysis to teach aerospace principles.
 
 ### **[Live Demo](https://garvitsinghal1.github.io/Pixel-Rocket-Builder/)** | **[Technical Deep Dive](#-deep-physics-engine)** | **[Engineering Challenges](#-engineering-challenges--lessons)**
 
