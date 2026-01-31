@@ -7,6 +7,7 @@
     <title>Pixel Rocket Builder</title>
     <meta name="description" content="Build and launch pixel rockets in this browser-based rocket building game">
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/tooltip-presets.css">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 
@@ -37,7 +38,10 @@
                 </div>
 
                 <aside id="parts-panel">
-                    <h2 class="panel-title">PARTS</h2>
+                    <div class="panel-header">
+                        <div class="panel-title">PARTS</div>
+                        <button id="btn-load-preset" class="preset-btn">📋 Presets</button>
+                    </div>
                     <div id="category-tabs">
                         <button class="cat-tab active" data-category="engines">🔥</button>
                         <button class="cat-tab" data-category="fuel">⛽</button>
@@ -246,10 +250,22 @@
                 </div>
             </div>
         </div>
+
+        <!-- Preset Selection Modal -->
+        <div id="preset-modal" class="preset-modal">
+            <div class="modal-content">
+                <h2>Load Rocket Preset</h2>
+                <div class="preset-grid" id="preset-grid"></div>
+                <button class="modal-btn" id="close-preset-modal">Close</button>
+            </div>
+        </div>
     </div>
 
     <script src="js/audio.js"></script>
     <script src="js/parts.js"></script>
+    <script src="js/presets.js"></script>
+    <script src="js/tooltips.js"></script>
+    <script src="js/preset-modal.js"></script>
     <script src="js/planets.js"></script>
     <script src="js/physics.js"></script>
     <script src="js/advanced.js"></script>

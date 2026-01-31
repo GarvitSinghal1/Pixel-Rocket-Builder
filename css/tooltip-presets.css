@@ -1,0 +1,109 @@
+/* Tooltips */
+.part-tooltip {
+    position: fixed;
+    background: rgba(20, 20, 40, 0.95);
+    border: 2px solid var(--accent-primary);
+    border-radius: var(--pixel);
+    padding: var(--gap-sm);
+    max-width: 250px;
+    z-index: 10000;
+    pointer-events: none;
+    box-shadow: 0 4px 20px rgba(0, 255, 255, 0.3);
+}
+
+.tooltip-name {
+    color: var(--accent-primary);
+    font-size: 10px;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.tooltip-desc {
+    color: var(--text-secondary);
+    font-size: 8px;
+    line-height: 1.4;
+}
+
+/* Panel header for parts */
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--gap-md);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.preset-btn {
+    font-family: inherit;
+    font-size: 8px;
+    padding: 4px 8px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    border: 2px solid var(--accent-success);
+    border-radius: var(--pixel);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.preset-btn:hover {
+    background: var(--accent-success);
+    color: var(--bg-primary);
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
+}
+
+/* Preset modal */
+.preset-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.preset-modal.active {
+    display: flex;
+}
+
+.preset-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--gap-lg);
+    margin-top: var(--gap-lg);
+}
+
+.preset-card {
+    background: var(--bg-tertiary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--pixel);
+    padding: var(--gap-md);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    text-align: center;
+}
+
+.preset-card:hover {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+    transform: translateY(-2px);
+}
+
+.preset-icon {
+    font-size: 32px;
+    margin-bottom: var(--gap-sm);
+}
+
+.preset-name {
+    font-size: 11px;
+    color: var(--accent-primary);
+    margin-bottom: var(--gap-xs);
+}
+
+.preset-description {
+    font-size: 8px;
+    color: var(--text-muted);
+}

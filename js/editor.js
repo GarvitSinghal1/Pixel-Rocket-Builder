@@ -497,6 +497,11 @@ function renderPartsPanel(category) {
             item.addEventListener('dragstart', (e) => {
                 e.dataTransfer.setData('text/plain', part.id);
             });
+
+            // Add tooltip
+            if (typeof setupTooltipFor === 'function') {
+                setupTooltipFor(item, part);
+            }
         }
 
         container.appendChild(item);

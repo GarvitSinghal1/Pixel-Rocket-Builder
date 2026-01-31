@@ -179,6 +179,17 @@ function setupGameEvents() {
         btnIgnition.addEventListener('click', startIgnition);
     }
 
+    // Preset button
+    document.getElementById('btn-load-preset').addEventListener('click', () => {
+        showPresetModal();
+        if (typeof playClickSound === 'function') playClickSound();
+    });
+
+    document.getElementById('close-preset-modal').addEventListener('click', () => {
+        document.getElementById('preset-modal').classList.remove('active');
+        if (typeof playClickSound === 'function') playClickSound();
+    });
+
     // Launch controls
     document.getElementById('throttle-slider').addEventListener('input', (e) => {
         const value = e.target.value / 100;

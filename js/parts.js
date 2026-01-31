@@ -21,7 +21,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: false, left: false, right: false },
             unlockLevel: 0,
             color: '#666677',
-            accentColor: '#ff6600'
+            accentColor: '#ff6600',
+            description: 'Compact engine for lightweight rockets',
+            tooltip: 'Low thrust (20kN) but fuel-efficient (ISP 280s). Best for altitudes up to 10km. Mass: 50kg'
         },
         standard_engine: {
             id: 'standard_engine',
@@ -36,7 +38,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: false, left: false, right: false },
             unlockLevel: 0,
             color: '#555566',
-            accentColor: '#ff8800'
+            accentColor: '#ff8800',
+            description: 'Reliable workhorse engine',
+            tooltip: 'Balanced thrust (150kN) and efficiency (ISP 320s). Good for reaching 50km+. Mass: 200kg'
         },
         heavy_lifter: {
             id: 'heavy_lifter',
@@ -51,7 +55,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: false, left: false, right: false },
             unlockLevel: 5,
             color: '#444455',
-            accentColor: '#ffaa00'
+            accentColor: '#ffaa00',
+            description: 'Powerful main stage engine',
+            tooltip: 'High thrust (400kN) for heavy payloads. Can reach space (100km+). Mass: 500kg'
         },
         booster: {
             id: 'booster',
@@ -66,7 +72,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: false, left: true, right: true },
             unlockLevel: 3,
             color: '#cc4444',
-            accentColor: '#ff6600'
+            accentColor: '#ff6600',
+            description: 'Solid rocket booster for extra thrust',
+            tooltip: 'Side-mounted booster (250kN). High fuel consumption. Attach to sides. Mass: 300kg'
         }
     },
 
@@ -85,7 +93,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: true, left: false, right: false },
             unlockLevel: 0,
             color: '#ddddee',
-            accentColor: '#aabbcc'
+            accentColor: '#aabbcc',
+            description: 'Lightweight fuel tank',
+            tooltip: '100 units of fuel. Perfect for small rockets. Mass: 30kg'
         },
         medium_tank: {
             id: 'medium_tank',
@@ -98,7 +108,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: true, left: false, right: false },
             unlockLevel: 2,
             color: '#ccccdd',
-            accentColor: '#99aacc'
+            accentColor: '#99aacc',
+            description: 'Standard capacity fuel tank',
+            tooltip: '300 units of fuel. Balanced size and capacity. Mass: 80kg'
         },
         large_tank: {
             id: 'large_tank',
@@ -111,7 +123,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: true, left: true, right: true },
             unlockLevel: 4,
             color: '#bbbbcc',
-            accentColor: '#8899bb'
+            accentColor: '#8899bb',
+            description: 'High-capacity main stage tank',
+            tooltip: '600 units of fuel. For heavy lifters reaching space. Mass: 150kg'
         },
         radial_tank: {
             id: 'radial_tank',
@@ -124,7 +138,9 @@ const PARTS = {
             attachPoints: { top: false, bottom: false, left: true, right: true },
             unlockLevel: 6,
             color: '#ddddcc',
-            accentColor: '#ff8844'
+            accentColor: '#ff8844',
+            description: 'Side-mounted fuel canister',
+            tooltip: '80 units of fuel. Mounts on sides for extra capacity. Mass: 40kg'
         }
     },
 
@@ -132,6 +148,21 @@ const PARTS = {
     // STRUCTURAL
     // ============================================
     structure: {
+        small_nose_cone: {
+            id: 'small_nose_cone',
+            name: 'Small Nose Cone',
+            category: 'structure',
+            mass: 5,
+            dragReduction: 0.2,
+            width: 1,
+            height: 1,
+            attachPoints: { top: false, bottom: true, left: false, right: false },
+            unlockLevel: 0,
+            color: '#ff4444',
+            accentColor: '#cc2222',
+            description: 'Lightweight aerodynamic nose for small rockets',
+            tooltip: 'Reduces drag by 20%. Perfect for 1-tile wide rockets. Mass: 5kg'
+        },
         nose_cone: {
             id: 'nose_cone',
             name: 'Nose Cone',
@@ -143,7 +174,24 @@ const PARTS = {
             attachPoints: { top: false, bottom: true, left: false, right: false },
             unlockLevel: 0,
             color: '#ee4444',
-            accentColor: '#cc2222'
+            accentColor: '#cc2222',
+            description: 'Standard aerodynamic nose cone',
+            tooltip: 'Reduces drag by 30%. Ideal for medium rockets. Mass: 20kg'
+        },
+        small_fairing: {
+            id: 'small_fairing',
+            name: 'Small Fairing',
+            category: 'structure',
+            mass: 10,
+            dragReduction: 0.3,
+            width: 1,
+            height: 2,
+            attachPoints: { top: false, bottom: true, left: false, right: false },
+            unlockLevel: 2,
+            color: '#eeeeee',
+            accentColor: '#ccddee',
+            description: 'Compact payload fairing',
+            tooltip: 'Protects small payloads. Reduces drag by 30%. Mass: 10kg'
         },
         decoupler: {
             id: 'decoupler',
@@ -156,7 +204,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: true, left: false, right: false },
             unlockLevel: 3,
             color: '#444466',
-            accentColor: '#ffcc00'
+            accentColor: '#ffcc00',
+            description: 'Stage separation mechanism',
+            tooltip: 'Separates rocket stages. Essential for multi-stage designs. Mass: 15kg'
         },
         strut: {
             id: 'strut',
@@ -168,7 +218,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: true, left: true, right: true },
             unlockLevel: 2,
             color: '#666666',
-            accentColor: '#888888'
+            accentColor: '#888888',
+            description: 'Structural support beam',
+            tooltip: 'Adds structural integrity. Connects to all sides. Mass: 5kg'
         },
         fairing: {
             id: 'fairing',
@@ -181,7 +233,9 @@ const PARTS = {
             attachPoints: { top: true, bottom: true, left: false, right: false },
             unlockLevel: 7,
             color: '#ffffff',
-            accentColor: '#ddddee'
+            accentColor: '#ddddee',
+            description: 'Large payload protection fairing',
+            tooltip: 'Heavy-duty payload protection. Reduces drag by 50%. Best for large rockets. Mass: 30kg'
         }
     },
 
@@ -462,7 +516,7 @@ function drawPart(ctx, part, x, y, scale = 1) {
             break;
 
         case 'structure':
-            if (part.id === 'nose_cone') {
+            if (part.id === 'nose_cone' || part.id === 'small_nose_cone') {
                 // Nose cone with smooth gradient
                 const noseGrad = ctx.createLinearGradient(x, y, x + w, y);
                 noseGrad.addColorStop(0, darken(part.color, 30));
@@ -493,6 +547,32 @@ function drawPart(ctx, part, x, y, scale = 1) {
                 ctx.quadraticCurveTo(x + w * 0.3, y + h * 0.4, x + w * 0.45, y + h * 0.1);
                 ctx.closePath();
                 ctx.fill();
+            } else if (part.id === 'small_fairing') {
+                // Small fairing - simplified version of large fairing
+                const fairingGrad = ctx.createLinearGradient(x, y, x + w, y);
+                fairingGrad.addColorStop(0, darken(part.color, 20));
+                fairingGrad.addColorStop(0.5, part.color);
+                fairingGrad.addColorStop(1, darken(part.color, 20));
+                ctx.fillStyle = fairingGrad;
+
+                // Tapered sides
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.2, y);
+                ctx.lineTo(x, y + h * 0.3);
+                ctx.lineTo(x, y + h);
+                ctx.lineTo(x + w, y + h);
+                ctx.lineTo(x + w, y + h * 0.3);
+                ctx.lineTo(x + w * 0.8, y);
+                ctx.closePath();
+                ctx.fill();
+
+                // Panel lines
+                ctx.strokeStyle = part.accentColor;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.5, y);
+                ctx.lineTo(x + w * 0.5, y + h);
+                ctx.stroke();
             } else if (part.id === 'decoupler') {
                 // Decoupler body
                 ctx.fillStyle = part.color;
