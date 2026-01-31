@@ -281,165 +281,112 @@ When your rocket fails, you get **detailed educational feedback**:
 
 ---
 
-## 🔬 Physics Engine
-
-### International Standard Atmosphere (ISA)
-Realistic atmospheric modeling:
-- **Temperature** decreases with altitude
-- **Pressure** drops exponentially
-- **Density** affects drag and engine performance
-
-### Mach-Dependent Drag
-Different drag coefficients at different speeds:
-
-| Regime | Mach | Drag Behavior |
-|--------|------|---------------|
-| Subsonic | < 0.8 | Low, steady drag |
-| Transonic | 0.8 - 1.2 | **Peak drag** (sound barrier) |
-| Supersonic | 1.2 - 5.0 | Lower than transonic |
-| Hypersonic | > 5.0 | Heating becomes critical |
-
-### Key Physics Concepts
-
-| Concept | Formula | Game Application |
-|---------|---------|------------------|
-| **TWR** | Thrust / (Mass × g) | Must be > 1 to lift off |
-| **Delta-V** | ISP × g × ln(m₀/mf) | Total velocity change |
-| **Max Q** | ½ρv² | Peak aerodynamic stress |
-| **G-Force** | Acceleration / 9.81 | Structural limits |
-
-### Failure Thresholds
-| Limit | Value | Consequence |
-|-------|-------|-------------|
-| Max Q | 35 kPa | Structural breakup |
-| G-Force | 10 g | Frame/payload damage |
-| Temperature | 1500 K | Thermal failure |
-| Landing | 10 m/s | Crash on impact |
 
 ---
 
-## ⌨️ All Controls
+## 🏗️ System Architecture
 
-### Keyboard
-| Key | Action |
-|-----|--------|
-| `Delete` / `Backspace` | Remove selected part |
-| `↑` Arrow | Increase throttle (flight) |
-| `↓` Arrow | Decrease throttle (flight) |
+Pixel Rocket Builder is a modular JavaScript application designed for performance and educational clarity.
 
-### Mouse
-| Action | Effect |
-|--------|--------|
-| **Click part** | Add to rocket |
-| **Drag part** | Reposition |
-| **Click category tab** | Switch part type |
-
----
-
-## 💾 Save System
-
-### Auto-Saved Data
-- Current level progress
-- Maximum unlocked level
-- Unlocked parts list
-- Educational toggle preference
-
-### Rocket Designs
-Click **SAVE** to store your current design to `localStorage`.
-Click **LOAD** to restore your saved rocket.
-
----
-
-## 🛠️ Technical Details
-
-### Tech Stack
-- **Pure HTML5/CSS/JavaScript** - No frameworks
-- **Canvas 2D API** - Rendering
-- **LocalStorage API** - Persistence
-- **Web Audio API** - Sound effects
-
-### Browser Support
-| Browser | Status |
-|---------|--------|
-| Chrome | ✅ Full support |
-| Firefox | ✅ Full support |
-| Safari | ✅ Full support |
-| Edge | ✅ Full support |
-
-### Project Structure
-```
-SpaceSim/
-├── index.html          # Main game file
-├── css/
-│   └── styles.css      # All styling (pixel art theme)
-├── js/
-│   ├── main.js         # Game controller, levels, animation
-│   ├── editor.js       # Rocket builder interface
-│   ├── physics.js      # Full physics simulation
-│   ├── parts.js        # All part definitions & rendering
-│   ├── presets.js      # Rocket preset templates
-│   ├── advanced.js     # Advanced orbital physics & failures
-│   ├── planets.js      # Planetary system definitions
-│   ├── validation.js   # Pre-launch checks
-│   ├── audio.js        # Sound effects system
-│   └── tooltips.js     # UI helpers
-└── assets/
-    └── screenshots/    # Documentation images
+```mermaid
+graph TD
+    UI[HTML/CSS UI] <--> Main[main.js Controller]
+    Main <--> Editor[editor.js Builder]
+    Main <--> Physics[physics.js Engine]
+    Main --> Audio[audio.js Sound]
+    Editor --> Validation[validation.js]
+    Physics --> Planets[planets.js Data]
+    Physics --> Parts[parts.js Metadata]
+    Main --> Advanced[advanced.js Orbital]
 ```
 
----
-
-## 🎯 For Educators
-
-This game teaches through **experiential learning**:
-
-### Curriculum Connections
-
-| Subject | Concepts Covered |
-|---------|-----------------|
-| **Physics** | Newton's Laws, gravity, acceleration, forces |
-| **Engineering** | Design trade-offs, structural limits, efficiency |
-| **Aerospace** | Atmosphere, drag, heating, orbital mechanics basics |
-| **Math** | Ratios (TWR), logarithms (Delta-V), calculus (physics) |
-
-### Classroom Activities
-1. **Design Challenge**: Reach 10km with minimal fuel
-2. **Failure Analysis**: Deliberately cause each failure type
-3. **Optimization**: Best Delta-V for fixed mass budget
-4. **Real World Comparison**: Match your results to SpaceX data
-
-### Learning Progression
-1. Build a simple rocket → Understand TWR
-2. Add nose cone → Learn about drag
-3. Cause Max Q failure → Understand atmospheric stress
-4. Reach space → Celebrate the Kármán line!
+### Module Responsibilities
+- **`main.js`**: Central orchestrator. Manages the state machine (Editor -> Launch -> Results) and the primary simulation loop.
+- **`physics.js`**: The core Newtonian engine. Handles force integration, atmospheric modeling, and aerodynamic effects.
+- **`editor.js`**: Manages the construction grid, part snapping, and rocket persistence.
+- **`advanced.js`**: Extends the physics engine with Keplerian orbital mechanics and stochastic failure models.
+- **`validation.js`**: Enforces structural and logical constraints (e.g., blocked exhausts, TWR limits).
 
 ---
 
-## 🚀 Quick Start
+## 🔬 Deep Physics Engine
 
-1. **Open** `index.html` in any modern browser
-2. **Add** a Small Thruster (🔥 tab)
-3. **Add** a Small Tank (⛽ tab)
-4. **Check** TWR > 1.0 at the bottom
-5. **Click** 🚀 LAUNCH
-6. Watch your rocket fly!
+The simulation uses a high-fidelity model based on real-world aerospace principles.
+
+### 1. Newtonian Integration
+The rocket's state is updated every frame using:
+$$F_{net} = \vec{F}_{thrust} + \vec{F}_{gravity} + \vec{F}_{drag}$$
+$$a = \frac{F_{net}}{m_{total}}$$
+
+### 2. Atmospheric & Aerodynamic Model
+We implement the **International Standard Atmosphere (ISA)** to model density changes:
+- **Lapse Rate:** Inside the troposphere ($h \le 11km$), temperature drops linearly: $T = 288.15 - 0.0065 \times h$.
+- **Mach-Dependent Drag:** The Drag Coefficient ($C_d$) is not constant. It scales based on the Mach number ($M$):
+    - **Subsonic ($M < 0.8$):** Base $C_d$
+    - **Transonic ($0.8 \le M < 1.2$):** Rapid rise modeling the "sound barrier" shockwave.
+    - **Supersonic ($M \ge 1.2$):** Gradual decay as $1/\sqrt{M}$.
+- **Dynamic Pressure ($Q$):** $Q = \frac{1}{2} \rho v^2$. This determines structural stress.
+
+### 3. Thermal Simulation
+Aerodynamic heating is modeled using stagnation point physics:
+- **Stagnation Temp:** $T_{stag} = T_{ambient} \times (1 + 0.2 \times M^2)$ (assuming $\gamma = 1.4$).
+- **Radiative Cooling:** The hull cools according to the Stefan-Boltzmann law: $P_{rad} = \epsilon \sigma A T^4$.
+
+### 4. Staging & Connectivity
+The rocket is treated as a **Connectivity Graph**.
+- **BFS Search:** When a stage is triggered, a Breadth-First Search starts from the **Root Part** (Command Pod or Probe).
+- **Disconnected Components:** Any parts no longer reachable from the Root are tagged for separation and converted into physical debris.
 
 ---
 
-## 📸 Screenshots
+## 🛰️ Advanced Mode Simulation
 
-<p align="center">
-  <img src="assets/screenshots/editor.png" alt="Rocket Editor" width="400">
-  <img src="assets/screenshots/presets.png" alt="Presets Menu" width="400">
-</p>
-<p align="center">
-  <img src="assets/screenshots/prelaunch.png" alt="Pre-Launch Analysis" width="400">
-  <img src="assets/screenshots/flight.png" alt="Flight Simulation" width="400">
-</p>
-<p align="center">
-  <img src="assets/screenshots/results.png" alt="Results Screen" width="400">
-</p>
+Advanced mode introduces professional-grade flight dynamics.
+
+### Orbital Mechanics
+When active, the simulation tracks state vectors relative to the planetary center:
+- **Orbital Elements:** Calculates Semi-major Axis ($a$), Eccentricity ($e$), and Apoapsis/Periapsis altitudes.
+- **Velocity Thresholds:** 
+    - **Circular Velocity:** $v_c = \sqrt{\frac{GM}{r}}$
+    - **Escape Velocity:** $v_e = \sqrt{\frac{2GM}{r}}$
+
+### Complex Engine Dynamics
+- **Altitude-Adjusted ISP:** Engine efficiency ($I_{sp}$) varies linearly with atmospheric pressure between $I_{sp,sea}$ and $I_{sp,vac}$.
+- **Stochastic Failures:** 
+    - **Ignition Failure:** 5-20% chance of failure if fuel pressure is low during engine start.
+    - **Cavitation:** High flow rates at low tank pressures can cause "vapor lock," resulting in thrust oscillation.
+- **Throttle Response:** Engines have a 0.5s time constant, preventing instantaneous thrust changes.
+
+---
+
+## 📐 Design Validation Rules
+
+The `validation.js` module enforces several strictly "blocked" conditions:
+
+1. **Blocked Exhaust:** Parts placed directly below an engine nozzle will cause a failure (exhaust must be clear).
+2. **Structural Support:** Every part must be supported from below or via side-attach points (no floating parts).
+3. **Upside-Down Check:** If a nose cone is placed below an engine, the rocket is flagged as unlaunchable.
+4. **Connectivity Check:** Only parts connected to the main stack contribute to thrust and mass calculations.
+
+---
+
+## 📸 Technical Showcase
+
+````carousel
+![Editor Screen](assets/screenshots/tech_editor.png)
+<!-- slide -->
+![Launch Telemetry](assets/screenshots/tech_launch.png)
+<!-- slide -->
+![Mission Results](assets/screenshots/tech_results.png)
+````
+
+---
+
+## ⚡ Performance Optimization
+
+- **Fixed Time-Step:** The physics engine uses a RK4-like integration sub-stepping to maintain accuracy at high velocities.
+- **Object Pooling:** Smoke and exhaust particles are recycled to minimize garbage collection pauses.
+- **Canvas Rendering:** Uses a double-buffered canvas approach for smooth 60 FPS flight visualization even during heavy staging events.
 
 ---
 
