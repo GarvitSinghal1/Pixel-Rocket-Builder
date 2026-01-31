@@ -526,9 +526,163 @@ function calculateEfficiency(parts) {
 /**
  * Detect stages based on decoupler placement
  */
+/**
+ * Detect stages based on decoupler placement (Bottom-Up)
+ * Analyzes connectivity graph to determine what drops when decouplers fire.
+ */
 function detectStages(parts) {
-    // Simple: treat all as one stage for now
-    return [parts];
+    if (!parts || parts.length === 0) return [];
+
+    // 1. Identify Root Part (Capsule or Probe)
+    // The part that controls the rocket and never drops (unless it crashes)
+    const rootPart = findRootPart(parts);
+    if (!rootPart) return [parts]; // Fallback if no root
+
+    // 2. Identify and Group Decouplers
+    const decouplers = parts.filter(p => {
+        const def = getPartById(p.partId);
+        return def && def.isDecoupler;
+    });
+
+    if (decouplers.length === 0) {
+        return [parts]; // Single stage
+    }
+
+    // Group decouplers by Y level (tolerance 5px) to fire together
+    const groups = {};
+    decouplers.forEach(d => {
+        // Round Y to nearest 10px to group
+        const yLevel = Math.round(d.y / 10) * 10;
+        if (!groups[yLevel]) groups[yLevel] = [];
+        groups[yLevel].push(d);
+    });
+
+    // Sort groups descending (Higher Y = Lower on screen = Bottom of rocket)
+    // We stage from bottom to top.
+    const sortedLevels = Object.keys(groups).sort((a, b) => parseFloat(b) - parseFloat(a));
+
+    const stages = [];
+
+    // 3. Simulate Staging Sequence
+    // Start with all parts currently attached
+    let currentParts = [...parts];
+
+    // Stage 0: The full rocket (Launch Configuration)
+    stages.push(currentParts);
+
+    // Apply each decoupler group
+    sortedLevels.forEach(level => {
+        const groupDecouplers = groups[level];
+        const groupIds = new Set(groupDecouplers.map(d => d.id));
+
+        // "Fire" these decouplers: They break connections but exist in the previous stage.
+        // In the NEXT stage, they (and anything below them) are gone.
+        // We simulate this by checking connectivity from ROOT, treating fired decouplers as "gaps".
+
+        // Note: The decouplers themselves are usually attached to the upper stage, 
+        // so they might stay or go depending on how they are attached. 
+        // In this simple model, we assume the decoupler stays with the *lower* stage (drops away)
+        // OR stays with upper. 
+        // Standard KSP/Sim: Decoupler stays on the part it was placed ON? 
+        // Let's assume decouplers are "separators" and we exclude them from the traversal 
+        // effectively breaking the link.
+
+        const nextStageParts = getConnectedParts(rootPart, currentParts, groupIds);
+
+        // Only if this changed something (i.e. parts were dropped), add a new stage
+        if (nextStageParts.length < currentParts.length) {
+            stages.push(nextStageParts);
+            currentParts = nextStageParts;
+        }
+    });
+
+    return stages;
+}
+
+/**
+ * Find the primary control part (Root)
+ */
+function findRootPart(parts) {
+    // Priority: Crew Capsule > Probe > Any Payload > Topmost Part
+    let root = parts.find(p => {
+        const def = getPartById(p.partId);
+        return def && def.id === 'crew_capsule';
+    });
+    if (root) return root;
+
+    root = parts.find(p => {
+        const def = getPartById(p.partId);
+        return def && def.category === 'payload';
+    });
+    if (root) return root;
+
+    // Fallback: Top-most part (lowest Y)
+    return parts.reduce((highest, p) => p.y < highest.y ? p : highest, parts[0]);
+}
+
+/**
+ * Get all parts connected to root, utilizing BFS
+ * @param {object} root - Starting part
+ * @param {array} allParts - Universe of valid parts
+ * @param {Set} ignoredPartIds - Parts to treat as non-existent (fired decouplers)
+ */
+function getConnectedParts(root, allParts, ignoredPartIds = new Set()) {
+    const connected = new Set();
+    const queue = [root];
+    connected.add(root.id);
+
+    // Build adjacency map for performance
+    // Only map parts present in allParts
+    const validIds = new Set(allParts.map(p => p.id));
+
+    while (queue.length > 0) {
+        const current = queue.shift();
+        const currentDef = getPartById(current.partId);
+
+        // Check against all other parts
+        for (const other of allParts) {
+            if (connected.has(other.id)) continue;
+            if (ignoredPartIds.has(other.id)) continue; // Treat fired decoupler as void
+            if (!validIds.has(other.id)) continue;
+
+            if (arePartsConnected(current, currentDef, other)) {
+                connected.add(other.id);
+                queue.push(other);
+            }
+        }
+    }
+
+    return allParts.filter(p => connected.has(p.id));
+}
+
+/**
+ * Check if two parts are physically connected
+ */
+function arePartsConnected(partA, defA, partB) {
+    const defB = getPartById(partB.partId);
+    if (!defA || !defB) return false;
+
+    // Bounding boxes with slight tolerance for "touching"
+    const BUFFER = 5; // Look for adjacency or overlap
+
+    const aLeft = partA.x;
+    const aRight = partA.x + defA.width * TILE_SIZE;
+    const aTop = partA.y;
+    const aBottom = partA.y + defA.height * TILE_SIZE;
+
+    const bLeft = partB.x;
+    const bRight = partB.x + defB.width * TILE_SIZE;
+    const bTop = partB.y;
+    const bBottom = partB.y + defB.height * TILE_SIZE;
+
+    // Axis-Aligned Bounding Box intersection/touch check
+    // We expand A by BUFFER to see if it touches B
+    return !(
+        aRight + BUFFER < bLeft ||
+        aLeft - BUFFER > bRight ||
+        aBottom + BUFFER < bTop ||
+        aTop - BUFFER > bBottom
+    );
 }
 
 // ============================================

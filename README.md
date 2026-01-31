@@ -24,6 +24,7 @@
 | Feature | Description |
 |---------|-------------|
 | 🔧 **Drag & Drop Builder** | Intuitive rocket construction with snap-to-grid |
+| 🚀 **Rocket Presets** | Quick-start templates for immediate launching |
 | 🎮 **Three Game Modes** | Level progression, sandbox, or realistic simulation |
 | 📊 **Real Physics Engine** | ISA atmosphere, Mach regimes, aerodynamic heating |
 | 🎓 **Educational Analysis** | Pre-launch warnings and post-flight explanations |
@@ -109,6 +110,16 @@ For players who want **realistic orbital mechanics** and **simulation-level phys
 | **Clear All** | Click `CLEAR` button |
 | **Save Design** | Click `SAVE` button |
 | **Load Design** | Click `LOAD` button |
+
+
+
+### 🚀 Quick Load Presets
+![Presets Menu](assets/screenshots/presets.png)
+
+Don't want to build from scratch? Click **PRESETS** to choose a pre-designed rocket:
+- **Small Rocket** - Simple, sub-orbital hopper
+- **Medium Rocket** - robust multi-stage vehicle
+- **Heavy Lifter** - Massive rocket for deep space
 
 ---
 
@@ -366,7 +377,12 @@ SpaceSim/
 │   ├── editor.js       # Rocket builder interface
 │   ├── physics.js      # Full physics simulation
 │   ├── parts.js        # All part definitions & rendering
-│   └── audio.js        # Sound effects system
+│   ├── presets.js      # Rocket preset templates
+│   ├── advanced.js     # Advanced orbital physics & failures
+│   ├── planets.js      # Planetary system definitions
+│   ├── validation.js   # Pre-launch checks
+│   ├── audio.js        # Sound effects system
+│   └── tooltips.js     # UI helpers
 └── assets/
     └── screenshots/    # Documentation images
 ```
@@ -415,10 +431,13 @@ This game teaches through **experiential learning**:
 
 <p align="center">
   <img src="assets/screenshots/editor.png" alt="Rocket Editor" width="400">
-  <img src="assets/screenshots/prelaunch.png" alt="Pre-Launch Analysis" width="400">
+  <img src="assets/screenshots/presets.png" alt="Presets Menu" width="400">
 </p>
 <p align="center">
+  <img src="assets/screenshots/prelaunch.png" alt="Pre-Launch Analysis" width="400">
   <img src="assets/screenshots/flight.png" alt="Flight Simulation" width="400">
+</p>
+<p align="center">
   <img src="assets/screenshots/results.png" alt="Results Screen" width="400">
 </p>
 
