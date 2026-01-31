@@ -122,6 +122,7 @@ function loadPreset(presetId) {
             const absoluteY = canvasBottom - (distFromBottom * TILE_SIZE) - (part.height * TILE_SIZE);
 
             const placedPart = {
+                id: Date.now().toString(36) + Math.random().toString(36).substr(2),
                 partId: partData.partId,
                 x: absoluteX,
                 y: absoluteY,

@@ -518,6 +518,7 @@ function calculateEfficiency(parts) {
 /**
  * Detect stages based on decoupler placement
  */
+
 /**
  * Detect stages based on decoupler placement (Bottom-Up)
  * Analyzes connectivity graph to determine what drops when decouplers fire.
@@ -525,16 +526,23 @@ function calculateEfficiency(parts) {
 function detectStages(parts) {
     if (!parts || parts.length === 0) return [];
 
+    console.log(`[Staging] Analyzing ${parts.length} parts...`);
+
     // 1. Identify Root Part (Capsule or Probe)
-    // The part that controls the rocket and never drops (unless it crashes)
     const rootPart = findRootPart(parts);
-    if (!rootPart) return [parts]; // Fallback if no root
+    if (!rootPart) {
+        console.warn("[Staging] No root part found!");
+        return [parts];
+    }
+    console.log(`[Staging] Root part found: ${rootPart.partId} at ${rootPart.y}`);
 
     // 2. Identify and Group Decouplers
     const decouplers = parts.filter(p => {
         const def = getPartById(p.partId);
         return def && def.isDecoupler;
     });
+
+    console.log(`[Staging] Found ${decouplers.length} decouplers.`);
 
     if (decouplers.length === 0) {
         return [parts]; // Single stage
@@ -549,45 +557,72 @@ function detectStages(parts) {
         groups[yLevel].push(d);
     });
 
-    // Sort groups descending (Higher Y = Lower on screen = Bottom of rocket)
-    // We stage from bottom to top.
     const sortedLevels = Object.keys(groups).sort((a, b) => parseFloat(b) - parseFloat(a));
+    console.log(`[Staging] Decoupler levels: ${sortedLevels.join(', ')}`);
 
     const stages = [];
 
     // 3. Simulate Staging Sequence
-    // Start with all parts currently attached
     let currentParts = [...parts];
 
-    // Stage 0: The full rocket (Launch Configuration)
+    // Stage 0: The full rocket
     stages.push(currentParts);
 
-    // Apply each decoupler group
-    sortedLevels.forEach(level => {
+    sortedLevels.forEach((level, index) => {
         const groupDecouplers = groups[level];
         const groupIds = new Set(groupDecouplers.map(d => d.id));
 
-        // "Fire" these decouplers: They break connections but exist in the previous stage.
-        // In the NEXT stage, they (and anything below them) are gone.
-        // We simulate this by checking connectivity from ROOT, treating fired decouplers as "gaps".
+        console.log(`[Staging] Loop #${index} (Level ${level}): Input parts ${currentParts.length}`);
+        console.log(`[Staging] Firing level ${level} with ${groupDecouplers.length} decouplers.`);
 
-        // Note: The decouplers themselves are usually attached to the upper stage, 
-        // so they might stay or go depending on how they are attached. 
-        // In this simple model, we assume the decoupler stays with the *lower* stage (drops away)
-        // OR stays with upper. 
-        // Standard KSP/Sim: Decoupler stays on the part it was placed ON? 
-        // Let's assume decouplers are "separators" and we exclude them from the traversal 
-        // effectively breaking the link.
+        let nextStageParts = getConnectedParts(rootPart, currentParts, groupIds);
 
-        const nextStageParts = getConnectedParts(rootPart, currentParts, groupIds);
+        // Fallback: Check if Struts are bypassing the decoupler
+        if (nextStageParts.length === currentParts.length) {
+            console.warn(`[Staging] Decoupler fired but connection remains. Checking for struts...`);
+            const struts = currentParts.filter(p => p.partId === 'strut');
+            if (struts.length > 0) {
+                const ignoreWithStruts = new Set([...groupIds, ...struts.map(s => s.id)]);
+                const nextStageNoStruts = getConnectedParts(rootPart, currentParts, ignoreWithStruts);
 
-        // Only if this changed something (i.e. parts were dropped), add a new stage
+                if (nextStageNoStruts.length < currentParts.length) {
+                    console.log(`[Staging] Success! Ignoring struts allowed staging.`);
+                    nextStageParts = nextStageNoStruts;
+                }
+            }
+        }
+
+        // Fallback 2: Geometric Force (The "Sledgehammer")
+        // If graph search still finds everything connected, assume parts strictly below the decoupler line SHOULD drop.
+        if (nextStageParts.length === currentParts.length) {
+            console.warn(`[Staging] Staging still blocked. Attempting Geometric Cut...`);
+
+            // Define cut line at the bottom of these decouplers
+            const decouplerHeight = getPartById('decoupler').height * TILE_SIZE;
+            const cutY = groupDecouplers[0].y + decouplerHeight - 5; // -5 tolerance
+
+            // Keep parts that are largely ABOVE the cut line
+            // Drop parts that are largely BELOW the cut line
+            const forcedKeep = currentParts.filter(p => p.y < cutY);
+
+            if (forcedKeep.length < currentParts.length) {
+                console.log(`[Staging] Geometric Cut success! Dropped ${currentParts.length - forcedKeep.length} parts.`);
+                nextStageParts = forcedKeep;
+            }
+        }
+
+        console.log(`[Staging] Result: ${nextStageParts.length} parts (Prev: ${currentParts.length})`);
+
         if (nextStageParts.length < currentParts.length) {
             stages.push(nextStageParts);
             currentParts = nextStageParts;
+            console.log(`[Staging] Stage pushed. New currentParts count: ${currentParts.length}`);
+        } else {
+            console.warn(`[Staging] Warning: Decoupler fired but nothing dropped? Check for overlapping parts.`);
         }
     });
 
+    console.log(`[Staging] Final stages count: ${stages.length}`);
     return stages;
 }
 
@@ -619,6 +654,12 @@ function findRootPart(parts) {
  * @param {Set} ignoredPartIds - Parts to treat as non-existent (fired decouplers)
  */
 function getConnectedParts(root, allParts, ignoredPartIds = new Set()) {
+    // Debug log to trace input size
+    if (allParts.length > 20) {
+        // Avoid spamming if huge, but here we expect small
+    }
+    // console.log(`[Physics] getConnectedParts: Input ${allParts.length}, Root: ${root.partId}`);
+
     const connected = new Set();
     const queue = [root];
     connected.add(root.id);
@@ -644,7 +685,10 @@ function getConnectedParts(root, allParts, ignoredPartIds = new Set()) {
         }
     }
 
-    return allParts.filter(p => connected.has(p.id));
+    const result = allParts.filter(p => connected.has(p.id));
+    // console.log(`[Physics] getConnectedParts: Returning ${result.length}`);
+    return result;
+    return result;
 }
 
 /**
@@ -655,7 +699,7 @@ function arePartsConnected(partA, defA, partB) {
     if (!defA || !defB) return false;
 
     // Bounding boxes with slight tolerance for "touching"
-    const BUFFER = 5; // Look for adjacency or overlap
+    const BUFFER = 2; // Reduced from 5 to prevent false positives with side-by-side gap parts
 
     const aLeft = partA.x;
     const aRight = partA.x + defA.width * TILE_SIZE;
@@ -905,15 +949,40 @@ function setThrottle(value) {
 
 /**
  * Trigger staging
+ * @returns {Object|boolean} Returns object with droppedParts if successful, false otherwise
  */
 function triggerStage() {
+    console.log(`[Staging] Trigger requested. Current Stage: ${PHYSICS.currentStage}, Total Stages: ${PHYSICS.stages.length}`);
+
     if (PHYSICS.currentStage < PHYSICS.stages.length - 1) {
+        // Identify parts being dropped
+        // Current active parts (before switch)
+        const oldParts = PHYSICS.stages[PHYSICS.currentStage];
+
         PHYSICS.currentStage++;
-        const remainingParts = PHYSICS.stages.slice(PHYSICS.currentStage).flat();
+
+        const newParts = PHYSICS.stages[PHYSICS.currentStage];
+
+        console.log(`[Staging] Transitioning ${PHYSICS.currentStage - 1} -> ${PHYSICS.currentStage}`);
+        console.log(`[Staging] Old Parts Count: ${oldParts ? oldParts.length : 'NULL'}`);
+        console.log(`[Staging] New Parts Count: ${newParts ? newParts.length : 'NULL'}`);
+
+        const remainingParts = newParts; // Each stage entry is complete set
+
+        // Calculate dropped parts (Old - New)
+        const newIds = new Set(newParts.map(p => p.id));
+        const droppedParts = oldParts.filter(p => !newIds.has(p.id));
+
+        console.log(`[Staging] Dropped IDs: ${droppedParts.map(p => p.id).join(', ')}`);
+        console.log(`[Staging] Dropped Count: ${droppedParts.length}`);
+
         PHYSICS.maxFuel = calculateTotalFuel(remainingParts);
         PHYSICS.fuel = PHYSICS.maxFuel;
-        return true;
+
+        return { success: true, droppedParts: droppedParts };
     }
+
+    console.warn("[Staging] Failed: No more stages.");
     return false;
 }
 

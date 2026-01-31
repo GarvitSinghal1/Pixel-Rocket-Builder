@@ -65,22 +65,45 @@ function validateRocketDesign(parts) {
         }
     });
 
-    // 5. Nose cone must be at the top (if present)
+    // 5. Nose cone validation (Relaxed)
+    // Ensure nose cone is not blocked from above (it must be the top of its stack)
     const noseCones = parts.filter(p => {
         const def = getPartById(p.partId);
         return def.id === 'nose_cone' || def.id === 'small_nose_cone';
     });
 
-    if (noseCones.length > 0) {
-        // Check if nose cone is the topmost part
-        const noseCone = noseCones[0];
-        const noseConeDef = getPartById(noseCone.partId);
+    noseCones.forEach(cone => {
+        const coneDef = getPartById(cone.partId);
+        const coneTop = cone.y;
+        const coneWidth = coneDef.width * TILE_SIZE;
 
-        // Allow some tolerance (within 1 tile)
-        if (noseCone.y > topmostY + TILE_SIZE) {
-            errors.push('Nose cone must be at the TOP of the rocket, not in the middle or bottom.');
-            return { valid: false, errors };
+        // Check if anything is directly above this cone
+        const isBlocked = parts.some(other => {
+            if (other === cone) return false;
+
+            const otherDef = getPartById(other.partId);
+            const otherBottom = other.y + (otherDef.height * TILE_SIZE);
+            const otherLeft = other.x;
+            const otherRight = other.x + (otherDef.width * TILE_SIZE);
+
+            // Horizontal overlap
+            const coneRight = cone.x + coneWidth;
+            const horizontalOverlap = !(coneRight - 5 <= otherLeft || cone.x + 5 >= otherRight);
+
+            // Check if it's sitting on top of the cone
+            return horizontalOverlap && otherBottom <= coneTop + 5;
+        });
+
+        if (isBlocked) {
+            errors.push('A Nose Cone is blocked by a part above it! Nose cones must be at the top of their stack.');
+            // Don't auto-fail, check other cones too?
+            // Actually, any blocked cone is bad
         }
+    });
+
+    // If any cone error pushed
+    if (errors.length > 0 && errors[errors.length - 1].includes('Nose Cone')) {
+        return { valid: false, errors };
     }
 
     // 6. Engines must not be blocked from below

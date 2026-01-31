@@ -440,7 +440,7 @@ function addPart(partId) {
     }
 
     const newPart = {
-        id: Date.now(),
+        id: Date.now().toString(36) + Math.random().toString(36).substr(2),
         partId: partId,
         x: EDITOR.centerX - (partDef.width * TILE_SIZE) / 2,
         y: placeY
@@ -602,7 +602,7 @@ function autoAddDecouplers() {
                 const centerX = engine.x + engineWidth / 2 - decouplerWidth / 2;
 
                 const newDecoupler = {
-                    id: Date.now() + Math.random(),
+                    id: Date.now().toString(36) + Math.random().toString(36).substr(2),
                     partId: 'decoupler',
                     x: centerX,
                     y: engineBottom,

@@ -208,8 +208,15 @@ function setupGameEvents() {
     });
 
     document.getElementById('btn-stage').addEventListener('click', () => {
-        if (triggerStage()) {
+        console.log("👆 'Stage' button clicked!");
+        const result = triggerStage();
+        console.log("Trigger Result:", result);
+        if (result && result.success) {
+            console.log("Dropped parts count:", result.droppedParts.length);
+            handleStagingEvent(result.droppedParts);
             if (typeof playStagingSound === 'function') playStagingSound();
+        } else {
+            console.warn("Staging triggered but failed (no next stage available?)");
         }
     });
 
@@ -406,6 +413,10 @@ function startLaunch() {
     // Show Ignition Overlay
     const ignitionOverlay = document.getElementById('ignition-overlay');
     ignitionOverlay.classList.remove('hidden');
+
+    // Initialize debris
+    GAME.debris = [];
+    GAME.hasLoggedDebris = false;
 
     // Calculate rocket bounds
     if (GAME.launchParts.length > 0) {
@@ -779,6 +790,9 @@ function renderLaunchScene(dt) {
 
     // Rocket bobbing based on velocity
     GAME.rocketY = targetY - Math.sin(PHYSICS.time * 5) * 2;
+
+    // Draw debris (behind rocket)
+    updateAndDrawDebris(ctx, dt, rocketX);
 
     drawRocketAtPosition(ctx, rocketX, GAME.rocketY, PHYSICS.throttle);
 
@@ -1246,3 +1260,140 @@ function loadProgress() {
 
 // Start the game when DOM is ready
 document.addEventListener('DOMContentLoaded', initGame);
+/**
+ * Handle visual effects for staging
+ */
+function handleStagingEvent(droppedParts) {
+    if (!droppedParts || droppedParts.length === 0) return;
+
+    // Remove from active launch parts
+    const droppedIds = new Set(droppedParts.map(p => p.id));
+    GAME.launchParts = GAME.launchParts.filter(p => !droppedIds.has(p.id));
+
+    // Add to debris
+    // Position needs to be relative to current rocket Visual position ??
+    // Actually, GAME.launchParts `x,y` are their ORIGINAL Editor positions.
+    // They are drawn relative to rocket center.
+    // So debris should inherit that relative position.
+
+    // We need to know where the rocket is visually?
+    // In drawRocketAtPosition, parts are drawn at `drawX + relX`.
+    // Debris should start there.
+
+    droppedParts.forEach(p => {
+        GAME.debris.push({
+            partDef: getPartById(p.partId),
+            x: p.x, // Absolute editor coordinate
+            y: p.y,
+            // Visual offsets (starts attached)
+            offsetX: 0,
+            offsetY: 0,
+            // Velocity relative to rocket (pixels per frame approx)
+            vx: (Math.random() - 0.5) * 5,
+            vy: 2 + Math.random() * 2, // Falling down relative to rocket
+            rot: 0,
+            rotSpeed: (Math.random() - 0.5) * 0.2
+        });
+
+        // Trigger puff
+        createStagingEffect(p.x + getPartById(p.partId).width * TILE_SIZE / 2, p.y);
+    });
+
+    // Recalculate rocket bounds after parts removed so camera centers on new stage
+    if (GAME.launchParts.length > 0) {
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+        GAME.launchParts.forEach(p => {
+            const def = getPartById(p.partId);
+            minX = Math.min(minX, p.x);
+            maxX = Math.max(maxX, p.x + def.width * TILE_SIZE);
+            minY = Math.min(minY, p.y);
+            maxY = Math.max(maxY, p.y + def.height * TILE_SIZE);
+        });
+        GAME.rocketBounds = { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY, centerX: (minX + maxX) / 2 };
+    }
+}
+/**
+ * Update and draw debris
+ */
+function updateAndDrawDebris(ctx, dt, centerX) {
+    if (!GAME.debris || GAME.debris.length === 0) return;
+
+    // Log once
+    if (!GAME.hasLoggedDebris) {
+        console.log(`[Visuals] Drawing ${GAME.debris.length} debris parts.`);
+        GAME.hasLoggedDebris = true;
+    }
+
+    // Calculate scale (must match drawRocketAtPosition)
+    const maxHeight = 200;
+    const scale = Math.min(1.5, maxHeight / Math.max(GAME.rocketBounds.height, 50));
+
+    // Rocket alignment
+    const rocketCenterEditorX = GAME.rocketBounds.centerX;
+    const rocketMinEditorY = GAME.rocketBounds.minY;
+
+    // Remove debris that is way off screen
+    GAME.debris = GAME.debris.filter(p => p.time < 500); // Life check or distance check
+
+    GAME.debris.forEach(p => {
+        // Update physics
+        // Accelerate away (gravity relative to rocket acceleration)
+        // This is a visual approximation
+        const relativeGravity = 100 * scale;
+        p.vy += relativeGravity * dt;
+
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.rot += p.rotSpeed * dt;
+        p.time = (p.time || 0) + dt;
+
+        // Draw Position
+        // ScreenX = ScreenCenter + (PartX - RocketCenterX) * scale
+        const drawX = centerX + (p.x - rocketCenterEditorX) * scale;
+
+        // ScreenY = VisualTopY + (PartY - RocketMinY) * scale
+        // Use GAME.rocketY for VisualTopY
+        const drawY = GAME.rocketY + (p.y - rocketMinEditorY) * scale;
+
+        // Draw rotated
+        ctx.save();
+        const w = p.partDef.width * TILE_SIZE * scale;
+        const h = p.partDef.height * TILE_SIZE * scale;
+
+        // Center of part
+        const cx = drawX + w / 2;
+        const cy = drawY + h / 2;
+
+        ctx.translate(cx, cy);
+        ctx.rotate(p.rot);
+        ctx.translate(-cx, -cy);
+
+        // Debris always darkened slightly
+        ctx.globalAlpha = 0.8;
+        drawPart(ctx, p.partDef, drawX, drawY, scale, false);
+        ctx.globalAlpha = 1.0;
+
+        ctx.restore();
+    });
+}
+/**
+ * Create a puff of smoke at position
+ */
+function createStagingEffect(x, y) {
+    if (!GAME.smokeParticles) GAME.smokeParticles = [];
+
+    // Add 10-20 particles
+    const count = 10 + Math.random() * 10;
+    for (let i = 0; i < count; i++) {
+        GAME.smokeParticles.push({
+            x: x + (Math.random() - 0.5) * 20,
+            y: y + (Math.random() - 0.5) * 20,
+            vx: (Math.random() - 0.5) * 50,
+            vy: (Math.random() - 0.5) * 50,
+            life: 1.0, // Seconds
+            color: `rgba(200, 200, 200, ${0.5 + Math.random() * 0.5})`,
+            size: 5 + Math.random() * 10
+        });
+    }
+}
