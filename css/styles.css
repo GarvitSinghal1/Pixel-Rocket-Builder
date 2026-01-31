@@ -1123,6 +1123,10 @@ body {
     padding: var(--gap-xs) var(--gap-sm);
     flex-shrink: 0;
     max-width: 280px;
+    z-index: 100;
+    /* Ensure it stays above relative elements if needed, but below overlays */
+    position: relative;
+    /* Prevent blocking editor if this expands */
 }
 
 .educational-toggle {

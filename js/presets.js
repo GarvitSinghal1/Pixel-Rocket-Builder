@@ -9,12 +9,10 @@ const ROCKET_PRESETS = {
         description: "Beginner-friendly design - reaches ~10km",
         icon: "🚀",
         parts: [
-            // Small nose cone at top (centered at grid position 6,2)
-            { partId: 'small_nose_cone', x: 6, y: 2 },
-            // Small tank below
-            { partId: 'small_tank', x: 6, y: 3 },
-            // Small thruster at bottom
-            { partId: 'small_thruster', x: 6, y: 5 }
+            // Center Line x=5 (Size 1)
+            { partId: 'small_nose_cone', x: 5, y: 5 },
+            { partId: 'small_tank', x: 5, y: 6 },
+            { partId: 'small_thruster', x: 5, y: 8 }
         ]
     },
 
@@ -23,120 +21,51 @@ const ROCKET_PRESETS = {
         description: "Balanced build - reaches ~50km",
         icon: "🛸",
         parts: [
-            // Standard nose cone (centered, 2 wide)
-            { partId: 'nose_cone', x: 5, y: 1 },
-            // Medium tank (2 wide, 3 tall)
-            { partId: 'medium_tank', x: 5, y: 3 },
-            // Small fins for stability (3 wide)
-            { partId: 'small_fins', x: 4, y: 6 },
-            // Standard engine (2 wide)
-            { partId: 'standard_engine', x: 5, y: 6 }
+            // Core Body x=5 (Size 2). Covers 5,6.
+            { partId: 'nose_cone', x: 5, y: 2 },
+            { partId: 'medium_tank', x: 5, y: 4 },
+            { partId: 'standard_engine', x: 5, y: 7 },
+
+            // Fins (Size 1)
+            // Left of 5 is 4. Right of 6 is 7.
+            { partId: 'small_fins', x: 4, y: 7 }, // Left
+            { partId: 'small_fins', x: 7, y: 7 }  // Right
         ]
     },
 
     large: {
-        name: "Large Rocket",
-        description: "Heavy lifter - reaches space (100km+)",
-        icon: "🌌",
+        name: "Heavy Lifter",
+        description: "Multi-stage capable heavy rocket",
+        icon: "🏋️",
         parts: [
-            // Nose cone at top (x=5 is center of 32x20 grid roughly?)
-            // Grid is dynamic but usually around 25-30 wide.
-            // Let's align everything to x=6 center line
-            { partId: 'nose_cone', x: 6, y: 0 },
-            // Satellite payload
-            { partId: 'satellite', x: 6, y: 2 },
-            // Large tank
-            { partId: 'large_tank', x: 6, y: 4 },
-            // Second Large tank for more fuel
-            { partId: 'large_tank', x: 6, y: 8 },
-            // Heavy lifter engine (width 3, centered on width 2 tank? - needs careful placement)
-            // Heavy Lifter is width 3. Large Tank is width 2.
-            // Center of Large Tank at x=6 is 6 + 1 = 7.
-            // Center of Heavy Lifter at x=5.5 is 5.5 + 1.5 = 7.
-            // But grid snaps to integers.
-            // Instead, let's use a 4-wide base using radial tanks or similar.
+            // Core Body x=5 (Size 2). Covers 5,6.
+            { partId: 'nose_cone', x: 5, y: 0 },
+            { partId: 'crew_capsule', x: 5, y: 2 },
+            { partId: 'large_tank', x: 5, y: 4 },
+            { partId: 'large_tank', x: 5, y: 8 },
+            { partId: 'standard_engine', x: 5, y: 12 },
 
-            // Revised Large Rocket: Central Core + Boosters
-            // Medium Tank Core (Width 2)
-            // Side Boosters (Width 1)
+            // Boosters (Size 1)
+            // Left (x=4)
+            { partId: 'small_nose_cone', x: 4, y: 4 },
+            { partId: 'small_tank', x: 4, y: 5 },
+            { partId: 'small_thruster', x: 4, y: 7 },
 
-            // Better: Just use Standard Engines cluster or valid stack
+            // Right (x=7)
+            { partId: 'small_nose_cone', x: 7, y: 4 },
+            { partId: 'small_tank', x: 7, y: 5 },
+            { partId: 'small_thruster', x: 7, y: 7 },
 
-            // Let's try centering on even numbers (width 2)
-            { partId: 'large_fins', x: 4, y: 12 }, // Left fin
-            { partId: 'large_fins', x: 8, y: 12 }, // Right fin (moved out)
+            // Fins (Size 2)
+            // Attached to boosters bottoms.
+            // Booster bottom y=7 (thruster). Let's put fins at y=7.
+            // Left Booster (x=4). Fin on left side -> x=2 (Size 2 covers 2,3).
+            { partId: 'large_fins', x: 2, y: 7 },
 
-            // Heavy lifter is tricky with width 3.
-            // Let's use 2 Standard Engines instead?
-            // Or use the Heavy Lifter but acknowledge it might offset visually
-            // Actually, let's use a simpler stack that works perfectly
-
-            { partId: 'heavy_lifter', x: 5, y: 12 } // x=5, width 3 => center 6.5. (Tank center 7). 0.5 offset.
-            // This offset causes problems.
-
-            // Solution: Use 3-wide tank structure? We don't have 3-wide tanks.
-            // Use 1-wide tanks x 3?
-
-            // Let's go with a known valid configuration:
-            // 2 Medium Tanks stacked
-            // 2 Standard Engines side-by-side (2+2 width? No standard is 2)
-
-            // Let's use the 'standard_engine' which is width 2.
-            // Replaces heavy_lifter with standard_engine for now to fix alignment
+            // Right Booster (x=7). Fin on right side -> x=8 (Size 2 covers 8,9).
+            { partId: 'large_fins', x: 8, y: 7 }
         ]
     }
-};
-
-// Redefine Large Rocket to be valid and symmetric
-ROCKET_PRESETS.large = {
-    name: "Heavy Lifter",
-    description: "Multi-stage capable heavy rocket",
-    icon: "🏋️",
-    parts: [
-        // Payload Section
-        { partId: 'nose_cone', x: 6, y: 1 },
-        { partId: 'satellite', x: 6, y: 3 },
-
-        // Upper Stage
-        { partId: 'medium_tank', x: 6, y: 5 },
-        { partId: 'standard_engine', x: 6, y: 8 },
-
-        // Side Boosters (connected to Upper Stage tank)
-        // Left Booster
-        { partId: 'small_nose_cone', x: 5, y: 5 },
-        { partId: 'small_tank', x: 5, y: 6 },
-        { partId: 'small_thruster', x: 5, y: 8 },
-
-        // Right Booster
-        { partId: 'small_nose_cone', x: 8, y: 5 },
-        { partId: 'small_tank', x: 8, y: 6 },
-        { partId: 'small_thruster', x: 8, y: 8 }
-
-        // This is a bit complex for a preset validation risk
-    ]
-};
-
-// Simplest Valid Large Rocket
-ROCKET_PRESETS.large = {
-    name: "Large Rocket",
-    description: "Classic Heavy Lifter Design",
-    icon: "🚀",
-    parts: [
-        // Top
-        { partId: 'nose_cone', x: 6, y: 1 },
-        { partId: 'crew_capsule', x: 6, y: 3 }, // Crew!
-
-        // Body
-        { partId: 'large_tank', x: 6, y: 5 },
-        { partId: 'large_tank', x: 6, y: 9 },
-
-        // Engine (Standard is width 2, matches tank)
-        { partId: 'standard_engine', x: 6, y: 13 },
-
-        // Fins (Side mounted)
-        { partId: 'large_fins', x: 4, y: 11 }, // Left
-        { partId: 'large_fins', x: 8, y: 11 }  // Right
-    ]
 };
 
 /**
@@ -154,25 +83,47 @@ function loadPreset(presetId) {
         EDITOR.placedParts = [];
     }
 
-    // Calculate canvas center
+    // Calculate canvas geometry
     const canvasCenter = (typeof EDITOR !== 'undefined' && EDITOR.centerX) ? EDITOR.centerX : 400;
     const canvasBottom = (typeof EDITOR !== 'undefined' && EDITOR.height) ? EDITOR.height - 60 : 700;
 
-    // Load preset parts - center them on the canvas
+    // 1. Calculate Bounding Box of the preset in grid units
+    let minX = Infinity, maxX = -Infinity;
+    let maxY = -Infinity;
+
+    preset.parts.forEach(p => {
+        const part = getPartById(p.partId);
+        if (part) {
+            minX = Math.min(minX, p.x);
+            maxX = Math.max(maxX, p.x + part.width);
+            maxY = Math.max(maxY, p.y + part.height);
+        }
+    });
+
+    // Preset width in pixels (for centering)
+    const presetWidthPixels = (maxX - minX) * TILE_SIZE;
+
+    // 2. Load and center relative to bounding box
     preset.parts.forEach(partData => {
         const part = getPartById(partData.partId);
         if (part) {
-            // Calculate centered X position
-            const partWidthPixels = part.width * TILE_SIZE;
-            const centeredX = canvasCenter - (partWidthPixels / 2);
+            // Calculate relative X from the preset's left edge
+            const relativeX = partData.x - minX;
 
-            // Calculate Y from bottom up
-            const yFromBottom = partData.y * TILE_SIZE;
-            const absoluteY = canvasBottom - yFromBottom - (part.height * TILE_SIZE);
+            // Absolute X: 
+            // Start at Canvas Center
+            // Shift Left by half the total preset width (to center the group)
+            // Add the part's relative position
+            const absoluteX = canvasCenter - (presetWidthPixels / 2) + (relativeX * TILE_SIZE);
+
+            // Calculate Y from bottom (maxY of preset aligns with canvasBottom)
+            // Distance from bottom of preset = maxY - (partData.y + part.height)
+            const distFromBottom = maxY - (partData.y + part.height);
+            const absoluteY = canvasBottom - (distFromBottom * TILE_SIZE) - (part.height * TILE_SIZE);
 
             const placedPart = {
                 partId: partData.partId,
-                x: centeredX,
+                x: absoluteX,
                 y: absoluteY,
                 width: part.width,
                 height: part.height
@@ -185,7 +136,7 @@ function loadPreset(presetId) {
         }
     });
 
-    // Redraw canvas if available
+    // Redraw canvas with new parts
     if (typeof renderEditor === 'function') {
         renderEditor();
     }

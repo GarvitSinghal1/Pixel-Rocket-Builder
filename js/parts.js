@@ -249,7 +249,7 @@ const PARTS = {
             category: 'control',
             mass: 10,
             stability: 0.2,
-            width: 3,
+            width: 1,
             height: 1,
             attachPoints: { top: true, bottom: false, left: false, right: false },
             unlockLevel: 0,
@@ -264,7 +264,7 @@ const PARTS = {
             category: 'control',
             mass: 25,
             stability: 0.5,
-            width: 4,
+            width: 2,
             height: 2,
             attachPoints: { top: true, bottom: false, left: false, right: false },
             unlockLevel: 4,
@@ -611,58 +611,117 @@ function drawPart(ctx, part, x, y, scale = 1) {
             break;
 
         case 'control':
-            if (part.id.includes('fins')) {
-                // Metallic fin gradient
-                const finGrad = ctx.createLinearGradient(x, y, x + w, y);
-                finGrad.addColorStop(0, darken(part.color, 20));
-                finGrad.addColorStop(0.5, lighten(part.color, 30));
-                finGrad.addColorStop(1, darken(part.color, 20));
+            if (part.id === 'small_fins') {
+                // Small delta fins (Width 1)
+                ctx.beginPath();
+                ctx.moveTo(x, y); // Top Left (attached)
+                ctx.lineTo(x + w, y + h); // Tip (Bottom Right)
+                ctx.lineTo(x, y + h); // Bottom Left
+                ctx.closePath();
+
+                // Metallic Gradient
+                const finGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+                finGrad.addColorStop(0, '#666');
+                finGrad.addColorStop(0.5, '#bbb');
+                finGrad.addColorStop(1, '#666');
                 ctx.fillStyle = finGrad;
-
-                // Left fin
-                ctx.beginPath();
-                ctx.moveTo(x, y + h);
-                ctx.lineTo(x + w * 0.2, y);
-                ctx.lineTo(x + w * 0.4, y);
-                ctx.lineTo(x + w * 0.45, y + h);
-                ctx.closePath();
                 ctx.fill();
 
-                // Center bar
-                ctx.fillRect(x + w * 0.4, y + h * 0.3, w * 0.2, h * 0.7);
-
-                // Right fin
+                // Leading Edge
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
                 ctx.beginPath();
-                ctx.moveTo(x + w, y + h);
-                ctx.lineTo(x + w * 0.8, y);
-                ctx.lineTo(x + w * 0.6, y);
-                ctx.lineTo(x + w * 0.55, y + h);
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + w, y + h);
+                ctx.stroke();
+
+            } else if (part.id === 'large_fins') {
+                // Large swept wings (Width 2)
+                ctx.beginPath();
+                ctx.moveTo(x, y); // Top Left (Root)
+                ctx.lineTo(x + w * 0.5, y); // Start of sweep
+                ctx.lineTo(x + w, y + h * 0.8); // Tip Top
+                ctx.lineTo(x + w, y + h); // Tip Bottom
+                ctx.lineTo(x, y + h); // Bottom Left (Root)
                 ctx.closePath();
+
+                // Gradient
+                const lgFinGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+                lgFinGrad.addColorStop(0, '#555');
+                lgFinGrad.addColorStop(0.5, '#999');
+                lgFinGrad.addColorStop(1, '#444');
+                ctx.fillStyle = lgFinGrad;
                 ctx.fill();
 
-                // Fin edge highlights
-                ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+                // Control Surface (Flap)
+                ctx.fillStyle = part.accentColor || '#d00';
+                ctx.fillRect(x + w * 0.6, y + h * 0.85, w * 0.4, h * 0.15);
+
+                // Panel Lines
+                ctx.strokeStyle = '#333';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
-                ctx.moveTo(x + w * 0.2, y);
-                ctx.lineTo(x, y + h);
+                ctx.moveTo(x + w * 0.5, y);
+                ctx.lineTo(x + w * 0.5, y + h);
                 ctx.stroke();
-            } else {
-                // Reaction wheel / gimbal
-                ctx.fillStyle = part.color;
+
+            } else if (part.id === 'reaction_wheel') {
+                // Background Frame
+                ctx.fillStyle = '#2a2a2a';
                 ctx.fillRect(x, y, w, h);
 
-                // Inner circle (tech detail)
-                ctx.fillStyle = part.accentColor;
+                // Gold Flywheel
+                ctx.fillStyle = '#ffb300';
                 ctx.beginPath();
-                ctx.arc(x + w / 2, y + h / 2, Math.min(w, h) * 0.35, 0, Math.PI * 2);
+                ctx.arc(x + w / 2, y + h / 2, w * 0.4, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Tech glow
-                ctx.fillStyle = 'rgba(0,255,255,0.3)';
+                // Spokes (Spinning look)
+                ctx.strokeStyle = '#805500';
+                ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.arc(x + w / 2, y + h / 2, Math.min(w, h) * 0.25, 0, Math.PI * 2);
+                ctx.moveTo(x + w / 2, y + h * 0.1);
+                ctx.lineTo(x + w / 2, y + h * 0.9);
+                ctx.moveTo(x + w * 0.1, y + h / 2);
+                ctx.lineTo(x + w * 0.9, y + h / 2);
+                ctx.stroke();
+
+                // Glass Reflection
+                ctx.fillStyle = 'rgba(200, 240, 255, 0.2)';
+                ctx.beginPath();
+                ctx.arc(x + w / 2, y + h / 2, w * 0.4, -Math.PI / 4, Math.PI / 2);
                 ctx.fill();
+
+            } else if (part.id === 'gimbal') {
+                // Gimbal Mount
+                // Top Plate
+                ctx.fillStyle = '#444';
+                ctx.fillRect(x, y, w, h * 0.25);
+                // Bottom Plate
+                ctx.fillRect(x, y + h * 0.75, w, h * 0.25);
+
+                // Pivot Sphere
+                const pivotGrad = ctx.createRadialGradient(x + w / 2, y + h / 2, 0, x + w / 2, y + h / 2, w * 0.3);
+                pivotGrad.addColorStop(0, '#eee');
+                pivotGrad.addColorStop(1, '#333');
+                ctx.fillStyle = pivotGrad;
+                ctx.beginPath();
+                ctx.arc(x + w / 2, y + h / 2, w * 0.25, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Hydraulic Pistons
+                ctx.fillStyle = '#999';
+                // Left
+                ctx.fillRect(x + w * 0.15, y + h * 0.25, w * 0.1, h * 0.5);
+                // Right
+                ctx.fillRect(x + w * 0.75, y + h * 0.25, w * 0.1, h * 0.5);
+
+            } else {
+                // Fallback Generic
+                ctx.fillStyle = part.color;
+                ctx.fillRect(x, y, w, h);
+                ctx.fillStyle = part.accentColor;
+                ctx.fillRect(x + w * 0.25, y + h * 0.25, w * 0.5, h * 0.5);
             }
             break;
 
