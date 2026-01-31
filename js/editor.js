@@ -1104,7 +1104,12 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 function formatAltitude(meters) {
     if (meters >= 1000000) {
-        return `${(meters / 1000000).toFixed(1)}M m`;
+        // Megameters (Mm) or thousands of km. "Mm" is scientifically correct but "11.1M m" was confusing.
+        // Let's use standard km for readability up to a point, or just Mm.
+        // User asked: "Is this 11 point something million meters?"
+        // 11.1M m -> 11,100 km.
+        // Let's switch to 'km' metric for consistency until truly huge.
+        return `${(meters / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} km`;
     } else if (meters >= 1000) {
         return `${(meters / 1000).toFixed(1)} km`;
     } else {

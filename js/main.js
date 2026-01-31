@@ -326,6 +326,17 @@ function showScreen(screenId) {
  * Start the launch sequence
  */
 function startLaunch() {
+    // FORCE PLANET UPDATE from UI selector before launch
+    // This ensures physics is always in sync with the user's choice
+    const planetSelector = document.getElementById('planet-selector');
+    if (planetSelector && typeof setCurrentPlanet === 'function') {
+        setCurrentPlanet(planetSelector.value);
+        console.log(`🚀 Launch Sequence Initiated on ${planetSelector.value}`);
+
+        // Also ensure visuals are synced
+        if (typeof updatePlanetVisuals === 'function') updatePlanetVisuals();
+    }
+
     // Get only connected parts
     const connectedParts = typeof getValidRocketParts === 'function'
         ? getValidRocketParts()
