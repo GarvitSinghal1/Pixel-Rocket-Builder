@@ -1,21 +1,36 @@
 <p align="center">
-  <img src="assets/screenshots/editor.png" alt="Pixel Rocket Builder" width="600">
+  <img src="assets/screenshots/editor.png" alt="Pixel Rocket Builder" width="800">
 </p>
 
-<h1 align="center">🚀 Pixel Rocket Builder</h1>
+# 🚀 Pixel Rocket Builder
 
-<p align="center">
-  <b>An educational rocket building and physics simulation game</b><br>
-  <i>Build rockets • Learn aerospace engineering • Understand why rockets succeed or fail</i>
-</p>
+### **A browser-based Kerbal Space Program built from scratch in vanilla JavaScript.**
 
-<p align="center">
-  <img src="https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white" alt="HTML5">
-  <img src="https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white" alt="CSS3">
-  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black" alt="JavaScript">
-  <img src="https://img.shields.io/badge/Canvas-API-orange" alt="Canvas API">
-  <img src="https://img.shields.io/badge/No%20Dependencies-green" alt="No Dependencies">
-</p>
+### **[Live Demo](https://garvitsinghal1.github.io/Pixel-Rocket-Builder/)** | **[Technical Deep Dive](#-deep-physics-engine)** | **[Engineering Challenges](#-engineering-challenges--lessons)**
+
+---
+
+## 🧰 Tech Stack
+- **Vanilla JavaScript** (ES6+)
+- **HTML5 Canvas** (High-frequency rendering)
+- **CSS3** (Modern layout and UI tokens)
+- **Web Audio API** (Procedural sound synthesis)
+- **LocalStorage** (Rocket design persistence)
+
+---
+
+## 🛠️ Technical Highlights
+*   **High-Fidelity Physics**: Custom-built engine featuring **ISA (International Standard Atmosphere)** modeling, Mach-dependent drag curves, and aerodynamic heating (Stagnation & Radiation).
+*   **Orbital Mechanics**: Real-time integration of state vectors for **Keplerian orbital elements** (Apoapsis, Periapsis, Eccentricity) in 2D space.
+*   **Dynamic Component Graph**: A BFS-based connectivity system handles complex staging, structural integrity validation, and debris generation.
+*   **Stochastic Failure Modeling**: Simulation of real-world risks including **Ignition Failures** and **Fuel Pump Cavitation** based on environmental pressure.
+*   **Performance First**: Zero-dependency architecture with **Object Pooling** and **RK4-like integration** sub-stepping for simulation stability at 60 FPS.
+
+---
+
+## 💼 For Recruiters: Technical Summary
+> **Resume Highlight:**
+> Designed and implemented a browser-based rocket simulation engine with ISA atmospheric modeling, Mach-dependent drag, orbital mechanics, and real-time telemetry, using vanilla JavaScript and HTML5 Canvas. Implemented graph-based staging validation, stochastic failure models, and performance optimizations including sub-stepped integration and object pooling.
 
 ---
 
@@ -90,7 +105,7 @@ For players who want **realistic orbital mechanics** and **simulation-level phys
 
 ---
 
-## 🔧 Rocket Building
+## 🚀 Rocket Building
 
 ![Editor View](assets/screenshots/editor.png)
 
@@ -110,8 +125,6 @@ For players who want **realistic orbital mechanics** and **simulation-level phys
 | **Clear All** | Click `CLEAR` button |
 | **Save Design** | Click `SAVE` button |
 | **Load Design** | Click `LOAD` button |
-
-
 
 ### 🚀 Quick Load Presets
 ![Presets Menu](assets/screenshots/presets.png)
@@ -237,51 +250,6 @@ The Q, G-Force, and Temperature displays have **limit bars**:
 | **SKIP** button | Fast-forward to results |
 | **ABORT** button | End mission and return to editor |
 
-### Visual Effects
-- ☁️ **Clouds** pass by as you ascend
-- ⭐ **Stars** appear as you reach space
-- 🔥 **Flame** intensity matches throttle
-- 💨 **Smoke particles** from engines
-- 🌡️ **Heat glow** at high temperatures
-- 📳 **Shake effect** during high G-forces
-
----
-
-## 📈 Results & Learning
-
-![Results Screen](assets/screenshots/results.png)
-
-### Flight Statistics
-- Max Altitude achieved
-- Max Velocity reached
-- Max Q (dynamic pressure)
-- Max G-Force experienced
-- Max Temperature reached
-- Flight Time
-- Fuel Remaining
-
-### Failure Explanations
-When your rocket fails, you get **detailed educational feedback**:
-
-| Section | Content |
-|---------|---------|
-| **💥 What Happened** | Plain-language explanation |
-| **📐 The Physics** | Scientific formulas and concepts |
-| **🌍 Real World** | NASA, SpaceX comparisons |
-| **✅ How to Improve** | Actionable design suggestions |
-
-### Failure Types
-
-| Failure | Cause | Solution |
-|---------|-------|----------|
-| **Max Q Exceeded** | Too fast in thick atmosphere | Add nose cone, reduce initial throttle |
-| **G-Force Limit** | Acceleration too high | Lower TWR, reduce engine power |
-| **Thermal Failure** | Surface overheated | Slow down, add heat shields |
-| **Crash Landing** | Hit ground too fast | More fuel, controlled descent |
-
----
-
-
 ---
 
 ## 🏗️ System Architecture
@@ -290,7 +258,7 @@ Pixel Rocket Builder is a modular JavaScript application designed for performanc
 
 ```mermaid
 graph TD
-    UI[HTML/CSS UI] <--> Main[main.js Controller]
+    UI[HTML/CSS UI Layer] <--> Main[main.js Orchestrator]
     Main <--> Editor[editor.js Builder]
     Main <--> Physics[physics.js Engine]
     Main --> Audio[audio.js Sound]
@@ -318,19 +286,19 @@ The rocket's state is updated every frame using:
 $$F_{net} = \vec{F}_{thrust} + \vec{F}_{gravity} + \vec{F}_{drag}$$
 $$a = \frac{F_{net}}{m_{total}}$$
 
-### 2. Atmospheric & Aerodynamic Model
+### 2. Atmospheric & Aerodynamic Modeling
 We implement the **International Standard Atmosphere (ISA)** to model density changes:
 - **Lapse Rate:** Inside the troposphere ($h \le 11km$), temperature drops linearly: $T = 288.15 - 0.0065 \times h$.
 - **Mach-Dependent Drag:** The Drag Coefficient ($C_d$) is not constant. It scales based on the Mach number ($M$):
     - **Subsonic ($M < 0.8$):** Base $C_d$
     - **Transonic ($0.8 \le M < 1.2$):** Rapid rise modeling the "sound barrier" shockwave.
     - **Supersonic ($M \ge 1.2$):** Gradual decay as $1/\sqrt{M}$.
-- **Dynamic Pressure ($Q$):** $Q = \frac{1}{2} \rho v^2$. This determines structural stress.
+- **Dynamic Pressure ($Q$):** $Q = \frac{1}{2} \rho v^2$. This determines structural stress (Max Q).
 
 ### 3. Thermal Simulation
 Aerodynamic heating is modeled using stagnation point physics:
-- **Stagnation Temp:** $T_{stag} = T_{ambient} \times (1 + 0.2 \times M^2)$ (assuming $\gamma = 1.4$).
-- **Radiative Cooling:** The hull cools according to the Stefan-Boltzmann law: $P_{rad} = \epsilon \sigma A T^4$.
+- **Stagnation Temp ($T_{stag}$):** $T_{stag} = T_{ambient} \times (1 + 0.2 \times M^2)$ (assuming $\gamma = 1.4$).
+- **Radiative Cooling:** The hull cools according to the **Stefan-Boltzmann law**: $P_{rad} = \epsilon \sigma A T^4$.
 
 ### 4. Staging & Connectivity
 The rocket is treated as a **Connectivity Graph**.
@@ -370,15 +338,19 @@ The `validation.js` module enforces several strictly "blocked" conditions:
 
 ---
 
-## 📸 Technical Showcase
+## 📐 Engineering Challenges & Lessons
 
-````carousel
-![Editor Screen](assets/screenshots/tech_editor.png)
-<!-- slide -->
-![Launch Telemetry](assets/screenshots/tech_launch.png)
-<!-- slide -->
-![Mission Results](assets/screenshots/tech_results.png)
-````
+### **The "Tunneling" Problem**
+*   **Challenge:** At high velocities (e.g., re-entry at 5,000 m/s), the rocket would often "skip" through atmospheric layers or even the ground during a single frame update.
+*   **Solution:** Implemented **Temporal Sub-stepping**. The physics engine runs multiple integration steps per visual frame, ensuring higher precision for collision and thermal calculations without sacrificing UI performance.
+
+### **Robust Staging Logic**
+*   **Challenge:** A simple BFS connectivity check failed when players created complex overlapping designs or loops.
+*   **Solution:** Developed a multi-pass validation system. The engine first performs a graph search to find reachable parts from the root, then applies a **Geometric Force Fallback**—parts physically separated by a firing decoupler are forcibly detached to ensure intuitive gameplay.
+
+### **UI/Simulation Sync**
+*   **Challenge:** Rendering complex telemetry and part animations at 60 FPS while running a high-fidelity simulator.
+*   **Solution:** Utilized **Canvas Double-Buffering** and **Object Pooling** for the particle system (smoke/fire), minimizing Garbage Collection (GC) pauses during critical flight phases.
 
 ---
 
@@ -390,10 +362,15 @@ The `validation.js` module enforces several strictly "blocked" conditions:
 
 ---
 
-<p align="center">
-  <b>Built with ❤️ for space enthusiasts and future aerospace engineers</b>
-</p>
+## 📸 Technical Showcase
+
+| Editor View | Flight Telemetry | Mission Results |
+| :--- | :--- | :--- |
+| ![Editor](assets/screenshots/tech_editor.png) | ![Flight](assets/screenshots/tech_launch.png) | ![Results](assets/screenshots/tech_results.png) |
+
+---
 
 <p align="center">
-  <i>🌟 Star this repo if you found it educational!</i>
+  <b>Built for space enthusiasts and future engineers.</b><br>
+  <i>🌟 Star the repo if you found the physics implementation interesting!</i>
 </p>
