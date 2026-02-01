@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYSTEM SPECS | PIXEL ROCKET</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="icon" type="image/png" href="../assets/favicon.png">
+</head>
+
+<body>
+    <div class="starfield" id="starfield"></div>
+    <div class="matrix-overlay" id="matrix-overlay"></div>
+
+    <div class="container">
+        <header>
+            <h1 class="glow">TECHNICAL SPECS</h1>
+            <div class="subtitle">Physics Engine Deep-Core // ORB-SYS-V4</div>
+            <nav>
+                <a href="index.html">HOME</a>
+                <a href="tutorial.html">TRAINING</a>
+                <a href="technical.html" class="active">SPECS</a>
+                <a href="summary.html">MISSION</a>
+                <a href="../index.html" style="color: var(--accent-secondary);">LAUNCH GAME</a>
+            </nav>
+        </header>
+
+        <section>
+            <h2>PHYSICS INTEGRATION 📊</h2>
+            <div class="card">
+                <h3>High-Fidelity Newtonian Core</h3>
+                <p>The simulation utilizes a high-frequency integration loop. Every frame, the engine calculates the
+                    summation of all vector forces acting on the rocket's center of mass.</p>
+
+                <div class="eng-box" style="margin: 2rem 0;">
+                    <div class="math-row">F_net = F_thrust [v] + F_gravity [r] + F_drag [rho, v^2]</div>
+                    <p>Calculated using <strong>Temporal Sub-stepping</strong>. The engine runs 5+ sub-iterations per
+                        visible frame to maintain accuracy at orbital velocities (7.8 km/s+).</p>
+                </div>
+
+                <h3>Atmospheric Modeling (ISA)</h3>
+                <p>Density is not a constant. We implement the full ISA lapse rate to model how the environment changes
+                    as you ascend.</p>
+                <table class="spec-table">
+                    <tr>
+                        <td class="spec-key">Troposphere</td>
+                        <td class="spec-val">Lapse Rate: -6.5 K/km</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-key">Dynamic Pressure</td>
+                        <td class="spec-val">Q = 0.5 * rho * v^2</td>
+                    </tr>
+                    <tr>
+                        <td class="spec-key">Mach Regimes</td>
+                        <td class="spec-val">Subsonic to Supersonic Transitions</td>
+                    </tr>
+                </table>
+            </div>
+        </section>
+
+        <section>
+            <h2>ORBITAL MECHANICS 🛰️</h2>
+            <div class="card">
+                <h3>Keplerian State Vectors</h3>
+                <p>In Advanced Mode, the system ceases to be a simple 2D scroller and becomes a true orbital simulator.
+                    Position and velocity are integrated relative to the planetary centroid.</p>
+                <ul style="margin-left: 20px;">
+                    <li style="margin-bottom: 0.8rem;"><strong>Apoapsis / Periapsis:</strong> Real-time calculation of
+                        highest and lowest points of the current trajectory.</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>Eccentricity:</strong> Monitoring the circularity of your
+                        orbit.</li>
+                    <li style="margin-bottom: 0.8rem;"><strong>SOI Transitions:</strong> Automated hand-over between
+                        gravity wells of Earth, Moon, and Mars.</li>
+                </ul>
+            </div>
+        </section>
+
+        <section>
+            <h2>SYSTEM ARCHITECTURE 🏗️</h2>
+            <div class="card">
+                <p>The code is a masterpiece of modularity, designed for zero-dependency performance.</p>
+                <img src="../assets/screenshots/tech_editor.png" alt="Architecture Graph" class="hero-img"
+                    style="margin-top: 1rem;">
+                <p style="margin-top: 1.5rem; font-family: var(--font-mono); font-size: 10px;">[ main.js ] -> [
+                    orchestrates ] -> [ physics.js | editor.js | advanced.js ]</p>
+            </div>
+        </section>
+
+        <footer>
+            <p>&copy; 2026 PIXEL ROCKET CORP // TECHNICAL DATALINK SECURED</p>
+            <p>KNOWLEDGE IS THE FIRST STEP TO THE GEARS OF PROGRESS.<span class="cursor"></span></p>
+        </footer>
+    </div>
+    <script src="js/script.js"></script>
+</body>
+
+</html>

@@ -97,6 +97,15 @@ body {
         0 0 10px var(--accent-primary),
         0 0 20px rgba(0, 255, 255, 0.5);
     letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo-icon {
+    width: 24px;
+    height: 24px;
+    image-rendering: pixelated;
 }
 
 .mode-buttons {
@@ -426,6 +435,7 @@ body {
     width: 150px;
     height: 8px;
     -webkit-appearance: none;
+    appearance: none;
     background: var(--bg-tertiary);
     border: 2px solid var(--border-color);
     border-radius: var(--pixel);
@@ -433,6 +443,7 @@ body {
 
 #throttle-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
+    appearance: none;
     width: 16px;
     height: 16px;
     background: var(--accent-primary);
