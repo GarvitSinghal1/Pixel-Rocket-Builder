@@ -1,115 +1,68 @@
-PIXEL ROCKET BUILDER - PHYSICS BUG REPORT
-========================================
-
-Ref: SpaceSim Implementation Audit
-Priority: High (Physics/Simulation Accuracy)
+PIXEL ROCKET BUILDER - COMPREHENSIVE PHYSICS & LOGIC AUDIT
+========================================================
 
 --------------------------------------------------------------------------------
-1. [PHYSICS] Gravity Constant Inconsistency
+[CRITICAL PHYSICS BUGS]
 --------------------------------------------------------------------------------
-- Location: js/physics.js vs js/planets.js
-- Description: physics.js uses 9.8 or 9.81 in various local functions (e.g., calculateTWR), 
-  while planets.js defines Earth surface gravity as 9.80665. 
-- Impact: Slight errors in TWR and Delta-V telemetry.
+
+1. Gravity Constant Inconsistency (physics.js vs planets.js)
+   - Description: physics.js uses 9.8 or 9.81 in various local functions, while planets.js defines Earth surface gravity as 9.80665. 
+   - Impact: Slight errors in TWR and Delta-V telemetry.
+
+2. Cross-Stage Fuel Draining (physics.js)
+   - Description: The engine logic gathers ALL connected fuel tanks and drains them equally. It does NOT check if a tank is separated by a decoupler.
+   - Impact: Engines drain fuel from upper stages prematurely, effectively giving first-stage engines access to the entire rocket's fuel pool.
+
+3. 1D Orbital Projection / "Fake" Orbit (advanced.js)
+   - Description: The simulation projects 1D vertical altitude/velocity into a 2D state vector assuming zero horizontal velocity. 
+   - Impact: It is impossible to achieve a stable circular orbit; the rocket is always on a purely radial trajectory. Orbital elements like Eccentricity and True Anomaly are mathematically "pinned" to a radial plunge.
+
+4. False RK4 Integration (physics.js)
+   - Description: The code comments claim "RK4-like integration sub-stepping". ACTUAL: The code uses standard first-order Euler integration.
+   - Impact: Higher inaccuracy in trajectory calculation at high speeds or low framerates.
+
+5. Missing ISP/Altitude Scaling (physics.js / advanced.js)
+   - Description: The physics engine does NOT adjust thrust or ISP based on altitude. Engines produce 100% thrust from sea level to vacuum.
+   - Impact: Unrealistic performance profile throughout ascent.
 
 --------------------------------------------------------------------------------
-2. [LOGIC] Cross-Stage Fuel Draining
+[INTEGRATION & LOGIC BUGS]
 --------------------------------------------------------------------------------
-- Location: js/physics.js (consumeFuelAndGetThrust)
-- Description: The engine logic gathers ALL connected fuel tanks and drains them 
-  equally. It does NOT check if a tank is separated by a decoupler.
-- Impact: Engines drain fuel from upper stages prematurely, effectively giving 
-  first-stage engines access to the entire rocket's fuel pool.
+
+6. Disconnected Advanced Physics Modules (advanced.js)
+   - Description: `attemptIgnition`, `checkCavitation`, and `updateThrottleWithLag` are implemented but NEVER CALLED in the main `physicsStep` loop.
+   - Impact: Advanced mode features are purely cosmetic or non-functional.
+
+7. Auto-Build Decoupler Shift Bug (editor.js)
+   - Description: Auto-decoupler shifts ALL parts with Y > engineBottom further down. 
+   - Impact: Side boosters or radially attached parts lower than a central engine are shifted, breaking their side-attachments.
+
+8. Staging Mechanics - Missing Physical Separation (physics.js)
+   - Description: `triggerStage` acts as a simple index switch. Actual physical separation (velocity impulse, decoupler force) is missing. Parts just "disappear" from the active list.
+
+9. Global Fuel Pool Logic (physics.js)
+   - Description: `calculateTotalFuel` sums capacity of ALL placed tanks. No fuel flow logic or tank connectivity exists.
+   - Impact: Prevents realistic stage-based fuel management.
 
 --------------------------------------------------------------------------------
-3. [PHYSICS] Hardcoded Vacuum ISP
+[UI & UX BUGS]
 --------------------------------------------------------------------------------
-- Location: js/physics.js (calculateAverageISP)
-- Description: Vacuum ISP is hardcoded as exactly 15% better than sea level. 
-  Specific 'isp' values in parts.js are often ignored or overridden by this 
-  scaling factor in the main simulation loop.
-- Impact: Unrealistic engine performance scaling across different altitudes.
+
+10. Advanced Telemetry Overflow (simulator.html)
+    - Description: Advanced mode adds 9+ rows of labels. On small screens, the telemetry panel overflows the flight controls.
+    - Impact: Critical flight controls can be obscured.
+
+11. G-Force Indicator Saturation (main.js)
+    - Description: The G-indicator caps at 100% for 10G. 
+    - Impact: Fails to visualize the severity of structural-failure-level G-forces (e.g., 50G+).
+
+12. Disconnected Part Warning Threshold (validation.js)
+    - [FIXED]: Resolved by renaming `getConnectedParts` -> `getLaunchableParts` and adding strict BFS seed logic.
 
 --------------------------------------------------------------------------------
-4. [PHYSICS] 1D Orbital Projection (The "Fake" Orbit)
+[PLACEHOLDERS & UNUSED FEATURES]
 --------------------------------------------------------------------------------
-- Location: js/advanced.js (updateOrbitalState)
-- Description: The simulation projects 1D vertical altitude/velocity into a 2D 
-  state vector assuming zero horizontal velocity. 
-- Impact: It is impossible to achieve a stable circular orbit; the rocket is 
-  always on a purely radial trajectory. Orbital elements like Eccentricity 
-  and True Anomaly are mathematically "pinned" to a radial plunge.
 
---------------------------------------------------------------------------------
-5. [PHYSICS] Constant Radius Aerodynamic Heating
---------------------------------------------------------------------------------
-- Location: js/physics.js (calculateAerodynamicHeating)
-- Description: Uses a hardcoded noseRadius of 0.5m for all heat flux 
-  calculations, regardless of whether a 1-tile or 3-tile fairing is used.
-- Impact: Large fairings don't provide the realistic "blunt body" heat reduction 
-  advantage.
-
---------------------------------------------------------------------------------
-6. [UI] Advanced Telemetry Overflow
---------------------------------------------------------------------------------
-- Location: html/simulator.html (#orbital-telemetry)
-- Description: Advanced mode adds 9+ rows of labels. On small screens, the 
-  telemetry panel overflows the flight controls.
-- Impact: Critical flight controls (Throttle/Stage) can be obscured or pushed 
-  off-screen.
-
---------------------------------------------------------------------------------
-7. [LOGIC] Auto-Build Decoupler Shift Bug
---------------------------------------------------------------------------------
-- Location: js/editor.js (autoAddDecouplers)
-- Description: The function shifts ALL parts with Y > engineBottom further down. 
-- Impact: Side boosters or radially attached parts that happen to be lower 
-  than a central engine are shifted, breaking their side-attachments to the 
-  rest of the rocket.
-
---------------------------------------------------------------------------------
-8. [PHYSICS] Drag Coefficient Discontinuities
---------------------------------------------------------------------------------
-- Location: js/physics.js (getDragCoefficient)
-- Description: Sharp if/else transitions between Mach regimes (Subsonic/Transonic) 
-  cause instant jumps in drag force.
-- Impact: "Jerky" acceleration changes when crossing Mach 0.8 and Mach 1.0.
-
---------------------------------------------------------------------------------
-9. [PHYSICS] Atmospheric Model Lapse Rate Fallback
---------------------------------------------------------------------------------
-- Location: js/planets.js (getPlanetAtmosphere)
-- Description: Fallback for planets without layer data uses Earth-like lapse 
-  rates that don't cap temperature, potentially reaching unrealistic values.
-- Impact: Inaccurate atmospheric simulation for Mars/Moon if layers aren't 
-  defined strictly.
-
---------------------------------------------------------------------------------
-10. [LOGIC] Staging Strut Fallback Performance
---------------------------------------------------------------------------------
-- Location: js/physics.js (detectStages)
-- Description: Fallback check for crossing struts is O(N^2) relative to part count.
-- Impact: Possible frame-drops during staging events on very complex rockets.
-
---------------------------------------------------------------------------------
-11. [UI] G-Force Indicator Saturation
---------------------------------------------------------------------------------
-- Location: js/main.js (updateFlightData)
-- Description: The G-indicator caps at 100% for 10G. 
-- Impact: Fails to visualize the severity of structural-failure-level G-forces 
-  (e.g., 50G+).
-
---------------------------------------------------------------------------------
-12. [PHYSICS] Dynamic Pressure (Max Q) Limit Scaling
---------------------------------------------------------------------------------
-- Location: js/physics.js (MAX_Q_LIMIT)
-- Description: 35kPa is hardcoded. It doesn't scale with the structural parts used.
-- Impact: A rocket with 10 struts is just as fragile as one with 1.
-
---------------------------------------------------------------------------------
-13. [EDITOR] Disconnected Part Warning Threshold
---------------------------------------------------------------------------------
-- Location: js/validation.js (validateRocketDesign)
-- Description: Uses generic BFS starting from ALL engines. 
-- Impact: If a player places a "dummy" engine on a disconnected pile of parts, 
-  it passes validation even though it won't fly.
+13. Planet Visuals Placeholder: Sky color and atmosphere don't update visually when changing planets.
+14. Unused Orbital Elements: True Anomaly, Inclination, etc., are calculated but never displayed or used.
+15. Debris Physics: It is a purely visual effect in `main.js` and does not follow the core physics engine.

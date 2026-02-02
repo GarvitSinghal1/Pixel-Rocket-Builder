@@ -634,15 +634,10 @@ function formatAltitude(meters) {
 /**
  * Update flight data display with full telemetry
  */
-/**
- * Update flight data display with full telemetry
- */
 function updateFlightData() {
     try {
         // A. Get Unified Telemetry Data
-        // uses window.getTelemetry() which is provided by physics.js (basic) or advanced.js (merged)
-        let fullTelemetry = {};
-
+        let fullTelemetry;
         if (typeof getTelemetry === 'function') {
             fullTelemetry = getTelemetry();
         } else {
@@ -651,17 +646,14 @@ function updateFlightData() {
         }
 
         // B. Update UI Elements
-        // Helper to safely update text content
         const update = (id, val) => {
             const el = document.getElementById(id);
             if (el) el.textContent = val;
         };
 
-        // Ensure Physics Global is available for Constants if needed (though telemetry should provide warnings)
-        // Access safely
-        let ph = (typeof PHYSICS !== 'undefined') ? PHYSICS : {};
+        const ph = (typeof PHYSICS !== 'undefined') ? PHYSICS : {};
 
-        // Basic Data Updates
+        // Basic Data
         update('data-altitude', formatAltitude(fullTelemetry.altitude));
         update('data-velocity', Math.round(fullTelemetry.velocity) + " m/s");
 
@@ -713,16 +705,19 @@ function updateFlightData() {
         update('data-fuel', fuelPct + "%");
 
         const stagesEl = document.getElementById('data-stages');
-        if (stagesEl) stagesEl.textContent = `${fullTelemetry.currentStage + 1}/${fullTelemetry.totalStages}`;
+        const currentStage = (typeof ph.currentStage !== 'undefined') ? ph.currentStage : 0;
+        const totalStages = (ph.stages) ? ph.stages.length : 1;
+        if (stagesEl) stagesEl.textContent = `${currentStage + 1}/${totalStages}`;
+
         // Highlight stage button (simplified)
         const stageBtn = document.getElementById('btn-stage');
-        if (stageBtn && ph.stages && ph.currentStage < ph.stages.length - 1) {
+        if (stageBtn && ph.stages && currentStage < totalStages - 1) {
             stageBtn.classList.add('highlight');
         } else if (stageBtn) {
             stageBtn.classList.remove('highlight');
         }
 
-        update('data-time', fullTelemetry.time.toFixed(1) + "s");
+        update('data-time', (fullTelemetry.time || 0).toFixed(1) + "s");
 
         // Advanced Data Updates
         const orb = fullTelemetry.orbit;
@@ -756,11 +751,11 @@ function updateFlightData() {
                     cavEl.style.color = '#888888';
                 }
             }
-            update('data-throttle-lag', fullTelemetry.throttleLag.toFixed(2));
+            update('data-throttle-lag', (fullTelemetry.throttleLag || 0).toFixed(2));
         }
 
-    } catch (e) {
-        console.error("Telemetry Update Error:", e);
+    } catch (err) {
+        console.error("Flight data update error:", err);
     }
 }
 
