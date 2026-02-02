@@ -640,6 +640,36 @@ function updateFlightData() {
             document.getElementById('data-mean-anomaly').textContent = `${toDeg(telemetry.orbit.meanAnomaly)}°`;
             document.getElementById('data-inclination').textContent = `${toDeg(telemetry.orbit.inclination)}°`;
         }
+
+        // Engine Status
+        const engineRow = document.getElementById('engine-telemetry');
+        if (engineRow) {
+            engineRow.style.display = 'flex';
+
+            // Ignition
+            const ignEl = document.getElementById('data-ignition');
+            if (telemetry.ignitionFailed) {
+                ignEl.textContent = 'FAIL';
+                ignEl.style.color = '#ff0000';
+            } else {
+                ignEl.textContent = 'OK';
+                ignEl.style.color = '#00ff00';
+            }
+
+            // Cavitation
+            const cavEl = document.getElementById('data-cavitation');
+            if (telemetry.cavitating) {
+                const loss = (telemetry.cavitationLoss * 100).toFixed(0);
+                cavEl.textContent = `YES (-${loss}%)`;
+                cavEl.style.color = '#ff9900';
+            } else {
+                cavEl.textContent = 'NO';
+                cavEl.style.color = '#888888';
+            }
+
+            // Lag
+            document.getElementById('data-throttle-lag').textContent = telemetry.throttleLag.toFixed(2);
+        }
     }
 
     // Mach number
