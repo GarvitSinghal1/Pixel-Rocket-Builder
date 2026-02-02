@@ -403,6 +403,15 @@ function calculateTotalFuel(parts) {
 }
 
 /**
+ * Calculate current remaining fuel
+ */
+function calculateCurrentFuel(parts) {
+    return parts.reduce((total, p) => {
+        return total + (p.currentFuel || 0);
+    }, 0);
+}
+
+/**
  * Calculate total mass (dry + fuel)
  */
 function calculateTotalMass(parts, currentFuel) {
@@ -451,6 +460,69 @@ function calculateTWR(parts, fuel = null) {
 
     if (weight === 0) return 0;
     return thrust / weight;
+}
+
+/**
+ * Consume fuel from active tanks and return produced thrust
+ */
+function consumeFuelAndGetThrust(parts, dt, throttle) {
+    if (throttle <= 0) return 0;
+
+    // 1. Identify engines and tanks
+    const engines = [];
+    const activeTanks = [];
+
+    parts.forEach(p => {
+        const def = getPartById(p.partId);
+        if (def.category === 'engines') {
+            engines.push({ part: p, def: def });
+        } else if (def.category === 'fuel' && p.currentFuel > 0) {
+            activeTanks.push(p);
+        }
+    });
+
+    if (engines.length === 0) return 0;
+
+    let totalThrust = 0;
+
+    // 2. Process each engine
+    engines.forEach(engine => {
+        // Calculate fuel needed for this engine
+        const consumptionRate = engine.def.fuelConsumption;
+        const fuelNeeded = consumptionRate * throttle * dt;
+
+        if (activeTanks.length === 0) {
+            // No fuel available -> Engine Flameout
+            return;
+        }
+
+        // 3. Drain fuel from tanks (Equal distribution)
+        // Simple logic: Divide draw equally among all tanks with fuel
+        // If a tank runs dry during this step, we just take what's left.
+        // For a perfect simulation, we'd iterate, but for 60fps, this approximation is fine.
+
+        const drawPerTank = fuelNeeded / activeTanks.length;
+        let fuelObtained = 0;
+
+        activeTanks.forEach(tank => {
+            const amountToTake = Math.min(tank.currentFuel, drawPerTank);
+            tank.currentFuel -= amountToTake;
+            fuelObtained += amountToTake;
+        });
+
+        // 4. Calculate Thrust based on fuel obtained vs needed
+        // If we got 100% of needed fuel, we get 100% thrust.
+        // If we got 50%, we get 50% thrust (fizzling out).
+        const efficiency = fuelObtained / fuelNeeded;
+
+        // Add thrust (kN -> N conversion happens here or in caller? Caller expects N)
+        // engine.def.thrust is in kN.
+        if (efficiency > 0.1) {
+            totalThrust += engine.def.thrust * 1000 * throttle * efficiency;
+        }
+    });
+
+    return totalThrust;
 }
 
 /**
@@ -729,6 +801,16 @@ function arePartsConnected(partA, defA, partB) {
  * Initialize physics for a rocket
  */
 function initPhysics(placedParts) {
+    // Initialize fuel for each tank
+    placedParts.forEach(p => {
+        const def = getPartById(p.partId);
+        if (def.category === 'fuel') {
+            p.currentFuel = def.fuelCapacity;
+        } else {
+            p.currentFuel = 0;
+        }
+    });
+
     PHYSICS.rocket = placedParts;
     PHYSICS.isRunning = false;
     PHYSICS.isPaused = false;
@@ -813,13 +895,18 @@ function physicsStep(dt) {
     const mass = calculateTotalMass(parts, PHYSICS.fuel);
 
     // Thrust force (only if we have fuel)
+    // Thrust force (only if we have fuel)
     PHYSICS.thrustForce = 0;
-    if (PHYSICS.fuel > 0 && PHYSICS.throttle > 0) {
-        PHYSICS.thrustForce = calculateTotalThrust(parts) * 1000 * PHYSICS.throttle; // kN to N
 
-        // Consume fuel
-        const consumption = calculateFuelConsumption(parts) * PHYSICS.throttle * dt;
-        PHYSICS.fuel = Math.max(0, PHYSICS.fuel - consumption);
+    // Update total fuel for UI
+    PHYSICS.fuel = calculateCurrentFuel(parts);
+
+    if (PHYSICS.fuel > 0 && PHYSICS.throttle > 0) {
+        // Calculate thrust and consume fuel from tanks
+        PHYSICS.thrustForce = consumeFuelAndGetThrust(parts, dt, PHYSICS.throttle);
+
+        // Update fuel again after consumption so UI is accurate for next frame
+        PHYSICS.fuel = calculateCurrentFuel(parts);
     }
 
     // Gravity force
