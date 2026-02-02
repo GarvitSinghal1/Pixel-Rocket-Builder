@@ -754,27 +754,49 @@ function renderLaunchScene(dt) {
     const targetY = height * 0.6;
 
     // Background color based on altitude (transition to space)
+    // Background color based on altitude (transition to space)
     const spaceProgress = Math.min(1, PHYSICS.altitude / 100000);
+    const planet = getCurrentPlanet();
 
     // Draw sky gradient
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
 
-    if (spaceProgress < 0.5) {
-        // Atmosphere
-        gradient.addColorStop(0, lerpColor('#001133', '#000005', spaceProgress * 2));
-        gradient.addColorStop(0.5, lerpColor('#003366', '#000011', spaceProgress * 2));
-        gradient.addColorStop(1, lerpColor('#004488', '#000022', spaceProgress * 2));
+    if (planet.hasAtmosphere) {
+        if (spaceProgress < 0.5) {
+            // Atmosphere
+            // We derive sky colors from the planet's base color
+            // This is a simplification: assuming planet.color is a good "sky" representation or "map" representation
+            // Earth #4477ff is good for sky. Mars #ff6644 is good for sky.
+
+            // Horizon color (lighter)
+            const horizonColor = planet.color;
+            // Zenith color (darker, approximated by mixing with black)
+            const zenithColor = lerpColor(planet.color, '#000000', 0.7);
+
+            gradient.addColorStop(0, lerpColor(zenithColor, '#000000', spaceProgress * 2));
+            gradient.addColorStop(1, lerpColor(horizonColor, '#000011', spaceProgress * 2));
+        } else {
+            // Space
+            gradient.addColorStop(0, '#000005');
+            gradient.addColorStop(1, '#000011');
+        }
     } else {
-        // Space
-        gradient.addColorStop(0, '#000005');
-        gradient.addColorStop(1, '#000011');
+        // No atmosphere (Moon) - Black sky immediately
+        gradient.addColorStop(0, '#000000');
+        gradient.addColorStop(1, '#000000');
     }
 
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
-    // Draw stars (more visible in space)
-    const starAlpha = 0.3 + spaceProgress * 0.7;
+    // Draw stars (more visible in space or if no atmosphere)
+    // If no atmosphere, stars are always visible (alpha 1)
+    // If atmosphere, alpha increases with altitude
+    let starAlpha = 1;
+    if (planet.hasAtmosphere) {
+        starAlpha = 0.3 + spaceProgress * 0.7;
+    }
+
     ctx.fillStyle = `rgba(255, 255, 255, ${starAlpha})`;
     GAME.stars.forEach(star => {
         ctx.globalAlpha = star.brightness * starAlpha;
@@ -783,9 +805,14 @@ function renderLaunchScene(dt) {
     ctx.globalAlpha = 1;
 
     // Draw clouds (only in atmosphere)
-    if (spaceProgress < 0.3) {
+    if (planet.hasAtmosphere && spaceProgress < 0.3) {
         const cloudOffset = PHYSICS.altitude * 0.5;
+        // Clouds fade out higher up
         ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * (1 - spaceProgress / 0.3)})`;
+
+        // Tint clouds slightly with atmosphere color? 
+        // For now white is fine, but maybe Mars clouds are dusty?
+        // Let's keep them white/default for now to avoid complexity.
 
         GAME.clouds.forEach(cloud => {
             const y = cloud.y + cloudOffset % (height * 2) - height;
@@ -799,11 +826,11 @@ function renderLaunchScene(dt) {
     if (PHYSICS.altitude < 5000) {
         const groundY = height - 50 + Math.min(PHYSICS.altitude * 0.1, height);
         if (groundY < height + 100) {
-            ctx.fillStyle = '#1a3322';
+            ctx.fillStyle = planet.groundColor;
             ctx.fillRect(0, groundY, width, 100);
 
-            // Ground details
-            ctx.fillStyle = '#2a4433';
+            // Ground details (slightly lighter/darker variation)
+            ctx.fillStyle = lerpColor(planet.groundColor, '#ffffff', 0.1);
             for (let x = 0; x < width; x += 20) {
                 ctx.fillRect(x, groundY, 10, 5);
             }
