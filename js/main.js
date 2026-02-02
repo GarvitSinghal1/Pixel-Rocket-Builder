@@ -639,6 +639,10 @@ function updateFlightData() {
             document.getElementById('data-arg-pe').textContent = `${toDeg(telemetry.orbit.argumentOfPeriapsis)}°`;
             document.getElementById('data-mean-anomaly').textContent = `${toDeg(telemetry.orbit.meanAnomaly)}°`;
             document.getElementById('data-inclination').textContent = `${toDeg(telemetry.orbit.inclination)}°`;
+
+            // Velocity Vectors
+            document.getElementById('data-radial').textContent = `${Math.round(telemetry.orbit.radialVelocity)} m/s`;
+            document.getElementById('data-prograde').textContent = `${Math.round(telemetry.orbit.progradeVelocity)} m/s`;
         }
 
         // Engine Status

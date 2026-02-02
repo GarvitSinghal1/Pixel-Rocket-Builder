@@ -406,22 +406,29 @@ function getAdvancedTelemetry() {
 /**
  * Get orbital info for telemetry
  */
-function getOrbitalInfo() {
-    if (!ADVANCED.enabled) return null;
+// For 1D simulation:
+// Radial Velocity = Vertical Velocity (PHYSICS.velocity)
+// Prograde Velocity = Horizontal Velocity (0 for now)
+// Position vector = (0, radius + altitude)
+const velocityVector = { vx: 0, vy: PHYSICS.velocity };
+const positionVector = { x: 0, y: planet.radius + PHYSICS.altitude };
 
-    const planet = getCurrentPlanet();
-    return {
-        apoapsis: getApoapsis(),
-        periapsis: getPeriapsis(),
-        eccentricity: ADVANCED.orbit.eccentricity,
-        period: ADVANCED.orbit.orbitalPeriod,
-        trueAnomaly: ADVANCED.orbit.trueAnomaly,
-        argumentOfPeriapsis: ADVANCED.orbit.argumentOfPeriapsis,
-        meanAnomaly: ADVANCED.orbit.meanAnomaly,
-        inclination: ADVANCED.orbit.inclination,
-        isInOrbit: ADVANCED.orbit.periapsis > planet.radius,
-        isEscaping: ADVANCED.orbit.eccentricity >= 1
-    };
+const vectors = getVelocityVectors(velocityVector, positionVector);
+
+return {
+    apoapsis: getApoapsis(),
+    periapsis: getPeriapsis(),
+    eccentricity: ADVANCED.orbit.eccentricity,
+    period: ADVANCED.orbit.orbitalPeriod,
+    trueAnomaly: ADVANCED.orbit.trueAnomaly,
+    argumentOfPeriapsis: ADVANCED.orbit.argumentOfPeriapsis,
+    meanAnomaly: ADVANCED.orbit.meanAnomaly,
+    inclination: ADVANCED.orbit.inclination,
+    isInOrbit: ADVANCED.orbit.periapsis > planet.radius,
+    isEscaping: ADVANCED.orbit.eccentricity >= 1,
+    radialVelocity: vectors.radial,
+    progradeVelocity: vectors.prograde
+};
 }
 
 
