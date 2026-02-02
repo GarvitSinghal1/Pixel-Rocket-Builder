@@ -626,6 +626,22 @@ function updateFlightData() {
     document.getElementById('data-altitude').textContent = formatAltitude(PHYSICS.altitude);
     document.getElementById('data-velocity').textContent = `${Math.round(PHYSICS.velocity)} m/s`;
 
+    // Orbit data
+    if (telemetry && telemetry.orbit) {
+        if (telemetry.orbit.isOrbital) {
+            document.getElementById('data-apoapsis').textContent = formatAltitude(telemetry.orbit.apoapsis);
+            document.getElementById('data-periapsis').textContent = formatAltitude(telemetry.orbit.periapsis);
+            document.getElementById('data-eccentricity').textContent = telemetry.orbit.eccentricity.toFixed(3);
+
+            // New Elements
+            const toDeg = (rad) => ((rad * 180 / Math.PI) % 360).toFixed(1);
+            document.getElementById('data-true-anomaly').textContent = `${toDeg(telemetry.orbit.trueAnomaly)}°`;
+            document.getElementById('data-arg-pe').textContent = `${toDeg(telemetry.orbit.argumentOfPeriapsis)}°`;
+            document.getElementById('data-mean-anomaly').textContent = `${toDeg(telemetry.orbit.meanAnomaly)}°`;
+            document.getElementById('data-inclination').textContent = `${toDeg(telemetry.orbit.inclination)}°`;
+        }
+    }
+
     // Mach number
     const machEl = document.getElementById('data-mach');
     if (machEl) {

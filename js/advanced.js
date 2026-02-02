@@ -403,4 +403,26 @@ function getAdvancedTelemetry() {
     };
 }
 
+/**
+ * Get orbital info for telemetry
+ */
+function getOrbitalInfo() {
+    if (!ADVANCED.enabled) return null;
+
+    const planet = getCurrentPlanet();
+    return {
+        apoapsis: getApoapsis(),
+        periapsis: getPeriapsis(),
+        eccentricity: ADVANCED.orbit.eccentricity,
+        period: ADVANCED.orbit.orbitalPeriod,
+        trueAnomaly: ADVANCED.orbit.trueAnomaly,
+        argumentOfPeriapsis: ADVANCED.orbit.argumentOfPeriapsis,
+        meanAnomaly: ADVANCED.orbit.meanAnomaly,
+        inclination: ADVANCED.orbit.inclination,
+        isInOrbit: ADVANCED.orbit.periapsis > planet.radius,
+        isEscaping: ADVANCED.orbit.eccentricity >= 1
+    };
+}
+
+
 console.log('🚀 Advanced physics module loaded');
