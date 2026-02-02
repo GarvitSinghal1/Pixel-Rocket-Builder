@@ -703,6 +703,21 @@ function updateFlightData() {
     const fuelPercent = PHYSICS.maxFuel > 0 ? Math.round((PHYSICS.fuel / PHYSICS.maxFuel) * 100) : 0;
     document.getElementById('data-fuel').textContent = `${fuelPercent}%`;
 
+    // Staging Info
+    const stagesEl = document.getElementById('data-stages');
+    if (stagesEl) {
+        const current = PHYSICS.currentStage + 1;
+        const total = PHYSICS.stages.length;
+        stagesEl.textContent = `${current}/${total}`;
+
+        // Highlight stage button if next stage is available
+        const stageBtn = document.getElementById('btn-stage');
+        if (stageBtn) {
+            const hasNext = PHYSICS.currentStage < PHYSICS.stages.length - 1;
+            stageBtn.classList.toggle('highlight', hasNext);
+        }
+    }
+
     // Time
     const timeEl = document.getElementById('data-time');
     if (timeEl) {
@@ -1334,14 +1349,20 @@ function updateAndDrawDebris(ctx, dt, centerX) {
     const rocketMinEditorY = GAME.rocketBounds.minY;
 
     // Remove debris that is way off screen
-    GAME.debris = GAME.debris.filter(p => p.time < 500); // Life check or distance check
+    GAME.debris = GAME.debris.filter(p => p.time < 30); // 30 second lifespan
 
     GAME.debris.forEach(p => {
         // Update physics
-        // Accelerate away (gravity relative to rocket acceleration)
-        // This is a visual approximation
-        const relativeGravity = 100 * scale;
-        p.vy += relativeGravity * dt;
+        // Fall away from rocket
+        const gravity = 400; // Increased visual gravity
+        const drag = 0.5;   // Simple air resistance
+
+        // Acceleration
+        p.vy += gravity * dt;
+
+        // Drag (opposes velocity)
+        p.vx *= (1 - drag * dt);
+        p.vy *= (1 - drag * dt);
 
         p.x += p.vx * dt;
         p.y += p.vy * dt;

@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }, { threshold: 0.1 });
 
-    document.querySelectorAll('.card, .recruiter-note, .eng-box').forEach(el => {
+    document.querySelectorAll('.card, .recruiter-note, .transmission-box, .eng-box').forEach(el => {
         el.style.opacity = '0';
         el.style.transform = 'translateY(30px)';
         el.style.transition = 'all 0.8s cubic-bezier(0.16, 1, 0.3, 1)';

@@ -266,6 +266,17 @@ p {
     left: 100%;
 }
 
+.card-icon {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 2rem;
+    opacity: 0.1;
+    font-family: var(--font-mono);
+    color: var(--accent-primary);
+    pointer-events: none;
+}
+
 /* Premium Buttons */
 .btn {
     display: inline-block;
@@ -429,18 +440,104 @@ footer {
     animation: glowPulse 2s infinite;
 }
 
-/* Recruiter Highlight */
-.recruiter-note {
-    background: linear-gradient(45deg, rgba(0, 255, 255, 0.1), rgba(255, 0, 255, 0.1));
+/* Recruiter Highlight / Transmission Box */
+.recruiter-note,
+.transmission-box {
+    background: linear-gradient(45deg, rgba(0, 255, 255, 0.05), rgba(255, 0, 255, 0.05));
     border: 2px dashed var(--accent-primary);
     padding: 2rem;
     margin: 4rem 0;
     text-align: center;
+    position: relative;
+    overflow: hidden;
 }
 
-.recruiter-note h3 {
+.transmission-box::before {
+    content: "INCOMING TRANSMISSION // ENCRYPTED";
+    position: absolute;
+    top: 0;
+    left: 0;
+    background: var(--accent-primary);
+    color: #000;
+    font-size: 8px;
+    padding: 2px 6px;
+    font-family: var(--font-mono);
+}
+
+.recruiter-note h3,
+.transmission-box h3 {
     color: #fff;
     margin-bottom: 0.5rem;
+}
+
+/* Utilities */
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+}
+
+.text-accent-secondary {
+    color: var(--accent-secondary) !important;
+}
+
+.text-accent-primary {
+    color: var(--accent-primary) !important;
+}
+
+.mt-1 {
+    margin-top: 1rem;
+}
+
+.ml-20 {
+    margin-left: 20px;
+}
+
+.mb-08 {
+    margin-bottom: 0.8rem;
+}
+
+/* Glitch Effect on Hover - Refined for visibility */
+.glitch-hover {
+    position: relative;
+    transition: var(--transition-cinematic);
+}
+
+.glitch-hover:hover {
+    animation: glitch-anim 0.2s cubic-bezier(.25, .46, .45, .94) both infinite;
+}
+
+/* Ensure active/launch buttons remain readable during glitch */
+nav a.active.glitch-hover:hover,
+.btn-launch.glitch-hover:hover {
+    color: #000 !important;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+.glitch-hover:hover:not(.active):not(.btn-launch) {
+    color: var(--accent-primary);
+}
+
+@keyframes glitch-anim {
+    0% {
+        transform: translate(0)
+    }
+
+    25% {
+        transform: translate(-1px, 1px)
+    }
+
+    50% {
+        transform: translate(-1px, -1px)
+    }
+
+    75% {
+        transform: translate(1px, 1px)
+    }
+
+    100% {
+        transform: translate(0)
+    }
 }
 
 /* Mobile */

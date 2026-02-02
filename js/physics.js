@@ -976,8 +976,15 @@ function triggerStage() {
         console.log(`[Staging] Dropped IDs: ${droppedParts.map(p => p.id).join(', ')}`);
         console.log(`[Staging] Dropped Count: ${droppedParts.length}`);
 
+        // Update maxFuel and cap current fuel
+        const oldMaxFuel = PHYSICS.maxFuel;
         PHYSICS.maxFuel = calculateTotalFuel(remainingParts);
-        PHYSICS.fuel = PHYSICS.maxFuel;
+
+        // If we dropped fuel, we might need to cap the current fuel
+        if (PHYSICS.fuel > PHYSICS.maxFuel) {
+            console.log(`[Staging] Capping fuel: ${PHYSICS.fuel.toFixed(1)} -> ${PHYSICS.maxFuel.toFixed(1)}`);
+            PHYSICS.fuel = PHYSICS.maxFuel;
+        }
 
         return { success: true, droppedParts: droppedParts };
     }
