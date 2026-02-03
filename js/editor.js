@@ -189,6 +189,23 @@ function handleCanvasMouseMove(e) {
             EDITOR.snapLines.x = otherCenterX;
         }
 
+        // Side Snapping (Left-to-Right / Right-to-Left)
+        // Detect if we are vertically aligned enough to merit a side snap
+        const vAlignInfo = (y < other.y + otherH) && (y + partH > other.y);
+
+        if (vAlignInfo) {
+            // Snap Left edge of DragPart to Right edge of Other
+            if (Math.abs(x - (other.x + otherW)) < snapThreshold) {
+                x = other.x + otherW;
+                EDITOR.snapLines.x = other.x + otherW;
+            }
+            // Snap Right edge of DragPart to Left edge of Other
+            if (Math.abs((x + partW) - other.x) < snapThreshold) {
+                x = other.x - partW;
+                EDITOR.snapLines.x = other.x;
+            }
+        }
+
         // Vertical snap to attach above/below
         if (Math.abs(x - other.x) < snapThreshold * 2 ||
             Math.abs((x + partW) - (other.x + otherW)) < snapThreshold * 2 ||
