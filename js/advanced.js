@@ -360,6 +360,7 @@ function isCavitating() {
  */
 function getApoapsis() {
     const planet = getCurrentPlanet();
+    if (!planet || !ADVANCED.orbit.semiMajorAxis) return 0; // Uninitialized
     return ADVANCED.orbit.apoapsis - planet.radius;
 }
 
@@ -368,6 +369,7 @@ function getApoapsis() {
  */
 function getPeriapsis() {
     const planet = getCurrentPlanet();
+    if (!planet || !ADVANCED.orbit.semiMajorAxis) return 0; // Uninitialized
     return ADVANCED.orbit.periapsis - planet.radius;
 }
 
@@ -379,9 +381,9 @@ function getPeriapsis() {
  * Called from physics.js loop
  */
 function updateOrbitalState(altitude, velocity) {
-    if (!ADVANCED.enabled) return;
-
+    // Calculate orbital state always (telemetry might be requested even in simple mode)
     const planet = getCurrentPlanet();
+    if (!planet) return;
 
     // Convert 1D vertical physics to 2D orbital state
     // We assume launch is from "top" of planet (y-axis)
@@ -401,49 +403,67 @@ function updateOrbitalState(altitude, velocity) {
  * Get advanced mode status for telemetry
  */
 function getAdvancedTelemetry() {
-    if (!ADVANCED.enabled) return null;
+    // Always return telemetry structure, even if advanced physics are disabled
+    try {
+        const orbitInfo = getOrbitalInfo() || {
+            apoapsis: 0, periapsis: 0, eccentricity: 0, period: 0,
+            trueAnomaly: 0, argumentOfPeriapsis: 0, meanAnomaly: 0, inclination: 0,
+            isOrbital: true, isInOrbit: false, isEscaping: false,
+            radialVelocity: 0, progradeVelocity: 0
+        };
 
-    return {
-        throttleLag: ADVANCED.engines.throttleTarget - ADVANCED.engines.throttleActual,
-        ignitionFailed: hasIgnitionFailed(),
-        cavitating: isCavitating(),
-        cavitationLoss: ADVANCED.engines.cavitationLoss,
-        orbit: getOrbitalInfo()
-    };
+        return {
+            throttleLag: ADVANCED.engines.throttleTarget - ADVANCED.engines.throttleActual,
+            ignitionFailed: typeof hasIgnitionFailed === 'function' && hasIgnitionFailed(),
+            cavitating: typeof isCavitating === 'function' && isCavitating(),
+            cavitationLoss: ADVANCED.engines.cavitationLoss || 0,
+            orbit: orbitInfo
+        };
+    } catch (e) {
+        console.error("Advanced Telemetry Fatal Error:", e);
+        return {
+            throttleLag: 0, ignitionFailed: false, cavitating: false, cavitationLoss: 0,
+            orbit: { isOrbital: true, apoapsis: 0, periapsis: 0, eccentricity: 0 }
+        };
+    }
 }
 
 /**
  * Get orbital info for telemetry
  */
 function getOrbitalInfo() {
-    if (!ADVANCED.enabled) return null;
-
     const planet = getCurrentPlanet();
+    if (!planet) return null;
 
-    // For 1D simulation:
-    // Radial Velocity = Vertical Velocity (PHYSICS.velocity)
-    // Prograde Velocity = Horizontal Velocity (0 for now)
-    // Position vector = (0, radius + altitude)
-    const velocityVector = { vx: 0, vy: PHYSICS.velocity };
-    const positionVector = { x: 0, y: planet.radius + PHYSICS.altitude };
+    try {
+        // For 1D simulation:
+        // Radial Velocity = Vertical Velocity (PHYSICS.velocity)
+        // Prograde Velocity = Horizontal Velocity (0 for now)
+        // Position vector = (0, radius + altitude)
+        const velocityVector = { vx: 0, vy: PHYSICS.velocity || 0 };
+        const positionVector = { x: 0, y: planet.radius + (PHYSICS.altitude || 0) };
 
-    const vectors = getVelocityVectors(velocityVector, positionVector);
+        const vectors = getVelocityVectors(velocityVector, positionVector);
 
-    return {
-        apoapsis: getApoapsis(),
-        periapsis: getPeriapsis(),
-        eccentricity: ADVANCED.orbit.eccentricity,
-        period: ADVANCED.orbit.orbitalPeriod,
-        trueAnomaly: ADVANCED.orbit.trueAnomaly,
-        argumentOfPeriapsis: ADVANCED.orbit.argumentOfPeriapsis,
-        meanAnomaly: ADVANCED.orbit.meanAnomaly,
-        inclination: ADVANCED.orbit.inclination,
-        isOrbital: true, // Always show orbital data in advanced mode
-        isInOrbit: ADVANCED.orbit.periapsis > planet.radius,
-        isEscaping: ADVANCED.orbit.eccentricity >= 1,
-        radialVelocity: vectors.radial,
-        progradeVelocity: vectors.prograde
-    };
+        return {
+            apoapsis: getApoapsis(),
+            periapsis: getPeriapsis(),
+            eccentricity: ADVANCED.orbit.eccentricity || 0,
+            period: ADVANCED.orbit.orbitalPeriod || 0,
+            trueAnomaly: ADVANCED.orbit.trueAnomaly || 0,
+            argumentOfPeriapsis: ADVANCED.orbit.argumentOfPeriapsis || 0,
+            meanAnomaly: ADVANCED.orbit.meanAnomaly || 0,
+            inclination: ADVANCED.orbit.inclination || 0,
+            isOrbital: true, // Always show orbital data in advanced mode
+            isInOrbit: (ADVANCED.orbit.periapsis > planet.radius),
+            isEscaping: (ADVANCED.orbit.eccentricity >= 1),
+            radialVelocity: vectors.radial,
+            progradeVelocity: vectors.prograde
+        };
+    } catch (e) {
+        console.error("Orbital Info Calculation Error:", e);
+        return null;
+    }
 }
 
 

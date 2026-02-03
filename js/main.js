@@ -616,162 +616,174 @@ function animateLaunch() {
 }
 
 /**
+ * Format altitude for display (Helper)
+ */
+function formatAltitude(meters) {
+    if (typeof meters !== 'number' || isNaN(meters)) return '0 m';
+    if (meters >= 1000000) {
+        return `${(meters / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} km`;
+    } else if (meters >= 1000) {
+        return `${(meters / 1000).toFixed(1)} km`;
+    } else if (meters <= -1000) { // Handle negative output from orbit math
+        return `${(meters / 1000).toFixed(1)} km`;
+    } else {
+        return `${Math.round(meters)} m`;
+    }
+}
+
+/**
+ * Update flight data display with full telemetry
+ */
+/**
  * Update flight data display with full telemetry
  */
 function updateFlightData() {
-    // Get telemetry from physics engine
-    const telemetry = typeof getTelemetry === 'function' ? getTelemetry() : null;
+    try {
+        // A. Manually Construct Telemetry Object
+        // We allow PHYSICS and separate Advanced logic to be sources of truth
+        let fullTelemetry = {};
 
-    // Basic data
-    document.getElementById('data-altitude').textContent = formatAltitude(PHYSICS.altitude);
-    document.getElementById('data-velocity').textContent = `${Math.round(PHYSICS.velocity)} m/s`;
+        // Part 1: Basic Physics (From PHYSICS global)
+        // Access safely in case of scope issues
+        let ph = (typeof PHYSICS !== 'undefined') ? PHYSICS : {};
 
-    // Orbit data
-    if (telemetry && telemetry.orbit) {
-        if (telemetry.orbit.isOrbital) {
-            document.getElementById('data-apoapsis').textContent = formatAltitude(telemetry.orbit.apoapsis);
-            document.getElementById('data-periapsis').textContent = formatAltitude(telemetry.orbit.periapsis);
-            document.getElementById('data-eccentricity').textContent = telemetry.orbit.eccentricity.toFixed(3);
+        fullTelemetry.altitude = ph.altitude || 0;
+        fullTelemetry.velocity = ph.velocity || 0;
+        fullTelemetry.machNumber = ph.machNumber || 0;
+        fullTelemetry.dynamicPressure = ph.dynamicPressure || 0;
+        fullTelemetry.gForce = ph.gForce || 0;
+        fullTelemetry.surfaceTemp = ph.surfaceTemperature || 288;
+        fullTelemetry.fuel = ph.fuel || 0;
+        fullTelemetry.maxFuel = ph.maxFuel || 1;
+        fullTelemetry.time = ph.time || 0;
+        fullTelemetry.currentStage = (ph.currentStage !== undefined) ? ph.currentStage : 0;
+        fullTelemetry.totalStages = (ph.stages || []).length;
 
-            // New Elements
-            const toDeg = (rad) => ((rad * 180 / Math.PI) % 360).toFixed(1);
-            document.getElementById('data-true-anomaly').textContent = `${toDeg(telemetry.orbit.trueAnomaly)}°`;
-            document.getElementById('data-arg-pe').textContent = `${toDeg(telemetry.orbit.argumentOfPeriapsis)}°`;
-            document.getElementById('data-mean-anomaly').textContent = `${toDeg(telemetry.orbit.meanAnomaly)}°`;
-            document.getElementById('data-inclination').textContent = `${toDeg(telemetry.orbit.inclination)}°`;
+        fullTelemetry.warnings = {
+            q: (fullTelemetry.dynamicPressure > (ph.MAX_Q_LIMIT || 30000) * 0.9) ? 2 : 0,
+            g: (Math.abs(fullTelemetry.gForce) > (ph.MAX_G_LIMIT || 10) * 0.9) ? 2 : 0,
+            temp: (fullTelemetry.surfaceTemp > (ph.MAX_TEMP_LIMIT || 1000) * 0.9) ? 2 : 0
+        };
 
-            // Velocity Vectors
-            document.getElementById('data-radial').textContent = `${Math.round(telemetry.orbit.radialVelocity)} m/s`;
-            document.getElementById('data-prograde').textContent = `${Math.round(telemetry.orbit.progradeVelocity)} m/s`;
+        // Part 2: Advanced Data
+        let advData = {};
+        if (typeof getAdvancedTelemetry === 'function') {
+            try { advData = getAdvancedTelemetry() || {}; } catch (e) { }
         }
 
-        // Engine Status
-        const engineRow = document.getElementById('engine-telemetry');
-        if (engineRow) {
-            engineRow.style.display = 'flex';
+        fullTelemetry.orbit = advData.orbit || { isOrbital: false };
+        fullTelemetry.throttleLag = advData.throttleLag || 0;
+        fullTelemetry.ignitionFailed = advData.ignitionFailed || false;
+        fullTelemetry.cavitating = advData.cavitating || false;
+        fullTelemetry.cavitationLoss = advData.cavitationLoss || 0;
 
-            // Ignition
-            const ignEl = document.getElementById('data-ignition');
-            if (telemetry.ignitionFailed) {
-                ignEl.textContent = 'FAIL';
-                ignEl.style.color = '#ff0000';
-            } else {
-                ignEl.textContent = 'OK';
-                ignEl.style.color = '#00ff00';
-            }
+        // B. Update UI Elements
+        // Helper to safely update text content
+        const update = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val;
+        };
 
-            // Cavitation
-            const cavEl = document.getElementById('data-cavitation');
-            if (telemetry.cavitating) {
-                const loss = (telemetry.cavitationLoss * 100).toFixed(0);
-                cavEl.textContent = `YES (-${loss}%)`;
-                cavEl.style.color = '#ff9900';
-            } else {
-                cavEl.textContent = 'NO';
-                cavEl.style.color = '#888888';
-            }
+        // Basic Data Updates
+        update('data-altitude', formatAltitude(fullTelemetry.altitude));
+        update('data-velocity', Math.round(fullTelemetry.velocity) + " m/s");
 
-            // Lag
-            document.getElementById('data-throttle-lag').textContent = telemetry.throttleLag.toFixed(2);
+        const machEl = document.getElementById('data-mach');
+        if (machEl) {
+            machEl.textContent = fullTelemetry.machNumber.toFixed(2);
+            machEl.classList.remove('supersonic', 'hypersonic');
+            if (fullTelemetry.machNumber >= 5) machEl.classList.add('hypersonic');
+            else if (fullTelemetry.machNumber >= 1) machEl.classList.add('supersonic');
         }
-    }
 
-    // Mach number
-    const machEl = document.getElementById('data-mach');
-    if (machEl) {
-        const mach = telemetry ? telemetry.machNumber : 0;
-        machEl.textContent = mach.toFixed(2);
+        update('data-q', (fullTelemetry.dynamicPressure / 1000).toFixed(1));
 
-        // Color coding for speed regime
-        machEl.classList.remove('supersonic', 'hypersonic');
-        if (mach >= 5) {
-            machEl.classList.add('hypersonic');
-        } else if (mach >= 1) {
-            machEl.classList.add('supersonic');
+        // Q Indicator
+        const qFill = document.getElementById('q-fill');
+        const qInd = document.getElementById('q-indicator');
+        if (qFill) qFill.style.width = Math.min(100, (fullTelemetry.dynamicPressure / (ph.MAX_Q_LIMIT || 30000)) * 100) + '%';
+        if (qInd) {
+            qInd.classList.remove('warning', 'danger');
+            if (fullTelemetry.warnings.q === 2) qInd.classList.add('danger');
+            else if (fullTelemetry.warnings.q === 1) qInd.classList.add('warning');
         }
-    }
 
-    // Dynamic Pressure (Q)
-    const qEl = document.getElementById('data-q');
-    const qIndicator = document.getElementById('q-indicator');
-    const qFill = document.getElementById('q-fill');
-    if (qEl && telemetry) {
-        const q = telemetry.dynamicPressure / 1000; // Convert to kPa
-        qEl.textContent = q.toFixed(1);
+        update('data-g', fullTelemetry.gForce.toFixed(1) + " g");
 
-        // Update warning bar
-        const qPercent = Math.min(100, (telemetry.dynamicPressure / PHYSICS.MAX_Q_LIMIT) * 100);
-        if (qFill) qFill.style.width = qPercent + '%';
-
-        // Update warning class
-        if (qIndicator) {
-            qIndicator.classList.remove('warning', 'danger');
-            if (telemetry.warnings.q === 2) qIndicator.classList.add('danger');
-            else if (telemetry.warnings.q === 1) qIndicator.classList.add('warning');
+        // G Indicator
+        const gFill = document.getElementById('g-fill');
+        const gInd = document.getElementById('g-indicator');
+        if (gFill) gFill.style.width = Math.min(100, (Math.abs(fullTelemetry.gForce) / (ph.MAX_G_LIMIT || 10)) * 100) + '%';
+        if (gInd) {
+            gInd.classList.remove('warning', 'danger');
+            if (fullTelemetry.warnings.g === 2) gInd.classList.add('danger');
+            else if (fullTelemetry.warnings.g === 1) gInd.classList.add('warning');
         }
-    }
 
-    // G-Force
-    const gEl = document.getElementById('data-g');
-    const gIndicator = document.getElementById('g-indicator');
-    const gFill = document.getElementById('g-fill');
-    if (gEl && telemetry) {
-        gEl.textContent = telemetry.gForce.toFixed(1) + ' g';
+        update('data-temp', Math.round(fullTelemetry.surfaceTemp));
 
-        // Update warning bar
-        const gPercent = Math.min(100, (Math.abs(telemetry.gForce) / PHYSICS.MAX_G_LIMIT) * 100);
-        if (gFill) gFill.style.width = gPercent + '%';
-
-        // Update warning class
-        if (gIndicator) {
-            gIndicator.classList.remove('warning', 'danger');
-            if (telemetry.warnings.g === 2) gIndicator.classList.add('danger');
-            else if (telemetry.warnings.g === 1) gIndicator.classList.add('warning');
+        // Temp Indicator
+        const tFill = document.getElementById('temp-fill');
+        const tInd = document.getElementById('temp-indicator');
+        if (tFill) tFill.style.width = Math.min(100, (fullTelemetry.surfaceTemp / (ph.MAX_TEMP_LIMIT || 1000)) * 100) + '%';
+        if (tInd) {
+            tInd.classList.remove('warning', 'danger');
+            if (fullTelemetry.warnings.temp === 2) tInd.classList.add('danger');
+            else if (fullTelemetry.warnings.temp === 1) tInd.classList.add('warning');
         }
-    }
 
-    // Surface Temperature
-    const tempEl = document.getElementById('data-temp');
-    const tempIndicator = document.getElementById('temp-indicator');
-    const tempFill = document.getElementById('temp-fill');
-    if (tempEl && telemetry) {
-        tempEl.textContent = Math.round(telemetry.surfaceTemp);
+        const fuelPct = Math.round((fullTelemetry.fuel / fullTelemetry.maxFuel) * 100);
+        update('data-fuel', fuelPct + "%");
 
-        // Update warning bar
-        const tempPercent = Math.min(100, (telemetry.surfaceTemp / PHYSICS.MAX_TEMP_LIMIT) * 100);
-        if (tempFill) tempFill.style.width = tempPercent + '%';
-
-        // Update warning class
-        if (tempIndicator) {
-            tempIndicator.classList.remove('warning', 'danger');
-            if (telemetry.warnings.temp === 2) tempIndicator.classList.add('danger');
-            else if (telemetry.warnings.temp === 1) tempIndicator.classList.add('warning');
-        }
-    }
-
-    // Fuel
-    const fuelPercent = PHYSICS.maxFuel > 0 ? Math.round((PHYSICS.fuel / PHYSICS.maxFuel) * 100) : 0;
-    document.getElementById('data-fuel').textContent = `${fuelPercent}%`;
-
-    // Staging Info
-    const stagesEl = document.getElementById('data-stages');
-    if (stagesEl) {
-        const current = PHYSICS.currentStage + 1;
-        const total = PHYSICS.stages.length;
-        stagesEl.textContent = `${current}/${total}`;
-
-        // Highlight stage button if next stage is available
+        const stagesEl = document.getElementById('data-stages');
+        if (stagesEl) stagesEl.textContent = `${fullTelemetry.currentStage + 1}/${fullTelemetry.totalStages}`;
+        // Highlight stage button (simplified)
         const stageBtn = document.getElementById('btn-stage');
-        if (stageBtn) {
-            const hasNext = PHYSICS.currentStage < PHYSICS.stages.length - 1;
-            stageBtn.classList.toggle('highlight', hasNext);
+        if (stageBtn && ph.stages && ph.currentStage < ph.stages.length - 1) {
+            stageBtn.classList.add('highlight');
+        } else if (stageBtn) {
+            stageBtn.classList.remove('highlight');
         }
-    }
 
-    // Time
-    const timeEl = document.getElementById('data-time');
-    if (timeEl) {
-        timeEl.textContent = PHYSICS.time.toFixed(1) + 's';
+        update('data-time', fullTelemetry.time.toFixed(1) + "s");
+
+        // Advanced Data Updates
+        const orb = fullTelemetry.orbit;
+        if (orb && orb.isOrbital) {
+            update('data-apoapsis', formatAltitude(orb.apoapsis));
+            update('data-periapsis', formatAltitude(orb.periapsis));
+            update('data-eccentricity', (orb.eccentricity || 0).toFixed(3));
+
+            const toDeg = (rad) => (((rad || 0) * 180 / Math.PI) % 360).toFixed(1);
+            update('data-true-anomaly', toDeg(orb.trueAnomaly) + "°");
+            update('data-arg-pe', toDeg(orb.argumentOfPeriapsis) + "°");
+            update('data-mean-anomaly', toDeg(orb.meanAnomaly) + "°");
+            update('data-inclination', toDeg(orb.inclination) + "°");
+
+            update('data-radial', Math.round(orb.radialVelocity || 0) + " m/s");
+            update('data-prograde', Math.round(orb.progradeVelocity || 0) + " m/s");
+
+            const ignEl = document.getElementById('data-ignition');
+            if (ignEl) {
+                if (fullTelemetry.ignitionFailed) { ignEl.textContent = 'FAIL'; ignEl.style.color = '#ff0000'; }
+                else { ignEl.textContent = 'OK'; ignEl.style.color = '#00ff00'; }
+            }
+            const cavEl = document.getElementById('data-cavitation');
+            if (cavEl) {
+                if (fullTelemetry.cavitating) {
+                    const loss = (fullTelemetry.cavitationLoss * 100).toFixed(0);
+                    cavEl.textContent = `YES (-${loss}%)`;
+                    cavEl.style.color = '#ff9900';
+                } else {
+                    cavEl.textContent = 'NO';
+                    cavEl.style.color = '#888888';
+                }
+            }
+            update('data-throttle-lag', fullTelemetry.throttleLag.toFixed(2));
+        }
+
+    } catch (e) {
+        console.error("Telemetry Update Error:", e);
     }
 }
 
