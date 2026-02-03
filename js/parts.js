@@ -13,8 +13,8 @@ const PARTS = {
             name: 'Small Thruster',
             category: 'engines',
             mass: 50,
-            thrust: 20,
-            fuelConsumption: 2,
+            thrust: 10,
+            fuelConsumption: 0.5,
             isp: 280,
             width: 1,
             height: 1,
@@ -23,15 +23,15 @@ const PARTS = {
             color: '#666677',
             accentColor: '#ff6600',
             description: 'Compact engine for lightweight rockets',
-            tooltip: 'Low thrust (20kN) but fuel-efficient (ISP 280s). Best for altitudes up to 10km. Mass: 50kg'
+            tooltip: 'Low thrust (10kN) but fuel-efficient (ISP 280s). Best for altitudes up to 10km. Mass: 50kg'
         },
         standard_engine: {
             id: 'standard_engine',
             name: 'Standard Engine',
             category: 'engines',
-            mass: 200,
-            thrust: 150,
-            fuelConsumption: 8,
+            mass: 500,
+            thrust: 120, // Nerfed from 300
+            fuelConsumption: 5,
             isp: 320,
             width: 2,
             height: 2,
@@ -40,15 +40,15 @@ const PARTS = {
             color: '#555566',
             accentColor: '#ff8800',
             description: 'Reliable workhorse engine',
-            tooltip: 'Balanced thrust (150kN) and efficiency (ISP 320s). Good for reaching 50km+. Mass: 200kg'
+            tooltip: 'Balanced thrust (120kN) and efficiency (ISP 320s). Good for reaching 50km+. Mass: 500kg'
         },
         heavy_lifter: {
             id: 'heavy_lifter',
             name: 'Heavy Lifter',
             category: 'engines',
-            mass: 500,
-            thrust: 400,
-            fuelConsumption: 20,
+            mass: 1500,
+            thrust: 450, // Nerfed from 1200
+            fuelConsumption: 18,
             isp: 300,
             width: 3,
             height: 2,
@@ -57,15 +57,16 @@ const PARTS = {
             color: '#444455',
             accentColor: '#ffaa00',
             description: 'Powerful main stage engine',
-            tooltip: 'High thrust (400kN) for heavy payloads. Can reach space (100km+). Mass: 500kg'
+            tooltip: 'High thrust (450kN) for heavy payloads. Can reach space (100km+). Mass: 1.5t'
         },
         booster: {
             id: 'booster',
             name: 'Booster',
             category: 'engines',
-            mass: 300,
-            thrust: 250,
-            fuelConsumption: 25,
+            mass: 500, // Dry mass
+            fuelCapacity: 1500, // Solid Fuel
+            thrust: 250, // Nerfed from 600
+            fuelConsumption: 15,
             isp: 250,
             width: 1,
             height: 3,
@@ -74,7 +75,58 @@ const PARTS = {
             color: '#cc4444',
             accentColor: '#ff6600',
             description: 'Solid rocket booster for extra thrust',
-            tooltip: 'Side-mounted booster (250kN). High fuel consumption. Attach to sides. Mass: 300kg'
+            tooltip: 'Side-mounted booster (250kN). Contains 1500 fuel. Burns fast. Mass: 2t (Wet)'
+        },
+        ion_drive: {
+            id: 'ion_drive',
+            name: 'Ion Drive',
+            category: 'engines',
+            mass: 100,
+            thrust: 2, // Nerfed back to logical low thrust
+            fuelConsumption: 0.1,
+            isp: 4000,
+            width: 1,
+            height: 1,
+            attachPoints: { top: true, bottom: false, left: false, right: false },
+            unlockLevel: 8,
+            color: '#aaaaaa',
+            accentColor: '#00ffff',
+            description: 'High-efficiency deep space engine',
+            tooltip: 'Tiny thrust (2kN) but insane efficiency (ISP 4000s). Vacuum only. Mass: 100kg'
+        },
+        aerospike: {
+            id: 'aerospike',
+            name: 'Aerospike',
+            category: 'engines',
+            mass: 800,
+            thrust: 350, // Nerfed from 500
+            fuelConsumption: 14,
+            isp: 340,
+            width: 2,
+            height: 2,
+            attachPoints: { top: true, bottom: false, left: false, right: false },
+            unlockLevel: 7,
+            color: '#775555',
+            accentColor: '#ffccaa',
+            description: 'Altitude compensating engine',
+            tooltip: 'Efficient in both atmo and vacuum. 350kN Thrust. Mass: 800kg'
+        },
+        mammoth_engine: {
+            id: 'mammoth_engine',
+            name: 'Mammoth Engine',
+            category: 'engines',
+            mass: 3000,
+            thrust: 1000, // Nerfed from 4000
+            fuelConsumption: 50,
+            isp: 295,
+            width: 3,
+            height: 3,
+            attachPoints: { top: true, bottom: false, left: false, right: false },
+            unlockLevel: 11,
+            color: '#333333',
+            accentColor: '#ff4400',
+            description: 'Super-heavy lifter',
+            tooltip: 'Massive thrust (1000kN) for huge rockets. Low efficiency. Mass: 3t'
         }
     },
 
@@ -86,8 +138,8 @@ const PARTS = {
             id: 'small_tank',
             name: 'Small Tank',
             category: 'fuel',
-            mass: 30,
-            fuelCapacity: 100,
+            mass: 100, // Dry
+            fuelCapacity: 500, // Wet ~ 600kg total
             width: 1,
             height: 2,
             attachPoints: { top: true, bottom: true, left: false, right: false },
@@ -95,14 +147,14 @@ const PARTS = {
             color: '#ddddee',
             accentColor: '#aabbcc',
             description: 'Lightweight fuel tank',
-            tooltip: '100 units of fuel. Perfect for small rockets. Mass: 30kg'
+            tooltip: '500 units of fuel. Perfect for small rockets. Mass: 100kg (Dry)'
         },
         medium_tank: {
             id: 'medium_tank',
             name: 'Medium Tank',
             category: 'fuel',
-            mass: 80,
-            fuelCapacity: 300,
+            mass: 400,
+            fuelCapacity: 2000, // ~2.4t total
             width: 2,
             height: 3,
             attachPoints: { top: true, bottom: true, left: false, right: false },
@@ -110,14 +162,14 @@ const PARTS = {
             color: '#ccccdd',
             accentColor: '#99aacc',
             description: 'Standard capacity fuel tank',
-            tooltip: '300 units of fuel. Balanced size and capacity. Mass: 80kg'
+            tooltip: '2000 units of fuel. Balanced size and capacity. Mass: 400kg (Dry)'
         },
         large_tank: {
             id: 'large_tank',
             name: 'Large Tank',
             category: 'fuel',
-            mass: 150,
-            fuelCapacity: 600,
+            mass: 800,
+            fuelCapacity: 5000, // ~5.8t total
             width: 2,
             height: 4,
             attachPoints: { top: true, bottom: true, left: true, right: true },
@@ -125,14 +177,14 @@ const PARTS = {
             color: '#bbbbcc',
             accentColor: '#8899bb',
             description: 'High-capacity main stage tank',
-            tooltip: '600 units of fuel. For heavy lifters reaching space. Mass: 150kg'
+            tooltip: '5000 units of fuel. For heavy lifters reaching space. Mass: 800kg (Dry)'
         },
         radial_tank: {
             id: 'radial_tank',
             name: 'Radial Tank',
             category: 'fuel',
-            mass: 40,
-            fuelCapacity: 80,
+            mass: 150,
+            fuelCapacity: 600,
             width: 1,
             height: 2,
             attachPoints: { top: false, bottom: false, left: true, right: true },
@@ -140,7 +192,37 @@ const PARTS = {
             color: '#ddddcc',
             accentColor: '#ff8844',
             description: 'Side-mounted fuel canister',
-            tooltip: '80 units of fuel. Mounts on sides for extra capacity. Mass: 40kg'
+            tooltip: '600 units of fuel. Mounts on sides for extra capacity. Mass: 150kg'
+        },
+        tiny_tank: {
+            id: 'tiny_tank',
+            name: 'Tiny Tank',
+            category: 'fuel',
+            mass: 20,
+            fuelCapacity: 100,
+            width: 1,
+            height: 1,
+            attachPoints: { top: true, bottom: true, left: false, right: false },
+            unlockLevel: 0,
+            color: '#eeeeff',
+            accentColor: '#aabbcc',
+            description: 'Micro fuel tank',
+            tooltip: '100 units. Specific for probes/ion drives. Mass: 20kg'
+        },
+        huge_tank: {
+            id: 'huge_tank',
+            name: 'Huge Tank',
+            category: 'fuel',
+            mass: 3000,
+            fuelCapacity: 15000, // ~18t total!
+            width: 3,
+            height: 5,
+            attachPoints: { top: true, bottom: true, left: true, right: true },
+            unlockLevel: 11,
+            color: '#cccccc',
+            accentColor: '#999999',
+            description: 'Massive main stage tank',
+            tooltip: '15000 units by volume. For Mammoth engines. Mass: 3t (Dry)'
         }
     },
 
@@ -372,6 +454,56 @@ const PARTS = {
             accentColor: '#778888',
             description: 'Cargo storage module',
             tooltip: 'Small payload (20pts). Can stack parts. Connects top/bottom. Mass: 50kg'
+        },
+        habitation_module: {
+            id: 'habitation_module',
+            name: 'Habitation Module',
+            category: 'payload',
+            mass: 1500,
+            isPayload: true,
+            payloadValue: 200,
+            width: 3,
+            height: 3,
+            attachPoints: { top: true, bottom: true, left: false, right: false },
+            unlockLevel: 12,
+            color: '#ccccdd',
+            accentColor: '#ffaa44',
+            description: 'Long-term space habitaiton',
+            tooltip: 'Massive payload (200pts). Requires heavy lifting capability. Mass: 1500kg'
+        }
+    },
+
+    // ============================================
+    // UTILITY
+    // ============================================
+    utility: {
+        docking_port: {
+            id: 'docking_port',
+            name: 'Docking Port',
+            category: 'utility',
+            mass: 50,
+            width: 1,
+            height: 1,
+            attachPoints: { top: true, bottom: true, left: false, right: false },
+            unlockLevel: 6,
+            color: '#888899',
+            accentColor: '#ffffff',
+            description: 'Standard docking interface',
+            tooltip: 'Allows spacecraft connection. Mass: 50kg'
+        },
+        solar_panel: {
+            id: 'solar_panel',
+            name: 'Solar Panel',
+            category: 'utility',
+            mass: 20,
+            width: 1,
+            height: 2,
+            attachPoints: { top: false, bottom: false, left: true, right: true },
+            unlockLevel: 2,
+            color: '#223344',
+            accentColor: '#0066aa',
+            description: 'Deployable solar array',
+            tooltip: 'Generates power (visual only). Side mount. Mass: 20kg'
         }
     }
 };
@@ -458,44 +590,139 @@ function drawPart(ctx, part, x, y, scale = 1, flipX = false) {
 
     switch (part.category) {
         case 'engines':
-            // Engine body with metallic gradient
+            // Common Engine Body Gradient
             const engGrad = ctx.createLinearGradient(x, y, x + w, y);
             engGrad.addColorStop(0, darken(part.color, 30));
             engGrad.addColorStop(0.3, lighten(part.color, 20));
             engGrad.addColorStop(0.5, part.color);
             engGrad.addColorStop(0.7, lighten(part.color, 20));
             engGrad.addColorStop(1, darken(part.color, 30));
-            ctx.fillStyle = engGrad;
-            ctx.fillRect(x, y, w, h * 0.6);
 
-            // Nozzle bell
-            ctx.fillStyle = part.accentColor;
-            ctx.beginPath();
-            ctx.moveTo(x + w * 0.2, y + h * 0.6);
-            ctx.lineTo(x + w * 0.1, y + h);
-            ctx.lineTo(x + w * 0.9, y + h);
-            ctx.lineTo(x + w * 0.8, y + h * 0.6);
-            ctx.closePath();
-            ctx.fill();
+            if (part.id === 'ion_drive') {
+                // Ion Drive (1x1) - High Tech Cube
+                // Body
+                ctx.fillStyle = engGrad;
+                ctx.fillRect(x, y, w, h * 0.7);
 
-            // Nozzle inner dark
-            ctx.fillStyle = '#222222';
-            ctx.beginPath();
-            ctx.moveTo(x + w * 0.3, y + h * 0.65);
-            ctx.lineTo(x + w * 0.25, y + h * 0.95);
-            ctx.lineTo(x + w * 0.75, y + h * 0.95);
-            ctx.lineTo(x + w * 0.7, y + h * 0.65);
-            ctx.closePath();
-            ctx.fill();
+                // Grate texture
+                ctx.fillStyle = '#111';
+                ctx.fillRect(x + w * 0.15, y + h * 0.7, w * 0.7, h * 0.2);
 
-            // Highlights
-            ctx.fillStyle = 'rgba(255,255,255,0.4)';
-            ctx.fillRect(x + pixelSize, y + pixelSize, w * 0.2, h * 0.1);
+                // Ion Glow (Pixelated)
+                ctx.fillStyle = '#00ffff';
+                const glowW = w * 0.5;
+                const glowX = x + (w - glowW) / 2;
+                ctx.fillRect(glowX, y + h * 0.75, glowW, h * 0.2);
 
-            // Mounting bolts
-            ctx.fillStyle = '#333344';
-            for (let i = 0; i < 3; i++) {
-                ctx.fillRect(x + w * 0.2 + i * w * 0.25, y + h * 0.55, pixelSize * 2, pixelSize * 2);
+                // Panel lines
+                ctx.fillStyle = darken(part.color, 50);
+                ctx.fillRect(x, y + h * 0.3, w, pixelSize);
+
+            } else if (part.id === 'aerospike') {
+                // Aerospike (2x2) - V shape integrated
+                // Base housing
+                ctx.fillStyle = engGrad;
+                ctx.fillRect(x, y, w, h * 0.4);
+
+                // Spike (Conical)
+                const spikeGrad = ctx.createLinearGradient(x + w * 0.25, y, x + w * 0.75, y);
+                spikeGrad.addColorStop(0, '#444');
+                spikeGrad.addColorStop(0.5, '#999');
+                spikeGrad.addColorStop(1, '#444');
+                ctx.fillStyle = spikeGrad;
+
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.25, y + h * 0.4);
+                ctx.lineTo(x + w * 0.5, y + h); // Tip
+                ctx.lineTo(x + w * 0.75, y + h * 0.4);
+                ctx.fill();
+
+                // Combustion Chamber Ring
+                ctx.fillStyle = '#222';
+                ctx.fillRect(x + w * 0.2, y + h * 0.4, w * 0.6, h * 0.1);
+
+            } else if (part.id === 'mammoth_engine') {
+                // Mammoth (3x3) - Cluster of 4 bells
+                // Upper Thrust Structure
+                ctx.fillStyle = engGrad;
+                ctx.fillRect(x, y, w, h * 0.5);
+
+                // Heavy Ribbing
+                ctx.fillStyle = darken(part.color, 40);
+                ctx.fillRect(x, y + h * 0.1, w, pixelSize * 2);
+                ctx.fillRect(x, y + h * 0.3, w, pixelSize * 2);
+
+                // 4 Bells (Approximated as 2 wide matching ones for 2D, or 4 small ones)
+                // Let's do 2 large bells visually to represent the cluster in side profile
+                const bellW = w * 0.35;
+                const bellH = h * 0.5;
+                const positions = [x + w * 0.1, x + w * 0.55];
+
+                positions.forEach(bx => {
+                    // Nozzle Bell Gradient
+                    const bellGrad = ctx.createLinearGradient(bx, y, bx + bellW, y);
+                    bellGrad.addColorStop(0, '#222');
+                    bellGrad.addColorStop(0.5, '#666');
+                    bellGrad.addColorStop(1, '#222');
+                    ctx.fillStyle = bellGrad;
+
+                    ctx.beginPath();
+                    ctx.moveTo(bx + bellW * 0.2, y + h * 0.5);
+                    ctx.lineTo(bx, y + h);
+                    ctx.lineTo(bx + bellW, y + h);
+                    ctx.lineTo(bx + bellW * 0.8, y + h * 0.5);
+                    ctx.fill();
+
+                    // Inner dark
+                    ctx.fillStyle = '#111';
+                    ctx.beginPath();
+                    ctx.moveTo(bx + bellW * 0.3, y + h * 0.5);
+                    ctx.lineTo(bx + bellW * 0.1, y + h);
+                    ctx.lineTo(bx + bellW * 0.9, y + h);
+                    ctx.lineTo(bx + bellW * 0.7, y + h * 0.5);
+                    ctx.fill();
+                });
+
+            } else {
+                // Standard Engine rendering
+                const engGrad = ctx.createLinearGradient(x, y, x + w, y);
+                engGrad.addColorStop(0, darken(part.color, 30));
+                engGrad.addColorStop(0.3, lighten(part.color, 20));
+                engGrad.addColorStop(0.5, part.color);
+                engGrad.addColorStop(0.7, lighten(part.color, 20));
+                engGrad.addColorStop(1, darken(part.color, 30));
+                ctx.fillStyle = engGrad;
+                ctx.fillRect(x, y, w, h * 0.6);
+
+                // Nozzle bell
+                ctx.fillStyle = part.accentColor;
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.2, y + h * 0.6);
+                ctx.lineTo(x + w * 0.1, y + h);
+                ctx.lineTo(x + w * 0.9, y + h);
+                ctx.lineTo(x + w * 0.8, y + h * 0.6);
+                ctx.closePath();
+                ctx.fill();
+
+                // Nozzle inner dark
+                ctx.fillStyle = '#222222';
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.3, y + h * 0.65);
+                ctx.lineTo(x + w * 0.25, y + h * 0.95);
+                ctx.lineTo(x + w * 0.75, y + h * 0.95);
+                ctx.lineTo(x + w * 0.7, y + h * 0.65);
+                ctx.closePath();
+                ctx.fill();
+
+                // Highlights
+                ctx.fillStyle = 'rgba(255,255,255,0.4)';
+                ctx.fillRect(x + pixelSize, y + pixelSize, w * 0.2, h * 0.1);
+
+                // Mounting bolts
+                ctx.fillStyle = '#333344';
+                for (let i = 0; i < 3; i++) {
+                    ctx.fillRect(x + w * 0.2 + i * w * 0.25, y + h * 0.55, pixelSize * 2, pixelSize * 2);
+                }
             }
             break;
 
@@ -517,6 +744,15 @@ function drawPart(ctx, part, x, y, scale = 1, flipX = false) {
             const bandH = h * 0.08;
             ctx.fillRect(x, y + h * 0.15, w, bandH);
             ctx.fillRect(x, y + h * 0.8, w, bandH);
+
+            // Extra detailing for Huge Tank
+            if (part.id === 'huge_tank') {
+                ctx.fillRect(x, y + h * 0.5, w, bandH); // Middle band
+                // Vertical pipes
+                ctx.fillStyle = '#444';
+                ctx.fillRect(x + w * 0.1, y, w * 0.05, h);
+                ctx.fillRect(x + w * 0.9, y, w * 0.05, h);
+            }
 
             // Rivets along bands
             ctx.fillStyle = darken(part.accentColor, 30);
@@ -608,6 +844,36 @@ function drawPart(ctx, part, x, y, scale = 1, flipX = false) {
                     ctx.fillStyle = i % 2 === 0 ? '#ffcc00' : '#222222';
                     ctx.fillRect(x + i * stripeW, y + h * 0.35, stripeW, h * 0.3);
                 }
+            } else if (part.id === 'fairing') {
+                // Large Fairing (3x3) - Ogive shape
+                const fairingGrad = ctx.createLinearGradient(x, y, x + w, y);
+                fairingGrad.addColorStop(0, darken(part.color, 30));
+                fairingGrad.addColorStop(0.3, part.color);
+                fairingGrad.addColorStop(0.7, lighten(part.color, 20));
+                fairingGrad.addColorStop(1, darken(part.color, 30));
+                ctx.fillStyle = fairingGrad;
+
+                ctx.beginPath();
+                ctx.moveTo(x, y + h); // Bottom Left
+                // Left Curve: Control at Top Left corner, End at Top Center
+                ctx.quadraticCurveTo(x, y, x + w / 2, y);
+                // Right Curve: Control at Top Right corner, End at Bottom Right
+                ctx.quadraticCurveTo(x + w, y, x + w, y + h);
+                ctx.closePath();
+                ctx.fill();
+
+                // Vertical Split Line
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.5, y);
+                ctx.lineTo(x + w * 0.5, y + h);
+                ctx.stroke();
+
+                // Horizontal reinforced band
+                ctx.fillStyle = 'rgba(0,0,0,0.1)';
+                ctx.fillRect(x + w * 0.1, y + h * 0.85, w * 0.8, h * 0.05);
+
             } else {
                 // Generic structure
                 ctx.fillStyle = part.color;
@@ -733,37 +999,165 @@ function drawPart(ctx, part, x, y, scale = 1, flipX = false) {
             }
             break;
 
+        case 'utility':
         case 'payload':
-            // Base with gradient
+            // HAB MODULE
+            if (part.id === 'habitation_module') {
+                // Hab Module (3x3) - Space Station vibe
+                // Cylinder body gradient
+                const habGrad = ctx.createLinearGradient(x, y, x + w, y);
+                habGrad.addColorStop(0, '#aaa');
+                habGrad.addColorStop(0.5, '#eee');
+                habGrad.addColorStop(1, '#aaa');
+                ctx.fillStyle = habGrad;
+                ctx.beginPath();
+                ctx.roundRect(x, y, w, h, 2 * scale); // Less rounded, more module-like
+                ctx.fill();
+
+                // Structural Rings
+                ctx.fillStyle = '#999';
+                ctx.fillRect(x, y + h * 0.2, w, pixelSize * 2);
+                ctx.fillRect(x, y + h * 0.8, w, pixelSize * 2);
+
+                // Windows (Dark with blue reflection)
+                ctx.fillStyle = '#223';
+                ctx.beginPath();
+                ctx.arc(x + w * 0.5, y + h * 0.5, w * 0.15, 0, Math.PI * 2); // Center window
+                ctx.fill();
+
+                // Reflection dot
+                ctx.fillStyle = 'rgba(200, 240, 255, 0.4)';
+                ctx.beginPath();
+                ctx.arc(x + w * 0.5 - w * 0.05, y + h * 0.5 - h * 0.05, w * 0.03, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Ring of windows
+                for (let i = 0; i < 8; i++) {
+                    const angle = (i / 8) * Math.PI * 2;
+                    const wx = x + w * 0.5 + Math.cos(angle) * w * 0.35;
+                    const wy = y + h * 0.5 + Math.sin(angle) * h * 0.35;
+                    ctx.fillStyle = '#223';
+                    ctx.beginPath();
+                    ctx.arc(wx, wy, w * 0.05, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                break;
+            }
+
+            // SOLAR PANEL
+            if (part.id === 'solar_panel') {
+                // Frame
+                ctx.fillStyle = '#222';
+                ctx.fillRect(x, y, w, h);
+
+                // Solar Cells (Dark Blue with slight gradient)
+                const cellGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+                cellGrad.addColorStop(0, '#113355');
+                cellGrad.addColorStop(1, '#001133');
+                ctx.fillStyle = cellGrad;
+                ctx.fillRect(x + pixelSize, y + pixelSize, w - pixelSize * 2, h - pixelSize * 2);
+
+                // Grid lines (Thicker, darker)
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                // Vertical split
+                ctx.moveTo(x + w / 2, y);
+                ctx.lineTo(x + w / 2, y + h);
+                // Horizontal splits
+                ctx.moveTo(x, y + h / 3);
+                ctx.lineTo(x + w, y + h / 3);
+                ctx.moveTo(x, y + 2 * h / 3);
+                ctx.lineTo(x + w, y + 2 * h / 3);
+                ctx.stroke();
+
+                // Highlight edge
+                ctx.strokeStyle = '#445566';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(x, y, w, h);
+                break;
+            }
+
+            // Base with gradient (Generic Payloads)
             const payloadGrad = ctx.createLinearGradient(x, y, x + w, y);
             payloadGrad.addColorStop(0, darken(part.color, 30));
             payloadGrad.addColorStop(0.35, lighten(part.color, 20));
             payloadGrad.addColorStop(0.5, part.color);
             payloadGrad.addColorStop(1, darken(part.color, 30));
             ctx.fillStyle = payloadGrad;
-            ctx.fillRect(x, y, w, h);
 
-            // Windows/lights (glowing effect)
+            // Draw rect unless it's a specific shape (docking port handled below)
+            if (part.id !== 'docking_port') {
+                ctx.fillRect(x, y, w, h);
+            }
+
+            // Windows/lights (glowing effect matching style)
             ctx.fillStyle = part.accentColor;
-            ctx.shadowColor = part.accentColor;
-            ctx.shadowBlur = 5 * scale;
             const windowSize = pixelSize * 2;
 
             if (part.id === 'crew_capsule') {
                 // Multiple windows
+                ctx.fillStyle = '#333'; // Dark glass
                 ctx.fillRect(x + w * 0.2, y + h * 0.3, windowSize, windowSize);
                 ctx.fillRect(x + w * 0.5 - windowSize / 2, y + h * 0.3, windowSize, windowSize);
                 ctx.fillRect(x + w * 0.8 - windowSize, y + h * 0.3, windowSize, windowSize);
+
+                // Glint
+                ctx.fillStyle = '#aaf';
+                ctx.fillRect(x + w * 0.2 + 1, y + h * 0.3 + 1, 1, 1);
+                ctx.fillRect(x + w * 0.5 - windowSize / 2 + 1, y + h * 0.3 + 1, 1, 1);
+                ctx.fillRect(x + w * 0.8 - windowSize + 1, y + h * 0.3 + 1, 1, 1);
+
+            } else if (part.id === 'docking_port') {
+                // Docking port - Mechanical Ring
+                // Outer ring
+                ctx.fillStyle = '#888';
+                ctx.beginPath();
+                ctx.arc(x + w / 2, y + h / 2, w * 0.45, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Inner dark area
+                ctx.fillStyle = '#222';
+                ctx.beginPath();
+                ctx.arc(x + w / 2, y + h / 2, w * 0.35, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Docking mechanism cross
+                ctx.strokeStyle = '#555';
+                ctx.lineWidth = 2 * scale;
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.2, y + h / 2);
+                ctx.lineTo(x + w * 0.8, y + h / 2);
+                ctx.moveTo(x + w / 2, y + h * 0.2);
+                ctx.lineTo(x + w / 2, y + h * 0.8);
+                ctx.stroke();
+
+                // Latch details (dots around ring)
+                ctx.fillStyle = '#aa0';
+                for (let i = 0; i < 4; i++) {
+                    const angle = (i / 4) * Math.PI * 2 + (Math.PI / 4);
+                    const dx = x + w / 2 + Math.cos(angle) * w * 0.4;
+                    const dy = y + h / 2 + Math.sin(angle) * w * 0.4;
+                    ctx.beginPath();
+                    ctx.arc(dx, dy, 2 * scale, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
             } else {
                 // Single indicator
+                ctx.fillStyle = part.accentColor;
+                ctx.shadowColor = part.accentColor;
+                ctx.shadowBlur = 5 * scale;
                 ctx.fillRect(x + w / 2 - windowSize / 2, y + h * 0.3, windowSize, windowSize);
+                ctx.shadowBlur = 0;
             }
-            ctx.shadowBlur = 0;
 
             // Panel detail lines
             ctx.strokeStyle = darken(part.color, 40);
             ctx.lineWidth = 1;
-            ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
+            if (part.id !== 'docking_port') {
+                ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
+            }
             break;
     }
 
@@ -771,7 +1165,7 @@ function drawPart(ctx, part, x, y, scale = 1, flipX = false) {
     ctx.strokeStyle = '#000000';
     ctx.lineWidth = Math.max(1, 2 * scale);
 
-    if (part.id !== 'nose_cone') {
+    if (part.id !== 'nose_cone' && part.id !== 'docking_port' && part.id !== 'habitation_module' && part.id !== 'solar_panel') {
         ctx.strokeRect(x, y, w, h);
     }
 

@@ -101,7 +101,49 @@ const PHYSICS = {
     failureMessage: null,
 
     // Liftoff tracking
-    hasLiftedOff: false
+    hasLiftedOff: false,
+
+    /**
+     * Reset physics state
+     */
+    reset: function () {
+        this.isRunning = false;
+        this.isPaused = false;
+        this.time = 0;
+        this.throttle = 1.0;
+        this.altitude = 0;
+        this.velocity = 0;
+        this.acceleration = 0;
+        this.airDensity = 1.225;
+        this.airPressure = 101325;
+        this.airTemperature = 288.15;
+        this.speedOfSound = 340.3;
+        this.machNumber = 0;
+        this.thrustForce = 0;
+        this.gravityForce = 0;
+        this.dragForce = 0;
+        this.netForce = 0;
+        this.dynamicPressure = 0;
+        this.gForce = 0;
+        this.surfaceTemperature = 288.15;
+        this.heatFlux = 0;
+        this.maxAltitude = 0;
+        this.maxVelocity = 0;
+        this.maxQ = 0;
+        this.maxG = 0;
+        this.maxTemp = 0;
+        this.fuel = 0;
+        this.maxFuel = 0;
+        this.currentStage = 0;
+        this.stages = [];
+        this.hasFailed = false;
+        this.failureReason = null;
+        this.failureMessage = null;
+        this.hasLiftedOff = false;
+        this.rocket = null;
+
+        console.log("Physics reset.");
+    }
 };
 
 // ============================================

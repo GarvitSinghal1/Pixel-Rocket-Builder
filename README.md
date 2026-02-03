@@ -52,8 +52,8 @@
 
 | Feature | Description |
 |---------|-------------|
-| 🔧 **Drag & Drop Builder** | Intuitive rocket construction with snap-to-grid |
-| 🚀 **Rocket Presets** | Quick-start templates for immediate launching |
+| 🔧 **Drag & Drop Builder** | Intuitive rocket construction with **Multi-Select** and Grid Snapping |
+| 🚀 **Rocket Presets** | Quick-start templates including SSTOs and Deep Space Probes |
 | 🎮 **Three Game Modes** | Level progression, sandbox, or realistic simulation |
 | 📊 **Real Physics Engine** | ISA atmosphere, Mach regimes, aerodynamic heating |
 | 🎓 **Educational Analysis** | Pre-launch warnings and post-flight explanations |
@@ -135,7 +135,9 @@ For players who want **realistic orbital mechanics** and **simulation-level phys
 |--------|--------|
 | **Add Part** | Click any part in the palette |
 | **Move Part** | Drag on the canvas |
-| **Delete Part** | Select part + press `Delete` or `Backspace` |
+| **Multi-Select** | Hold `Shift` + Click or Drag Box to select multiple |
+| **Move Group** | Drag any selected part to move the whole group |
+| **Delete Part** | Select part(s) + press `Delete` or `Backspace` |
 | **Clear All** | Click `CLEAR` button |
 | **Save Design** | Click `SAVE` button |
 | **Load Design** | Click `LOAD` button |
@@ -160,6 +162,9 @@ Don't want to build from scratch? Click **PRESETS** to choose a pre-designed roc
 | **Standard Engine** | 200kg | 150kN | 320s | 15/s | Level 1 |
 | **Heavy Lifter** | 500kg | 400kN | 300s | 35/s | Level 5 |
 | **Booster** | 300kg | 250kN | 250s | 25/s | Level 3 |
+| **Aerospike** | 250kg | 180kN | 340s | 12/s | Level 7 |
+| **Ion Drive** | 40kg | 5kN | 4000s | 0.2/s | Level 8 |
+| **Mammoth Engine** | 1200kg | 1200kN | 290s | 110/s | Level 9 |
 
 > 💡 **Tip**: Higher ISP = more efficient. Use Standard Engines for best efficiency!
 
@@ -170,7 +175,9 @@ Don't want to build from scratch? Click **PRESETS** to choose a pre-designed roc
 | **Small Tank** | 30kg | 100 | 1×2 | Level 1 |
 | **Medium Tank** | 80kg | 300 | 2×3 | Level 2 |
 | **Large Tank** | 150kg | 600 | 2×4 | Level 4 |
+| **Huge Tank** | 400kg | 1500 | 3×6 | Level 8 |
 | **Radial Tank** | 40kg | 80 | 1×2 | Level 6 |
+| **Tiny Tank** | 10kg | 30 | 1×1 | Level 1 |
 
 > 💡 **Tip**: Radial tanks attach to the sides for balanced builds!
 

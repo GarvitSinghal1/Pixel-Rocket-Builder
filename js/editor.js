@@ -2,7 +2,6 @@
  * PIXEL ROCKET BUILDER - Editor
  * Drag-and-drop rocket building interface with snapping and connectivity
  */
-
 const EDITOR = {
     canvas: null,
     ctx: null,
@@ -16,8 +15,12 @@ const EDITOR = {
     dragOffsetX: 0,
     dragOffsetY: 0,
 
-    // Selected part
-    selectedPart: null,
+    // Selected parts (Array)
+    selection: [],
+    // Box selection state
+    isBoxSelecting: false,
+    boxStart: { x: 0, y: 0 },
+    boxCurrent: { x: 0, y: 0 },
 
     // Grid settings
     gridSize: TILE_SIZE,
@@ -107,9 +110,10 @@ function setupEditorEvents() {
     // Keyboard events
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Delete' || e.key === 'Backspace') {
-            if (EDITOR.selectedPart) {
-                removePlacedPart(EDITOR.selectedPart);
-                EDITOR.selectedPart = null;
+            if (EDITOR.selection.length > 0) {
+                // Delete all selected parts
+                EDITOR.selection.forEach(p => removePlacedPart(p));
+                EDITOR.selection = [];
                 renderEditor();
                 updateStats();
             }
@@ -117,6 +121,9 @@ function setupEditorEvents() {
     });
 }
 
+/**
+ * Handle canvas mouse down
+ */
 /**
  * Handle canvas mouse down
  */
@@ -128,17 +135,64 @@ function handleCanvasMouseDown(e) {
     // Check if clicking on existing part
     const clickedPart = getPartAtPosition(x, y);
 
+    const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
+
     if (clickedPart) {
+        // If clicking a part that is NOT in the current selection, and not holding shift,
+        // clear old selection and select this one.
+        if (!EDITOR.selection.includes(clickedPart) && !isMultiSelect) {
+            EDITOR.selection = [clickedPart];
+        }
+        // If holding shift, toggle selection
+        else if (isMultiSelect) {
+            if (EDITOR.selection.includes(clickedPart)) {
+                // If already selected, deselect it (unless we are about to drag it?)
+                // Actually standard behavior: mousedown toggles/adds, but if we drag, we need to keep it.
+                // Let's just add it if missing, removes are tricky on mousedown if dragging.
+                // Simple toggle logic:
+                const index = EDITOR.selection.indexOf(clickedPart);
+                if (index > -1) {
+                    EDITOR.selection.splice(index, 1);
+                    // If we deselected the part we are clicking on, we shouldn't drag it
+                    EDITOR.isDragging = false;
+                    renderEditor();
+                    return;
+                } else {
+                    EDITOR.selection.push(clickedPart);
+                }
+            } else {
+                EDITOR.selection.push(clickedPart);
+            }
+        }
+        // If clicked part is already selected (and no shift), keep selection as is (might be group drag)
+
         EDITOR.isDragging = true;
-        EDITOR.dragPart = clickedPart;
+        EDITOR.dragPart = clickedPart; // The "leader" for the drag
         EDITOR.dragOffsetX = x - clickedPart.x;
         EDITOR.dragOffsetY = y - clickedPart.y;
-        EDITOR.selectedPart = clickedPart;
 
-        // Temporarily remove from placed parts
-        EDITOR.placedParts = EDITOR.placedParts.filter(p => p !== clickedPart);
+        // Temporarily remove all selected parts from placedParts for drawing order/logic?
+        // Actually, existing logic removed it. For multi-drag, let's keep them in place but render them as dragging?
+        // The original code removed `clickedPart`.
+        // Let's NOT remove them from placedParts array, just mark them as 'dragging' visually?
+        // Or keep original logic: remove from placedParts so they float on top.
+
+        // Remove ALL selected parts from placedParts so they float
+        EDITOR.selection.forEach(p => {
+            EDITOR.placedParts = EDITOR.placedParts.filter(placed => placed !== p);
+            // Store offset relative to the LEADER (clickedPart)
+            p.groupOffsetX = p.x - clickedPart.x;
+            p.groupOffsetY = p.y - clickedPart.y;
+        });
+
     } else {
-        EDITOR.selectedPart = null;
+        // Clicked empty space
+        if (!isMultiSelect) {
+            EDITOR.selection = [];
+        }
+        EDITOR.isBoxSelecting = true;
+        EDITOR.boxStart = { x, y };
+        EDITOR.boxCurrent = { x, y };
     }
 
     renderEditor();
@@ -147,85 +201,109 @@ function handleCanvasMouseDown(e) {
 /**
  * Handle canvas mouse move
  */
+/**
+ * Handle canvas mouse move
+ */
 function handleCanvasMouseMove(e) {
+    const rect = EDITOR.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (EDITOR.isBoxSelecting) {
+        EDITOR.boxCurrent = { x, y };
+        renderEditor();
+        return;
+    }
+
     if (!EDITOR.isDragging || !EDITOR.dragPart) return;
 
-    const rect = EDITOR.canvas.getBoundingClientRect();
-    let x = e.clientX - rect.left - EDITOR.dragOffsetX;
-    let y = e.clientY - rect.top - EDITOR.dragOffsetY;
+    // Calculate new position of the LEADER part
+    let newLeaderX = x - EDITOR.dragOffsetX;
+    let newLeaderY = y - EDITOR.dragOffsetY;
 
-    // Smart snap to center and other parts
+    // --- Snapping Logic (Simplified for Group) ---
+    // We snap the LEADER part, and all others follow.
+
     const partDef = getPartById(EDITOR.dragPart.partId);
     const partW = partDef.width * TILE_SIZE;
     const partH = partDef.height * TILE_SIZE;
-    const partCenterX = x + partW / 2;
+    const partCenterX = newLeaderX + partW / 2;
 
     EDITOR.snapLines = { x: null, y: null };
 
-    // Snap to center line (Strict Grid)
+    // Snap Leader Center
     const snapThreshold = 10;
     if (Math.abs(partCenterX - EDITOR.centerX) < snapThreshold) {
-        // Enforce grid alignment
         const centeredX = EDITOR.centerX - partW / 2;
-        x = Math.round(centeredX / EDITOR.gridSize) * EDITOR.gridSize;
+        newLeaderX = Math.round(centeredX / EDITOR.gridSize) * EDITOR.gridSize;
         EDITOR.snapLines.x = EDITOR.centerX;
     }
 
-    // Default Grid Snap
-    x = Math.round(x / EDITOR.gridSize) * EDITOR.gridSize;
-    y = Math.round(y / EDITOR.gridSize) * EDITOR.gridSize;
+    // Grid Snap Leader
+    newLeaderX = Math.round(newLeaderX / EDITOR.gridSize) * EDITOR.gridSize;
+    newLeaderY = Math.round(newLeaderY / EDITOR.gridSize) * EDITOR.gridSize;
 
-    // Snap to other parts (align to their edges)
+    // Snap to other parts (only if single selection? or allow group snap?)
+    // Allowing group snap is complex. Let's just snap the leader to others.
+    // But we must ignore parts currently in selection (they are floating).
+
     EDITOR.placedParts.forEach(other => {
+        // Skip if other is part of selection (already filtered out in mousedown, but double check)
+        if (EDITOR.selection.includes(other)) return;
+
         const otherDef = getPartById(other.partId);
         const otherW = otherDef.width * TILE_SIZE;
         const otherH = otherDef.height * TILE_SIZE;
         const otherCenterX = other.x + otherW / 2;
 
-        // Horizontal center alignment (Strict Grid)
-        if (Math.abs((x + partW / 2) - otherCenterX) < snapThreshold) {
-            const alignedX = otherCenterX - partW / 2;
-            x = Math.round(alignedX / EDITOR.gridSize) * EDITOR.gridSize;
+        // X Snap
+        if (Math.abs((newLeaderX + partW / 2) - otherCenterX) < snapThreshold) {
+            newLeaderX = otherCenterX - partW / 2;
+            // re-grid
+            newLeaderX = Math.round(newLeaderX / EDITOR.gridSize) * EDITOR.gridSize;
             EDITOR.snapLines.x = otherCenterX;
         }
 
-        // Side Snapping (Left-to-Right / Right-to-Left)
-        // Detect if we are vertically aligned enough to merit a side snap
-        const vAlignInfo = (y < other.y + otherH) && (y + partH > other.y);
-
+        // Side Snapping
+        const vAlignInfo = (newLeaderY < other.y + otherH) && (newLeaderY + partH > other.y);
         if (vAlignInfo) {
-            // Snap Left edge of DragPart to Right edge of Other
-            if (Math.abs(x - (other.x + otherW)) < snapThreshold) {
-                x = other.x + otherW;
+            if (Math.abs(newLeaderX - (other.x + otherW)) < snapThreshold) {
+                newLeaderX = other.x + otherW;
                 EDITOR.snapLines.x = other.x + otherW;
             }
-            // Snap Right edge of DragPart to Left edge of Other
-            if (Math.abs((x + partW) - other.x) < snapThreshold) {
-                x = other.x - partW;
+            if (Math.abs((newLeaderX + partW) - other.x) < snapThreshold) {
+                newLeaderX = other.x - partW;
                 EDITOR.snapLines.x = other.x;
             }
         }
 
-        // Vertical snap to attach above/below
-        if (Math.abs(x - other.x) < snapThreshold * 2 ||
-            Math.abs((x + partW) - (other.x + otherW)) < snapThreshold * 2 ||
-            Math.abs((x + partW / 2) - (other.x + otherW / 2)) < snapThreshold * 2) {
+        // Vertical Snap
+        if (Math.abs(newLeaderX - other.x) < snapThreshold * 2 ||
+            Math.abs((newLeaderX + partW) - (other.x + otherW)) < snapThreshold * 2 ||
+            Math.abs((newLeaderX + partW / 2) - (other.x + otherW / 2)) < snapThreshold * 2) {
 
-            // Snap to bottom of other part
-            if (Math.abs(y - (other.y + otherH)) < snapThreshold) {
-                y = other.y + otherH;
-                EDITOR.snapLines.y = y;
+            if (Math.abs(newLeaderY - (other.y + otherH)) < snapThreshold) {
+                newLeaderY = other.y + otherH;
+                EDITOR.snapLines.y = newLeaderY;
             }
-            // Snap to top of other part
-            if (Math.abs((y + partH) - other.y) < snapThreshold) {
-                y = other.y - partH;
+            if (Math.abs((newLeaderY + partH) - other.y) < snapThreshold) {
+                newLeaderY = other.y - partH;
                 EDITOR.snapLines.y = other.y;
             }
         }
     });
 
-    EDITOR.dragPart.x = x;
-    EDITOR.dragPart.y = y;
+    // Update Leader Position
+    EDITOR.dragPart.x = newLeaderX;
+    EDITOR.dragPart.y = newLeaderY;
+
+    // Update all other selected parts relative to leader
+    EDITOR.selection.forEach(p => {
+        if (p !== EDITOR.dragPart) {
+            p.x = EDITOR.dragPart.x + p.groupOffsetX;
+            p.y = EDITOR.dragPart.y + p.groupOffsetY;
+        }
+    });
 
     renderEditor();
 }
@@ -233,19 +311,81 @@ function handleCanvasMouseMove(e) {
 /**
  * Handle canvas mouse up
  */
+/**
+ * Handle canvas mouse up
+ */
 function handleCanvasMouseUp(e) {
-    if (EDITOR.isDragging && EDITOR.dragPart) {
-        // Keep within bounds
-        const partDef = getPartById(EDITOR.dragPart.partId);
-        const partW = partDef.width * TILE_SIZE;
-        const partH = partDef.height * TILE_SIZE;
+    // Handle Box Selection Finalize
+    if (EDITOR.isBoxSelecting) {
+        EDITOR.isBoxSelecting = false;
 
-        EDITOR.dragPart.x = Math.max(0, Math.min(EDITOR.width - partW, EDITOR.dragPart.x));
-        EDITOR.dragPart.y = Math.max(0, Math.min(EDITOR.height - partH, EDITOR.dragPart.y));
+        // Calculate box bounds
+        const x1 = Math.min(EDITOR.boxStart.x, EDITOR.boxCurrent.x);
+        const y1 = Math.min(EDITOR.boxStart.y, EDITOR.boxCurrent.y);
+        const x2 = Math.max(EDITOR.boxStart.x, EDITOR.boxCurrent.x);
+        const y2 = Math.max(EDITOR.boxStart.y, EDITOR.boxCurrent.y);
+
+        // Find parts inside box
+        const newSelection = [];
+        EDITOR.placedParts.forEach(p => {
+            const def = getPartById(p.partId);
+            const pW = def.width * TILE_SIZE;
+            const pH = def.height * TILE_SIZE;
+
+            // Check intersection
+            if (p.x < x2 && p.x + pW > x1 &&
+                p.y < y2 && p.y + pH > y1) {
+                newSelection.push(p);
+            }
+        });
+
+        // If holding shift, add to existing selection
+        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+            newSelection.forEach(p => {
+                if (!EDITOR.selection.includes(p)) {
+                    EDITOR.selection.push(p);
+                }
+            });
+        } else {
+            EDITOR.selection = newSelection;
+        }
+
+        renderEditor();
+        return;
+    }
+
+    // Handle Drag Finalize
+    if (EDITOR.isDragging && EDITOR.selection.length > 0) {
+
+        // Bound checks for all parts
+        let bounded = false; // Flag to check if we modified positions due to bounds
+
+        // This is tricky for groups. If one hits edge, should all stop?
+        // Or just let them be placed? Let's just clamp the leader and re-calc offsets.
+        // Actually, let's keep it simple: clamp each part individually? No that breaks group.
+        // Clamp leader, then re-apply offsets.
+
+        if (EDITOR.dragPart) {
+            const partDef = getPartById(EDITOR.dragPart.partId);
+            const partW = partDef.width * TILE_SIZE;
+            const partH = partDef.height * TILE_SIZE;
+
+            EDITOR.dragPart.x = Math.max(0, Math.min(EDITOR.width - partW, EDITOR.dragPart.x));
+            EDITOR.dragPart.y = Math.max(0, Math.min(EDITOR.height - partH, EDITOR.dragPart.y));
+
+            // Re-apply offsets after clamping leader
+            EDITOR.selection.forEach(p => {
+                if (p !== EDITOR.dragPart) {
+                    p.x = EDITOR.dragPart.x + p.groupOffsetX;
+                    p.y = EDITOR.dragPart.y + p.groupOffsetY;
+                }
+            });
+        }
 
         // Add back to placed parts
-        EDITOR.placedParts.push(EDITOR.dragPart);
-        EDITOR.selectedPart = EDITOR.dragPart;
+        EDITOR.selection.forEach(p => {
+            EDITOR.placedParts.push(p);
+        });
 
         // Clear snap lines
         EDITOR.snapLines = { x: null, y: null };
@@ -468,7 +608,7 @@ function addPart(partId) {
     };
 
     EDITOR.placedParts.push(newPart);
-    EDITOR.selectedPart = newPart;
+    EDITOR.selection = [newPart];
 
     updateStats();
     renderEditor();
@@ -768,7 +908,7 @@ function setupCanvasDrop() {
         };
 
         EDITOR.placedParts.push(newPart);
-        EDITOR.selectedPart = newPart;
+        EDITOR.selection = [newPart];
 
         if (typeof playClickSound === 'function') playClickSound();
         updateStats();
@@ -892,7 +1032,7 @@ function renderEditor() {
         }
 
         // Selection highlight
-        if (placed === EDITOR.selectedPart) {
+        if (EDITOR.selection.includes(placed)) {
             ctx.strokeStyle = '#00ffff';
             ctx.lineWidth = 2;
             ctx.setLineDash([4, 4]);
@@ -905,6 +1045,22 @@ function renderEditor() {
             ctx.setLineDash([]);
         }
     });
+
+    // Draw Box Selection
+    if (EDITOR.isBoxSelecting) {
+        const x = Math.min(EDITOR.boxStart.x, EDITOR.boxCurrent.x);
+        const y = Math.min(EDITOR.boxStart.y, EDITOR.boxCurrent.y);
+        const w = Math.abs(EDITOR.boxCurrent.x - EDITOR.boxStart.x);
+        const h = Math.abs(EDITOR.boxCurrent.y - EDITOR.boxStart.y);
+
+        ctx.fillStyle = 'rgba(0, 255, 255, 0.1)';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(x, y, w, h);
+        ctx.setLineDash([]);
+    }
 
     // Draw snap lines while dragging
     if (EDITOR.isDragging) {
@@ -929,16 +1085,18 @@ function renderEditor() {
         ctx.setLineDash([]);
     }
 
-    // Draw dragging part
-    if (EDITOR.isDragging && EDITOR.dragPart) {
-        const partDef = getPartById(EDITOR.dragPart.partId);
-        const partW = partDef.width * TILE_SIZE;
-        const partCX = EDITOR.dragPart.x + partW / 2;
-        const flipDrag = partCX < EDITOR.centerX - 1;
+    // Draw dragging parts (ghosts)
+    if (EDITOR.isDragging && EDITOR.selection.length > 0) {
+        EDITOR.selection.forEach(p => {
+            const partDef = getPartById(p.partId);
+            const partW = partDef.width * TILE_SIZE;
+            const partCX = p.x + partW / 2;
+            const flipDrag = partCX < EDITOR.centerX - 1;
 
-        ctx.globalAlpha = 0.7;
-        drawPart(ctx, partDef, EDITOR.dragPart.x, EDITOR.dragPart.y, 1, flipDrag);
-        ctx.globalAlpha = 1;
+            ctx.globalAlpha = 0.7;
+            drawPart(ctx, partDef, p.x, p.y, 1, flipDrag);
+            ctx.globalAlpha = 1;
+        });
     }
 }
 
@@ -1143,7 +1301,8 @@ function formatAltitude(meters) {
  */
 function clearEditor() {
     EDITOR.placedParts = [];
-    EDITOR.selectedPart = null;
+    EDITOR.placedParts = [];
+    EDITOR.selection = [];
     updateStats();
     renderEditor();
 }
@@ -1178,7 +1337,8 @@ function loadRocket() {
 
     const lastSave = savedRockets[savedRockets.length - 1];
     EDITOR.placedParts = lastSave.parts;
-    EDITOR.selectedPart = null;
+    EDITOR.placedParts = lastSave.parts;
+    EDITOR.selection = [];
 
     if (typeof playClickSound === 'function') playClickSound();
     updateStats();

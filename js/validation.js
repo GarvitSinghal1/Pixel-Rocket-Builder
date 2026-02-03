@@ -125,8 +125,15 @@ function validateRocketDesign(parts) {
             // Check horizontal overlap
             const horizontalOverlap = !(engineRight - 5 <= otherLeft || engineLeft + 5 >= otherRight);
 
-            // Check if it's below
-            const isBelow = otherTop >= engineBottom - 5; // Allow small overlap
+            // Check if it's strictly below (not just side-by-side or above)
+            // Using a tolerance to ensure it's actually blocking the nozzle
+            const isBelow = otherTop >= engineBottom - 5;
+
+            // EXCEPTION: Decouplers are allowed below engines (Staging)
+            // Also allow separators if we had them.
+            if (otherDef.id === 'decoupler') {
+                return false;
+            }
 
             return horizontalOverlap && isBelow;
         });

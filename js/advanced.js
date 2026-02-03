@@ -252,7 +252,9 @@ function updateThrottleWithLag(targetThrottle, dt) {
  * Get actual throttle (with lag applied)
  */
 function getActualThrottle() {
-    return ADVANCED.enabled ? ADVANCED.engines.throttleActual : 1;
+    // Return actual tracked throttle (which mirrors input instantly if disabled)
+    // instead of hardcoded 1 which breaks manual control
+    return ADVANCED.engines.throttleActual;
 }
 
 // ============================================

@@ -1,162 +1,236 @@
 /**
- * PIXEL ROCKET BUILDER - Rocket Presets
- * Pre-designed rocket templates for quick start and learning
+ * PREDEFINED ROCKET CONFIGURATIONS
+ * A gallery of ready-to-launch rockets showcasing different parts and strategies.
  */
 
 const ROCKET_PRESETS = {
-    small: {
-        name: "Small Rocket",
-        description: "Beginner-friendly design - reaches ~10km",
-        icon: "🚀",
+    starter: {
+        id: 'starter',
+        name: "Eco Hopper",
+        description: "Simple, efficient rocket. Great for beginners.",
+        difficulty: "Easy",
         parts: [
-            // Center Line x=5 (Size 1)
-            { partId: 'small_nose_cone', x: 5, y: 5 },
-            { partId: 'small_tank', x: 5, y: 6 },
-            { partId: 'small_thruster', x: 5, y: 8 }
+            // Stack: Nose(1) -> Tank(2) -> Thruster(1)
+            // Y: 18 -> 19-20 -> 21
+            { partId: 'small_nose_cone', x: 7, y: 18 },
+            { partId: 'small_tank', x: 7, y: 19 },
+            { partId: 'small_thruster', x: 7, y: 21 },
+            { partId: 'small_fins', x: 6, y: 20 },
+            { partId: 'small_fins', x: 8, y: 20 }
         ]
     },
-
-    medium: {
-        name: "Medium Rocket",
-        description: "Balanced build - reaches ~50km",
-        icon: "🛸",
+    orbiter_mk1: {
+        id: 'orbiter_mk1',
+        name: "Orbiter Mk.I",
+        description: "Reliable 2-stage craft with satellite payload.",
+        difficulty: "Medium",
         parts: [
-            // Core Body x=5 (Size 2). Covers 5,6.
-            { partId: 'nose_cone', x: 5, y: 2 },
-            { partId: 'medium_tank', x: 5, y: 4 },
-            { partId: 'standard_engine', x: 5, y: 7 },
-
-            // Fins (Size 1)
-            // Left of 5 is 4. Right of 6 is 7.
-            { partId: 'small_fins', x: 4, y: 7 }, // Left
-            { partId: 'small_fins', x: 7, y: 7 }  // Right
+            // Stage 2: Nose(2x2) -> Satellite(2x2) -> Decoupler(2x1) -> Medium Tank(2x3) -> Engine(2x2)
+            // X Center: 6.5 (Grid 6,7)
+            { partId: 'nose_cone', x: 6, y: 10 },
+            { partId: 'satellite', x: 6, y: 12 },
+            { partId: 'decoupler', x: 6, y: 14 },
+            { partId: 'medium_tank', x: 6, y: 15 },
+            { partId: 'standard_engine', x: 6, y: 18 },
+            { partId: 'large_fins', x: 4, y: 17 },
+            { partId: 'large_fins', x: 8, y: 17 }
         ]
     },
-
-    large: {
-        name: "Heavy Lifter",
-        description: "Multi-stage capable heavy rocket",
-        icon: "🏋️",
+    heavy_lifter: {
+        id: 'heavy_lifter',
+        name: "Atlas Heavy",
+        description: "Heavy-lift vehicle for deep space missions.",
+        difficulty: "Hard",
         parts: [
-            // Core Body x=5 (Size 2). Covers 5,6.
-            { partId: 'nose_cone', x: 5, y: 0 },
-            { partId: 'crew_capsule', x: 5, y: 2 },
-            { partId: 'large_tank', x: 5, y: 4 },
-            { partId: 'large_tank', x: 5, y: 8 },
-            { partId: 'standard_engine', x: 5, y: 12 },
+            // Core: Fairing(3x3) -> Hab(3x3) -> HugeTank(3x5) -> HugeTank(3x5) -> Mammoth(3x3)
+            // X Center: 7 (Grid 6,7,8)
+            { partId: 'fairing', x: 6, y: 2 },
+            { partId: 'habitation_module', x: 6, y: 5 },
+            { partId: 'huge_tank', x: 6, y: 8 },
+            { partId: 'huge_tank', x: 6, y: 13 },
+            { partId: 'mammoth_engine', x: 6, y: 18 },
 
-            // Boosters (Size 1)
-            // Left (x=4)
-            { partId: 'small_nose_cone', x: 4, y: 4 },
-            { partId: 'small_tank', x: 4, y: 5 },
-            { partId: 'small_thruster', x: 4, y: 7 },
+            // Boosters: Side (x=5,9), attached to lower tank (Need to align Y)
+            // Booster is 1x3. Attach to y=14
+            { partId: 'booster', x: 5, y: 14 },
+            { partId: 'booster', x: 9, y: 14 },
+            { partId: 'small_nose_cone', x: 5, y: 13 },
+            { partId: 'small_nose_cone', x: 9, y: 13 }
+        ]
+    },
+    ion_probe: {
+        id: 'ion_probe',
+        name: "Ion Explorer",
+        description: "Efficient ion probe with launch booster.",
+        difficulty: "Hard",
+        parts: [
+            // Centered 2-wide Design
+            // Payload: Nose(2x2) -> MedTank(2x3) -> Ions(x2)
+            { partId: 'nose_cone', x: 6, y: 12 },
+            { partId: 'medium_tank', x: 6, y: 14 },
+            { partId: 'ion_drive', x: 6, y: 17 }, // Left Ion
+            { partId: 'ion_drive', x: 7, y: 17 }, // Right Ion
+            { partId: 'solar_panel', x: 5, y: 15 }, // Left Solar
+            { partId: 'solar_panel', x: 8, y: 15 }, // Right Solar
 
-            // Right (x=7)
-            { partId: 'small_nose_cone', x: 7, y: 4 },
-            { partId: 'small_tank', x: 7, y: 5 },
-            { partId: 'small_thruster', x: 7, y: 7 },
+            // Booster: Decoupler(2x1) -> MedTank(2x3) -> StdEngine(2x2)
+            { partId: 'decoupler', x: 6, y: 18 },
+            { partId: 'medium_tank', x: 6, y: 19 },
+            { partId: 'standard_engine', x: 6, y: 22 }
+        ]
+    },
+    ssto_dart: {
+        id: 'ssto_dart',
+        name: "Aerospike Dart",
+        description: "Single-Stage-To-Orbit experimental craft using aerospikes.",
+        difficulty: "Expert",
+        parts: [
+            // Stack: Nose(2x2) -> LargeTank(2x4) -> LargeTank(2x4) -> Aerospike(2x2)
+            { partId: 'nose_cone', x: 6, y: 11 },
+            { partId: 'large_tank', x: 6, y: 13 },
+            { partId: 'large_tank', x: 6, y: 17 },
+            { partId: 'aerospike', x: 6, y: 21 },
+            { partId: 'large_fins', x: 4, y: 20 },
+            { partId: 'large_fins', x: 8, y: 20 }
+        ]
+    },
+    space_station: {
+        id: 'space_station',
+        name: "Habitation Hub",
+        description: "Orbital outpost module.",
+        difficulty: "n/a",
+        parts: [
+            { partId: 'docking_port', x: 7, y: 10 },
+            { partId: 'habitation_module', x: 6, y: 11 },
+            { partId: 'solar_panel', x: 5, y: 12 },
+            { partId: 'solar_panel', x: 9, y: 12 },
+            { partId: 'docking_port', x: 7, y: 14 }
+        ]
+    },
+    cargo_hauler: {
+        id: 'cargo_hauler',
+        name: "Freight Train",
+        description: "Medium-lift cargo vehicle.",
+        difficulty: "Medium",
+        parts: [
+            { partId: 'nose_cone', x: 6, y: 9 },
+            { partId: 'cargo_bay', x: 6, y: 11 },
+            { partId: 'large_tank', x: 6, y: 13 },
+            { partId: 'large_tank', x: 6, y: 17 },
+            { partId: 'standard_engine', x: 6, y: 21 },
+            // SRBs for kick
+            { partId: 'booster', x: 5, y: 18 },
+            { partId: 'booster', x: 8, y: 18 }, // x=8 means right side of tank (6,7).. 8 is ok
+            { partId: 'small_nose_cone', x: 5, y: 17 },
+            { partId: 'small_nose_cone', x: 8, y: 17 }
+        ]
+    },
+    lander_mk1: {
+        id: 'lander_mk1',
+        name: "Lunar Lander",
+        description: "Wide stance for stable landings.",
+        difficulty: "Hard",
+        parts: [
+            { partId: 'nose_cone', x: 6, y: 14 },
+            // Crew Capsule center is 6,7. 7 is valid overlap.
+            { partId: 'crew_capsule', x: 6, y: 16 },
+            { partId: 'medium_tank', x: 6, y: 18 },
+            { partId: 'aerospike', x: 6, y: 21 },
+            { partId: 'strut', x: 5, y: 20 },
+            { partId: 'strut', x: 8, y: 20 }
+        ]
+    },
+    speed_demon: {
+        id: 'speed_demon',
+        name: "Speed Demon",
+        description: "High TWR interceptor.",
+        difficulty: "Easy",
+        parts: [
+            // Stack: Nose(2x2) -> MediumTank(2x3) -> Aerospike(2x2)
+            // X Center: 6 (Grid 6,7)
+            { partId: 'nose_cone', x: 6, y: 17 },
+            { partId: 'medium_tank', x: 6, y: 19 },
+            { partId: 'aerospike', x: 6, y: 22 },
 
-            // Fins (Size 2)
-            // Attached to boosters bottoms.
-            // Booster bottom y=7 (thruster). Let's put fins at y=7.
-            // Left Booster (x=4). Fin on left side -> x=2 (Size 2 covers 2,3).
-            { partId: 'large_fins', x: 2, y: 7 },
-
-            // Right Booster (x=7). Fin on right side -> x=8 (Size 2 covers 8,9).
-            { partId: 'large_fins', x: 8, y: 7 }
+            // Boosters (1x3) attached to tank side
+            { partId: 'booster', x: 5, y: 19 },
+            { partId: 'booster', x: 8, y: 19 }
         ]
     }
 };
 
 /**
- * Load a rocket preset into the editor
+ * Get all presets as an array
  */
-function loadPreset(presetId) {
-    const preset = ROCKET_PRESETS[presetId];
-    if (!preset) {
-        console.error('Preset not found:', presetId);
-        return false;
-    }
-
-    // Clear existing parts
-    if (typeof EDITOR !== 'undefined') {
-        EDITOR.placedParts = [];
-    }
-
-    // Calculate canvas geometry
-    const canvasCenter = (typeof EDITOR !== 'undefined' && EDITOR.centerX) ? EDITOR.centerX : 400;
-    const canvasBottom = (typeof EDITOR !== 'undefined' && EDITOR.height) ? EDITOR.height - 60 : 700;
-
-    // 1. Calculate Bounding Box of the preset in grid units
-    let minX = Infinity, maxX = -Infinity;
-    let maxY = -Infinity;
-
-    preset.parts.forEach(p => {
-        const part = getPartById(p.partId);
-        if (part) {
-            minX = Math.min(minX, p.x);
-            maxX = Math.max(maxX, p.x + part.width);
-            maxY = Math.max(maxY, p.y + part.height);
-        }
-    });
-
-    // Preset width in pixels (for centering)
-    const presetWidthPixels = (maxX - minX) * TILE_SIZE;
-
-    // 2. Load and center relative to bounding box
-    preset.parts.forEach(partData => {
-        const part = getPartById(partData.partId);
-        if (part) {
-            // Calculate relative X from the preset's left edge
-            const relativeX = partData.x - minX;
-
-            // Absolute X: 
-            // Start at Canvas Center
-            // Shift Left by half the total preset width (to center the group)
-            // Add the part's relative position
-            const absoluteX = canvasCenter - (presetWidthPixels / 2) + (relativeX * TILE_SIZE);
-
-            // Calculate Y from bottom (maxY of preset aligns with canvasBottom)
-            // Distance from bottom of preset = maxY - (partData.y + part.height)
-            const distFromBottom = maxY - (partData.y + part.height);
-            const absoluteY = canvasBottom - (distFromBottom * TILE_SIZE) - (part.height * TILE_SIZE);
-
-            const placedPart = {
-                id: Date.now().toString(36) + Math.random().toString(36).substr(2),
-                partId: partData.partId,
-                x: absoluteX,
-                y: absoluteY,
-                width: part.width,
-                height: part.height
-            };
-
-            // Add if EDITOR is available
-            if (typeof EDITOR !== 'undefined') {
-                EDITOR.placedParts.push(placedPart);
-            }
-        }
-    });
-
-    // Redraw canvas with new parts
-    if (typeof renderEditor === 'function') {
-        renderEditor();
-    }
-
-    // Update stats
-    if (typeof updateStats === 'function') {
-        updateStats();
-    }
-
-    console.log(`Loaded preset: ${preset.name}`);
-    return true;
+function getAllPresets() {
+    return Object.values(ROCKET_PRESETS);
 }
 
 /**
- * Get all available presets
+ * Load a preset into the editor
  */
-function getAllPresets() {
-    return Object.entries(ROCKET_PRESETS).map(([id, preset]) => ({
-        id,
-        ...preset
-    }));
+function loadPreset(presetId) {
+    const preset = ROCKET_PRESETS[presetId];
+    if (!preset) return;
+
+    // Clear current editor
+    EDITOR.placedParts = [];
+    EDITOR.selection = [];
+
+    // Calculate preset bounds to center it effectively
+    let minX = Infinity, maxGridX = -Infinity;
+    let maxGridY = -Infinity; // Find bottom-most point
+
+    preset.parts.forEach(p => {
+        const def = getPartById(p.partId);
+        if (def) {
+            // Preset coords are grid units
+            minX = Math.min(minX, p.x);
+            maxGridX = Math.max(maxGridX, p.x + def.width);
+            maxGridY = Math.max(maxGridY, p.y + def.height);
+        }
+    });
+
+    const presetWidthTiles = maxGridX - minX;
+    // Calculate the "center" x-coordinate of the preset in grid units
+    const presetCenterX = minX + presetWidthTiles / 2;
+
+    // Add new parts
+    preset.parts.forEach(partDef => {
+        const part = getPartById(partDef.partId);
+        if (part) {
+            // Convert grid coordinates to pixel coordinates
+            const pxX = (partDef.x * TILE_SIZE);
+            const pxY = (partDef.y * TILE_SIZE);
+
+            // Layout offsets
+            const offsetX = EDITOR.centerX - (presetCenterX * TILE_SIZE);
+            const offsetY = EDITOR.padY - (maxGridY * TILE_SIZE);
+
+            EDITOR.placedParts.push({
+                // Generate a UNIQUE ID so physics graph works
+                id: Date.now().toString(36) + Math.random().toString(36).substr(2),
+                partId: partDef.partId,
+                x: pxX + offsetX,
+                y: pxY + offsetY,
+                rotation: partDef.rotation || 0
+            });
+        }
+    });
+
+    // Reset physics state
+    PHYSICS.reset();
+
+    // Notify user
+    console.log(`Loaded preset: ${preset.name}`);
+
+    // Redraw
+    if (typeof renderEditor === 'function') {
+        renderEditor();
+    } else {
+        console.error("renderEditor not found");
+    }
+
+    // Update UI
+    if (typeof updateStats === 'function') updateStats();
 }
