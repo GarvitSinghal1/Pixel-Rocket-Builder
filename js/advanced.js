@@ -374,18 +374,27 @@ function getPeriapsis() {
 /**
  * Get full orbital info for display
  */
-function getOrbitalInfo() {
-    if (!ADVANCED.enabled) return null;
+/**
+ * Update orbital state based on current physics
+ * Called from physics.js loop
+ */
+function updateOrbitalState(altitude, velocity) {
+    if (!ADVANCED.enabled) return;
 
     const planet = getCurrentPlanet();
-    return {
-        apoapsis: getApoapsis(),
-        periapsis: getPeriapsis(),
-        eccentricity: ADVANCED.orbit.eccentricity,
-        period: ADVANCED.orbit.orbitalPeriod,
-        isInOrbit: ADVANCED.orbit.periapsis > planet.radius,
-        isEscaping: ADVANCED.orbit.eccentricity >= 1
-    };
+
+    // Convert 1D vertical physics to 2D orbital state
+    // We assume launch is from "top" of planet (y-axis)
+    // x = 0, y = R + alt
+    const position = { x: 0, y: planet.radius + altitude };
+
+    // Velocity:
+    // vx = Surface rotation (simplified) or 0
+    // vy = Vertical speed
+    // For now, let's assume 0 tangential speed until we implement gravity turn
+    const velVector = { vx: 0, vy: velocity };
+
+    calculateOrbitalElements(position, velVector, planet.mu);
 }
 
 /**

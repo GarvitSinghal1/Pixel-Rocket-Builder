@@ -1035,6 +1035,11 @@ function physicsStep(dt) {
     // Dynamic pressure
     PHYSICS.dynamicPressure = calculateDynamicPressure(PHYSICS.velocity, PHYSICS.altitude);
 
+    // Advanced: Update Orbital State
+    if (typeof updateOrbitalState === 'function') {
+        updateOrbitalState(PHYSICS.altitude, PHYSICS.velocity);
+    }
+
     // Surface temperature
     updateSurfaceTemperature(dt);
 
