@@ -74,7 +74,8 @@ function resizeEditorCanvas() {
     // Launch pad position
     EDITOR.padX = EDITOR.width / 2 - EDITOR.padWidth / 2;
     EDITOR.padY = EDITOR.height - 60;
-    EDITOR.centerX = EDITOR.width / 2;
+    // Align center to grid
+    EDITOR.centerX = Math.round((EDITOR.width / 2) / EDITOR.gridSize) * EDITOR.gridSize;
 }
 
 /**
@@ -161,14 +162,16 @@ function handleCanvasMouseMove(e) {
 
     EDITOR.snapLines = { x: null, y: null };
 
-    // Snap to center line
+    // Snap to center line (Strict Grid)
     const snapThreshold = 10;
     if (Math.abs(partCenterX - EDITOR.centerX) < snapThreshold) {
-        x = EDITOR.centerX - partW / 2;
+        // Enforce grid alignment
+        const centeredX = EDITOR.centerX - partW / 2;
+        x = Math.round(centeredX / EDITOR.gridSize) * EDITOR.gridSize;
         EDITOR.snapLines.x = EDITOR.centerX;
     }
 
-    // Snap to grid
+    // Default Grid Snap
     x = Math.round(x / EDITOR.gridSize) * EDITOR.gridSize;
     y = Math.round(y / EDITOR.gridSize) * EDITOR.gridSize;
 
@@ -179,9 +182,10 @@ function handleCanvasMouseMove(e) {
         const otherH = otherDef.height * TILE_SIZE;
         const otherCenterX = other.x + otherW / 2;
 
-        // Horizontal center alignment
+        // Horizontal center alignment (Strict Grid)
         if (Math.abs((x + partW / 2) - otherCenterX) < snapThreshold) {
-            x = otherCenterX - partW / 2;
+            const alignedX = otherCenterX - partW / 2;
+            x = Math.round(alignedX / EDITOR.gridSize) * EDITOR.gridSize;
             EDITOR.snapLines.x = otherCenterX;
         }
 
