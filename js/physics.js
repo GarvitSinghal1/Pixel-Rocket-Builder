@@ -996,7 +996,7 @@ function physicsStep(dt) {
 
     // Advanced: Update Throttle Lag
     if (typeof updateThrottleWithLag === 'function') {
-        updateThrottleWithLag(dt);
+        updateThrottleWithLag(PHYSICS.throttle, dt);
     }
 
     // Use actual throttle (lagged) if available, otherwise raw input
