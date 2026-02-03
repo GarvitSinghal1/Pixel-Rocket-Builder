@@ -262,8 +262,10 @@ function calculateDrag(velocity, altitude, parts) {
 
     // Drag force: F = 0.5 * ρ * v² * Cd * A
     // Direction opposes velocity
+    // If going UP (v > 0), Drag must be DOWN (Negative)
+    // If going DOWN (v < 0), Drag must be UP (Positive)
     const dragMagnitude = 0.5 * density * velocity * velocity * cd * area;
-    return velocity > 0 ? dragMagnitude : -dragMagnitude;
+    return velocity > 0 ? -dragMagnitude : dragMagnitude;
 }
 
 /**
@@ -916,13 +918,12 @@ function physicsStep(dt) {
     // Drag force
     PHYSICS.dragForce = calculateDrag(PHYSICS.velocity, PHYSICS.altitude, parts);
 
-    // Net force (thrust up, gravity and drag oppose motion)
-    PHYSICS.netForce = PHYSICS.thrustForce - PHYSICS.gravityForce;
-    if (PHYSICS.velocity > 0) {
-        PHYSICS.netForce -= PHYSICS.dragForce;
-    } else {
-        PHYSICS.netForce += Math.abs(PHYSICS.dragForce);
-    }
+    // Net force (thrust up, gravity down, drag opposes motion)
+    // Gravity is magnitude, direction is Down (-).
+    // Drag is now signed (opposes velocity).
+
+    // F_net = Thrust - F_gravity + F_drag
+    PHYSICS.netForce = PHYSICS.thrustForce - PHYSICS.gravityForce + PHYSICS.dragForce;
 
     // ============================================
     // UPDATE MOTION
