@@ -1118,6 +1118,12 @@ function triggerStage() {
             PHYSICS.fuel = PHYSICS.maxFuel;
         }
 
+        // Apply Staging Impulse (Sepratrons / Decoupler Springs)
+        // Add a small kick to velocity to simulate separation
+        const STAGING_IMPULSE = 5.0; // m/s
+        PHYSICS.velocity += STAGING_IMPULSE;
+        console.log(`[Physics] Staging Impulse applied! Velocity +${STAGING_IMPULSE} m/s`);
+
         return { success: true, droppedParts: droppedParts };
     }
 
