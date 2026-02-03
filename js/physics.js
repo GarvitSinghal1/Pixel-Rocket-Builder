@@ -387,6 +387,15 @@ function checkFailureConditions() {
         };
     }
 
+    // Advanced: Ignition Failure
+    if (typeof hasIgnitionFailed === 'function' && hasIgnitionFailed()) {
+        return {
+            failed: true,
+            reason: 'IGNITION',
+            message: 'CRITICAL FAILURE: Engine Ignition Failed!'
+        };
+    }
+
     return { failed: false };
 }
 

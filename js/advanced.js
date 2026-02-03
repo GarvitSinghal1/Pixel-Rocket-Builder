@@ -438,6 +438,7 @@ function getOrbitalInfo() {
         argumentOfPeriapsis: ADVANCED.orbit.argumentOfPeriapsis,
         meanAnomaly: ADVANCED.orbit.meanAnomaly,
         inclination: ADVANCED.orbit.inclination,
+        isOrbital: true, // Always show orbital data in advanced mode
         isInOrbit: ADVANCED.orbit.periapsis > planet.radius,
         isEscaping: ADVANCED.orbit.eccentricity >= 1,
         radialVelocity: vectors.radial,
@@ -447,3 +448,8 @@ function getOrbitalInfo() {
 
 
 console.log('🚀 Advanced physics module loaded');
+
+// Export alias for main.js
+if (typeof getTelemetry === 'undefined') {
+    window.getTelemetry = getAdvancedTelemetry;
+}
