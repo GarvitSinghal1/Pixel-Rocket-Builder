@@ -470,6 +470,17 @@ function calculateTWR(parts, fuel = null) {
 function consumeFuelAndGetThrust(parts, dt, throttle) {
     if (throttle <= 0) return 0;
 
+    // Advanced: Ignition Check
+    if (typeof attemptIgnition === 'function') {
+        // Fuel pressure approximation (Fuel / Capacity)
+        const fuelPressure = PHYSICS.maxFuel > 0 ? (PHYSICS.fuel / PHYSICS.maxFuel) : 0;
+        const ignitionSuccess = attemptIgnition(fuelPressure);
+
+        if (!ignitionSuccess) {
+            return 0; // Engine failed to start
+        }
+    }
+
     // 1. Identify engines and tanks
     const engines = [];
     const activeTanks = [];
@@ -528,6 +539,16 @@ function consumeFuelAndGetThrust(parts, dt, throttle) {
                 const vacuumISP = getVacuumISP(baseISP);
                 const currentISP = getAltitudeAdjustedISP(baseISP, vacuumISP, PHYSICS.altitude);
                 thrustMultiplier = currentISP / baseISP;
+            }
+
+            // Advanced: Cavitation Check
+            if (typeof checkCavitation === 'function') {
+                const tankPressure = PHYSICS.maxFuel > 0 ? (PHYSICS.fuel / PHYSICS.maxFuel) : 0;
+                // Flow rate approx = throttle
+                const cavResult = checkCavitation(tankPressure, throttle);
+                if (cavResult.cavitating) {
+                    thrustMultiplier *= (1 - cavResult.efficiencyLoss);
+                }
             }
 
             // Apply thrust with ISP scaling
@@ -824,6 +845,8 @@ function initPhysics(placedParts) {
         }
     });
 
+    if (typeof resetIgnition === 'function') resetIgnition();
+
     PHYSICS.rocket = placedParts;
     PHYSICS.isRunning = false;
     PHYSICS.isPaused = false;
@@ -914,9 +937,19 @@ function physicsStep(dt) {
     // Update total fuel for UI
     PHYSICS.fuel = calculateCurrentFuel(parts);
 
-    if (PHYSICS.fuel > 0 && PHYSICS.throttle > 0) {
+    // Advanced: Update Throttle Lag
+    if (typeof updateThrottleWithLag === 'function') {
+        updateThrottleWithLag(dt);
+    }
+
+    // Use actual throttle (lagged) if available, otherwise raw input
+    const effectiveThrottle = (typeof getActualThrottle === 'function')
+        ? getActualThrottle()
+        : PHYSICS.throttle;
+
+    if (PHYSICS.fuel > 0 && effectiveThrottle > 0) {
         // Calculate thrust and consume fuel from tanks
-        PHYSICS.thrustForce = consumeFuelAndGetThrust(parts, dt, PHYSICS.throttle);
+        PHYSICS.thrustForce = consumeFuelAndGetThrust(parts, dt, effectiveThrottle);
 
         // Update fuel again after consumption so UI is accurate for next frame
         PHYSICS.fuel = calculateCurrentFuel(parts);
