@@ -520,7 +520,18 @@ function consumeFuelAndGetThrust(parts, dt, throttle) {
         // Add thrust (kN -> N conversion happens here or in caller? Caller expects N)
         // engine.def.thrust is in kN.
         if (efficiency > 0.1) {
-            totalThrust += engine.def.thrust * 1000 * throttle * efficiency;
+            // Calculate ISP scaling
+            let thrustMultiplier = 1.0;
+            const baseISP = engine.def.isp || 250;
+
+            if (typeof getAltitudeAdjustedISP === 'function' && typeof getVacuumISP === 'function') {
+                const vacuumISP = getVacuumISP(baseISP);
+                const currentISP = getAltitudeAdjustedISP(baseISP, vacuumISP, PHYSICS.altitude);
+                thrustMultiplier = currentISP / baseISP;
+            }
+
+            // Apply thrust with ISP scaling
+            totalThrust += engine.def.thrust * 1000 * throttle * efficiency * thrustMultiplier;
         }
     });
 
