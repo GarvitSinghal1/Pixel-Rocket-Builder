@@ -1362,29 +1362,32 @@ function handleStagingEvent(droppedParts) {
     const droppedIds = new Set(droppedParts.map(p => p.id));
     GAME.launchParts = GAME.launchParts.filter(p => !droppedIds.has(p.id));
 
-    // Add to debris
-    // Position needs to be relative to current rocket Visual position ??
-    // Actually, GAME.launchParts `x,y` are their ORIGINAL Editor positions.
-    // They are drawn relative to rocket center.
-    // So debris should inherit that relative position.
-
-    // We need to know where the rocket is visually?
-    // In drawRocketAtPosition, parts are drawn at `drawX + relX`.
-    // Debris should start there.
+    // Calculate rocket center in editor coordinates for relative positioning
+    const rocketCenterEditorX = GAME.rocketBounds.centerX;
 
     droppedParts.forEach(p => {
+        // Calculate ejection velocity (random lateral push)
+        const ejectionSpeed = 2 + Math.random() * 3;
+        const direction = Math.random() > 0.5 ? 1 : -1;
+
         GAME.debris.push({
             partDef: getPartById(p.partId),
-            x: p.x, // Absolute editor coordinate
-            y: p.y,
-            // Visual offsets (starts attached)
-            offsetX: 0,
-            offsetY: 0,
-            // Velocity relative to rocket (pixels per frame approx)
-            vx: (Math.random() - 0.5) * 5,
-            vy: 2 + Math.random() * 2, // Falling down relative to rocket
+            // World Coordinates
+            // Horizontal position relative to rocket center (meters)
+            // (PartEditorX - RocketCenterEditorX) / TILE_SIZE
+            relX: (p.x - rocketCenterEditorX) / TILE_SIZE,
+            altitude: PHYSICS.altitude, // Start at current rocket altitude
+
+            // World Velocity
+            // Inherit rocket vertical velocity + small downward push from ejection
+            vy: PHYSICS.velocity - 1,
+            vx: ejectionSpeed * direction,
+
+            // Rotation
             rot: 0,
-            rotSpeed: (Math.random() - 0.5) * 0.2
+            rotSpeed: (Math.random() - 0.5) * 2,
+
+            time: 0
         });
 
         // Trigger puff
@@ -1402,74 +1405,114 @@ function handleStagingEvent(droppedParts) {
             minY = Math.min(minY, p.y);
             maxY = Math.max(maxY, p.y + def.height * TILE_SIZE);
         });
-        GAME.rocketBounds = { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY, centerX: (minX + maxX) / 2 };
+
+        GAME.rocketBounds = {
+            minX, maxX, minY, maxY,
+            width: maxX - minX,
+            height: maxY - minY,
+            centerX: (minX + maxX) / 2
+        };
     }
 }
+
+
 /**
  * Update and draw debris
  */
 function updateAndDrawDebris(ctx, dt, centerX) {
     if (!GAME.debris || GAME.debris.length === 0) return;
 
-    // Log once
-    if (!GAME.hasLoggedDebris) {
-        console.log(`[Visuals] Drawing ${GAME.debris.length} debris parts.`);
-        GAME.hasLoggedDebris = true;
-    }
-
-    // Calculate scale (must match drawRocketAtPosition)
+    // Calculate rendering scale
     const maxHeight = 200;
     const scale = Math.min(1.5, maxHeight / Math.max(GAME.rocketBounds.height, 50));
+    const pixelsPerMeter = TILE_SIZE * scale;
 
-    // Rocket alignment
-    const rocketCenterEditorX = GAME.rocketBounds.centerX;
-    const rocketMinEditorY = GAME.rocketBounds.minY;
-
-    // Remove debris that is way off screen
-    GAME.debris = GAME.debris.filter(p => p.time < 30); // 30 second lifespan
+    // Remove debris that has hit the ground
+    GAME.debris = GAME.debris.filter(p => p.altitude > 0);
 
     GAME.debris.forEach(p => {
-        // Update physics
-        // Fall away from rocket
-        const gravity = 400; // Increased visual gravity
-        const drag = 0.5;   // Simple air resistance
+        // --- PHYSICS UPDATE ---
 
-        // Acceleration
-        p.vy += gravity * dt;
+        // Gravity
+        const gravity = getGravityAtAltitude(p.altitude);
 
-        // Drag (opposes velocity)
-        p.vx *= (1 - drag * dt);
-        p.vy *= (1 - drag * dt);
+        // Atmosphere
+        const atmo = getPlanetAtmosphere(p.altitude);
+        const density = atmo.density;
 
-        p.x += p.vx * dt;
-        p.y += p.vy * dt;
+        // Drag
+        // Cd * Area * 0.5 * rho * v^2
+        // Simplified: Assume generic drag coefficient and area based on part size
+        // Width * Height (in meters) approx area
+        const area = (p.partDef.width * p.partDef.height);
+        const cd = 0.75; // Generic blunt body
+        const vSq = p.vx * p.vx + p.vy * p.vy;
+        const v = Math.sqrt(vSq);
+
+        let dragForce = 0;
+        if (v > 0) {
+            dragForce = 0.5 * density * vSq * cd * area;
+        }
+
+        // Apply forces (F=ma) -> a=F/m
+        const mass = p.partDef.mass; // Dry mass (assuming empty fuel tank if staged)
+        const dragAccel = dragForce / mass;
+
+        // Drag opposes velocity
+        const ax = v > 0 ? -(p.vx / v) * dragAccel : 0;
+        const ay = -gravity + (v > 0 ? -(p.vy / v) * dragAccel : 0);
+
+        // Update Velocity (Euler)
+        p.vx += ax * dt;
+        p.vy += ay * dt;
+
+        // Update Position
+        p.altitude += p.vy * dt;
+        p.relX += p.vx * dt; // Horizontal drift (meters)
+
         p.rot += p.rotSpeed * dt;
         p.time = (p.time || 0) + dt;
 
-        // Draw Position
-        // ScreenX = ScreenCenter + (PartX - RocketCenterX) * scale
-        const drawX = centerX + (p.x - rocketCenterEditorX) * scale;
 
-        // ScreenY = VisualTopY + (PartY - RocketMinY) * scale
-        // Use GAME.rocketY for VisualTopY
-        const drawY = GAME.rocketY + (p.y - rocketMinEditorY) * scale;
+        // --- RENDERING ---
+
+        // Project World Coordinates to Screen
+        // Vertical: Difference in altitude from rocket
+        const deltaAlt = PHYSICS.altitude - p.altitude;
+        // Screen Y = Rocket Screen Y + Delta Altitude converted to pixels
+        // (If debris is lower, deltaAlt is positive, so drawn lower on screen)
+        const drawY = GAME.rocketY + (deltaAlt * pixelsPerMeter);
+
+        // Horizontal: Relative meter offset from center converted to pixels
+        const drawX = centerX + (p.relX * pixelsPerMeter);
+
+        // Don't draw if way off screen
+        if (drawY < -100 || drawY > ctx.canvas.height + 100) return;
 
         // Draw rotated
         ctx.save();
         const w = p.partDef.width * TILE_SIZE * scale;
         const h = p.partDef.height * TILE_SIZE * scale;
 
-        // Center of part
-        const cx = drawX + w / 2;
-        const cy = drawY + h / 2;
+        // Center of part for rotation
+        const cx = drawX; // drawX is center? logic check below.
+        // drawX calculation above assumes p.relX is center-to-center offset.
+        // But drawPart usually draws top-left? 
+        // Let's adjust:
+        // drawPart draws at (x,y). We want center at (drawX, drawY).
+        // So we draw at (drawX - w/2, drawY - h/2)
 
-        ctx.translate(cx, cy);
+        const topX = drawX - w / 2;
+        const topY = drawY - h / 2;
+
+        ctx.translate(drawX, drawY);
         ctx.rotate(p.rot);
-        ctx.translate(-cx, -cy);
+        ctx.translate(-drawX, -drawY);
 
         // Debris always darkened slightly
         ctx.globalAlpha = 0.8;
-        drawPart(ctx, p.partDef, drawX, drawY, scale, false);
+        // Draw at top-left position
+        drawPart(ctx, p.partDef, topX, topY, scale, false);
         ctx.globalAlpha = 1.0;
 
         ctx.restore();
