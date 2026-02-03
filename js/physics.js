@@ -901,6 +901,64 @@ function initPhysics(placedParts) {
 }
 
 /**
+ * Calculate instantaneous acceleration
+ * Used by RK4 integrator
+ */
+function getAcceleration(altitude, velocity, mass, thrustForce, parts) {
+    // Gravity (Force = mass * gravity_accel)
+    // We want Force magnitude, Direction is Down
+    // getGravity returns Acceleration (m/s^2)
+    const gAccel = getGravity(altitude);
+    const gravityForce = mass * gAccel;
+
+    // Drag (Signed Force)
+    const dragForce = calculateDrag(velocity, altitude, parts);
+
+    // Net Force = Thrust (Up) - Gravity (Down) + Drag (Opposes Motion)
+    const netForce = thrustForce - gravityForce + dragForce;
+
+    return netForce / mass;
+}
+
+/**
+ * Perform Runge-Kutta 4 Integration Step
+ */
+function integrateRK4(state, dt, mass, thrustForce, parts) {
+    const { y, v } = state;
+
+    // k1
+    const a1 = getAcceleration(y, v, mass, thrustForce, parts);
+    const v1 = v;
+
+    // k2
+    const y2 = y + v1 * 0.5 * dt;
+    const v2 = v + a1 * 0.5 * dt;
+    const a2 = getAcceleration(y2, v2, mass, thrustForce, parts);
+
+    // k3
+    const y3 = y + v2 * 0.5 * dt;
+    const v3 = v + a2 * 0.5 * dt;
+    const a3 = getAcceleration(y3, v3, mass, thrustForce, parts);
+
+    // k4
+    const y4 = y + v3 * dt;
+    const v4 = v + a3 * dt;
+    const a4 = getAcceleration(y4, v4, mass, thrustForce, parts);
+
+    // Weighted Average
+    const finalY = y + (dt / 6) * (v1 + 2 * v2 + 2 * v3 + v4);
+    const finalV = v + (dt / 6) * (a1 + 2 * a2 + 2 * a3 + a4);
+
+    return {
+        altitude: finalY,
+        velocity: finalV,
+        acceleration: a1,  // Use initial acceleration for G-force display
+        dragForce: calculateDrag(v, y, parts), // Approximate drag for display
+        gravityForce: mass * getGravity(y)     // Approximate gravity for display
+    };
+}
+
+/**
  * Main physics simulation step
  * @param {number} dt - Time step in seconds
  */
@@ -924,14 +982,13 @@ function physicsStep(dt) {
         Math.abs(PHYSICS.velocity) / PHYSICS.speedOfSound : 0;
 
     // ============================================
-    // CALCULATE FORCES
+    // CALCULATE FORCES & INTEGRATE
     // ============================================
 
-    // Current mass
+    // Current mass (assumed constant for this micro-step)
     const mass = calculateTotalMass(parts, PHYSICS.fuel);
 
-    // Thrust force (only if we have fuel)
-    // Thrust force (only if we have fuel)
+    // Thrust force
     PHYSICS.thrustForce = 0;
 
     // Update total fuel for UI
@@ -948,40 +1005,28 @@ function physicsStep(dt) {
         : PHYSICS.throttle;
 
     if (PHYSICS.fuel > 0 && effectiveThrottle > 0) {
-        // Calculate thrust and consume fuel from tanks
+        // Calculate thrust and consume fuel
         PHYSICS.thrustForce = consumeFuelAndGetThrust(parts, dt, effectiveThrottle);
-
-        // Update fuel again after consumption so UI is accurate for next frame
+        // Update fuel again for UI
         PHYSICS.fuel = calculateCurrentFuel(parts);
     }
 
-    // Gravity force
-    const gravity = getGravity(PHYSICS.altitude);
-    PHYSICS.gravityForce = mass * gravity;
+    // --- RK4 INTEGRATION ---
+    const startState = { y: PHYSICS.altitude, v: PHYSICS.velocity };
+    const result = integrateRK4(startState, dt, mass, PHYSICS.thrustForce, parts);
 
-    // Drag force
-    PHYSICS.dragForce = calculateDrag(PHYSICS.velocity, PHYSICS.altitude, parts);
+    // Apply results
+    PHYSICS.altitude = result.altitude;
+    PHYSICS.velocity = result.velocity;
+    PHYSICS.acceleration = result.acceleration;
 
-    // Net force (thrust up, gravity down, drag opposes motion)
-    // Gravity is magnitude, direction is Down (-).
-    // Drag is now signed (opposes velocity).
-
-    // F_net = Thrust - F_gravity + F_drag
+    // Update forces for UI display (using values from the integration step)
+    PHYSICS.dragForce = result.dragForce;
+    PHYSICS.gravityForce = result.gravityForce;
     PHYSICS.netForce = PHYSICS.thrustForce - PHYSICS.gravityForce + PHYSICS.dragForce;
 
-    // ============================================
-    // UPDATE MOTION
-    // ============================================
-
-    // Acceleration
-    PHYSICS.acceleration = PHYSICS.netForce / mass;
+    // Calc Derived Stats
     PHYSICS.gForce = PHYSICS.acceleration / PHYSICS.GRAVITY;
-
-    // Velocity (Euler integration)
-    PHYSICS.velocity += PHYSICS.acceleration * dt;
-
-    // Altitude
-    PHYSICS.altitude += PHYSICS.velocity * dt;
 
     // ============================================
     // UPDATE CRITICAL PARAMETERS
@@ -990,12 +1035,10 @@ function physicsStep(dt) {
     // Dynamic pressure
     PHYSICS.dynamicPressure = calculateDynamicPressure(PHYSICS.velocity, PHYSICS.altitude);
 
-    // Surface temperature from aerodynamic heating
+    // Surface temperature
     updateSurfaceTemperature(dt);
 
-    // ============================================
-    // TRACK MAXIMUM VALUES
-    // ============================================    // Track maximum values
+    // Track maximum values
     PHYSICS.maxAltitude = Math.max(PHYSICS.maxAltitude, PHYSICS.altitude);
     PHYSICS.maxVelocity = Math.max(PHYSICS.maxVelocity, Math.abs(PHYSICS.velocity));
     PHYSICS.maxQ = Math.max(PHYSICS.maxQ, PHYSICS.dynamicPressure);
