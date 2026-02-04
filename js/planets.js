@@ -21,7 +21,8 @@ const PLANETS = {
         atmosphereColor: 'rgba(100, 150, 255, 0.3)',
         hasAtmosphere: true,
         rotationPeriod: 86400,     // seconds (24 hours)
-        isHomeWorld: true
+        isHomeWorld: true,
+        molarMass: 0.0289644       // kg/mol (Air)
     },
 
     moon: {
@@ -64,6 +65,7 @@ const PLANETS = {
         groundColor: '#8b4513',
         atmosphereColor: 'rgba(255, 150, 100, 0.2)',
         hasAtmosphere: true,
+        molarMass: 0.04334,        // kg/mol (CO2)
         // Orbit around Sun (simplified for game)
         parentBody: 'sun',
         orbitRadius: 227900000000, // m from Sun
@@ -151,8 +153,8 @@ function getPlanetAtmosphere(altitude, planetId = null) {
     // Physical Constants
     const g0 = planet.surfaceGravity;
     const R = 8.3144598; // Universal Gas Constant (J/mol·K)
-    const M = 0.0289644; // Molar Mass of Earth Air (kg/mol)
-    const Rs = 287.058;  // Specific Gas Constant for Air (J/kg·K) [R/M]
+    const M = planet.molarMass || 0.0289644; // Molar Mass (default to Earth Air)
+    const Rs = R / M;  // Specific Gas Constant (J/kg·K)
 
     let pressure, temperature, density;
 
