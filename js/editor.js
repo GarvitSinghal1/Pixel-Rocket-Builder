@@ -1114,7 +1114,7 @@ function updateStats() {
     const thrust = calculateTotalThrust(connectedParts);
     const deltaV = calculateDeltaV(connectedParts);
     const altitude = estimateAltitude(connectedParts);
-    const efficiency = calculateEfficiency(connectedParts);
+
 
     // Count disconnected parts
     const disconnectedCount = allParts.length - connectedParts.length;
