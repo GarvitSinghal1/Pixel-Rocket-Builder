@@ -1136,9 +1136,12 @@ function updateStats() {
     const effLabel = document.getElementById('stat-efficiency-label');
     if (effLabel) effLabel.innerText = 'AVG ISP';
 
-    document.getElementById('stat-efficiency').innerText = avgIsp + ' s';
+    const effValue = document.getElementById('stat-efficiency');
+    if (effValue) effValue.innerText = avgIsp + ' s';
+
     // Max bar width approx 400s
-    document.getElementById('stat-efficiency-bar').style.width = Math.min(100, (avgIsp / 400) * 100) + '%';
+    const effBar = document.getElementById('stat-efficiency-bar');
+    if (effBar) effBar.style.width = Math.min(100, (avgIsp / 400) * 100) + '%';
 
     // Color TWR based on value
     const twrEl = document.getElementById('stat-twr');

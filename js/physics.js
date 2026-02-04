@@ -519,8 +519,10 @@ function calculateTWR(parts, fuel = null) {
     const thrust = calculateTotalThrust(parts) * 1000; // kN to N
 
     // Use surface gravity of current planet
-    const surfaceGravity = getGravity(0);
-    const weight = mass * surfaceGravity;
+    // TWR = Thrust / Weight
+    // Weight = Mass * Gravity
+    // Use Standard Gravity for consistency with ISP
+    const weight = mass * PHYSICS.GRAVITY;
 
     if (weight === 0) return 0;
     return thrust / weight;
