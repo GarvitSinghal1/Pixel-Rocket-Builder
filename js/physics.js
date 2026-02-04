@@ -233,14 +233,12 @@ function getGravity(altitude) {
 // ============================================
 
 /**
- * Get drag coefficient based on Mach number
- * Models subsonic, transonic, and supersonic regimes
+ * Calculate drag coefficient based on Mach number
  * @param {number} mach - Mach number
- * @param {boolean} hasNoseCone - Whether rocket has nose cone
- * @param {boolean} hasFairing - Whether rocket has fairing
- * @returns {number} Drag coefficient
+ * @param {number} maxDragReduction - Maximum drag reduction factor (0-1) from parts
+ * @returns {number} Drag Coefficient (Cd)
  */
-function getDragCoefficient(mach, hasNoseCone, hasFairing) {
+function getDragCoefficient(mach, maxDragReduction = 0) {
     let baseCd;
 
     if (mach < 0.8) {
@@ -260,14 +258,10 @@ function getDragCoefficient(mach, hasNoseCone, hasFairing) {
         baseCd = 0.35;
     }
 
-    // Nose cone reduces drag significantly
-    if (hasNoseCone) {
-        baseCd *= 0.5; // 50% reduction
-    }
-
-    // Fairing provides additional streamlining
-    if (hasFairing) {
-        baseCd *= 0.7; // 30% reduction
+    // Apply Drag Reduction from parts (e.g., Fairings, Nose Cones)
+    // maxDragReduction is a value between 0 and 1 (e.g., 0.5 means 50% reduction)
+    if (maxDragReduction > 0) {
+        baseCd *= (1 - maxDragReduction);
     }
 
     return baseCd;
@@ -292,9 +286,14 @@ function calculateDrag(velocity, altitude, parts) {
     const area = Math.PI * Math.pow(maxWidth * 0.5, 2);
     PHYSICS.crossSectionalArea = area;
 
-    // Check for aerodynamic parts
-    const hasNoseCone = parts.some(p => p.partId.includes('nose_cone'));
-    const hasFairing = parts.some(p => p.partId === 'fairing');
+    // Check for aerodynamic parts and calculate maximum drag reduction
+    let maxDragReduction = 0;
+    parts.forEach(p => {
+        const partDef = getPartById(p.partId);
+        if (partDef && partDef.dragReduction) {
+            maxDragReduction = Math.max(maxDragReduction, partDef.dragReduction);
+        }
+    });
 
     // Get Mach number
     const speedOfSound = getSpeedOfSound(altitude);
@@ -303,7 +302,7 @@ function calculateDrag(velocity, altitude, parts) {
     PHYSICS.speedOfSound = speedOfSound;
 
     // Get Mach-dependent drag coefficient
-    const cd = getDragCoefficient(mach, hasNoseCone, hasFairing);
+    const cd = getDragCoefficient(mach, maxDragReduction);
     PHYSICS.dragCoefficient = cd;
 
     // Drag force: F = 0.5 * ρ * v² * Cd * A
