@@ -633,10 +633,24 @@ function calculateDeltaV(parts) {
 
     if (engines.length === 0) return 0;
 
-    const avgIsp = engines.reduce((total, p) => {
+    // Calculate Thrust-Weighted Harmonic Mean ISP
+    // Formula: Sum(Thrust) / Sum(Thrust / ISP)
+    let totalThrust = 0;
+    let totalFlowRate = 0; // Proportional to Thrust/ISP
+
+    engines.forEach(p => {
         const partDef = getPartById(p.partId);
-        return total + partDef.isp;
-    }, 0) / engines.length;
+        // Assuming max thrust for delta-v calc
+        const thrust = partDef.thrust;
+        totalThrust += thrust;
+        if (partDef.isp > 0) {
+            totalFlowRate += thrust / partDef.isp;
+        }
+    });
+
+    if (totalFlowRate === 0) return 0;
+
+    const avgIsp = totalThrust / totalFlowRate;
 
     // Tsiolkovsky rocket equation
     return avgIsp * PHYSICS.GRAVITY * Math.log(wetMass / dryMass);
