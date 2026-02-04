@@ -183,7 +183,9 @@ function getPressure(altitude) {
     if (typeof getPlanetAtmosphere === 'function') {
         return getPlanetAtmosphere(altitude).pressure;
     }
-    return 0;
+    // Fallback: Earth Isothermal Model (Scale Height ~7400m)
+    // P = P0 * e^(-h/H)
+    return 101325 * Math.exp(-Math.max(0, altitude) / 7400);
 }
 
 /**
@@ -195,7 +197,9 @@ function getAirDensity(altitude) {
     if (typeof getPlanetAtmosphere === 'function') {
         return getPlanetAtmosphere(altitude).density;
     }
-    return 0;
+    // Fallback: Earth Isothermal Model
+    // rho = rho0 * e^(-h/H)
+    return 1.225 * Math.exp(-Math.max(0, altitude) / 7400);
 }
 
 /**
