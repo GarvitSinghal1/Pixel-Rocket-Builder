@@ -644,19 +644,30 @@ function calculateDeltaV(parts) {
 
 /**
  * Estimate maximum altitude
+ * Uses dynamic gravity loss based on TWR and Planet Gravity
  */
 function estimateAltitude(parts) {
     const deltaV = calculateDeltaV(parts);
     const twr = calculateTWR(parts);
 
+    // Get current planet gravity
+    const planet = typeof getCurrentPlanet === 'function' ? getCurrentPlanet() : { surfaceGravity: 9.81 };
+    const g = planet.surfaceGravity;
+
     if (twr <= 1) return 0;
 
-    // Account for gravity losses (roughly 1500 m/s for Earth)
-    const gravityLoss = 1500;
-    const effectiveVelocity = Math.max(0, deltaV - gravityLoss);
+    // Gravity Loss Approximation:
+    // Faster acceleration (high TWR) means less time fighting gravity.
+    // V_loss ≈ DeltaV / TWR
+    const gravityLoss = deltaV / twr;
+
+    // Atmospheric Drag approximation (roughly 10% for Earth, less for Mars)
+    const dragLoss = (planet.hasAtmosphere) ? deltaV * 0.1 : 0;
+
+    const effectiveVelocity = Math.max(0, deltaV - gravityLoss - dragLoss);
 
     // Kinematic equation: h = v² / (2g)
-    return (effectiveVelocity * effectiveVelocity) / (2 * PHYSICS.GRAVITY);
+    return (effectiveVelocity * effectiveVelocity) / (2 * g);
 }
 
 /**
