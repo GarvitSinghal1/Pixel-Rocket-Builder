@@ -639,43 +639,16 @@ function formatAltitude(meters) {
  */
 function updateFlightData() {
     try {
-        // A. Manually Construct Telemetry Object
-        // We allow PHYSICS and separate Advanced logic to be sources of truth
+        // A. Get Unified Telemetry Data
+        // uses window.getTelemetry() which is provided by physics.js (basic) or advanced.js (merged)
         let fullTelemetry = {};
 
-        // Part 1: Basic Physics (From PHYSICS global)
-        // Access safely in case of scope issues
-        let ph = (typeof PHYSICS !== 'undefined') ? PHYSICS : {};
-
-        fullTelemetry.altitude = ph.altitude || 0;
-        fullTelemetry.velocity = ph.velocity || 0;
-        fullTelemetry.machNumber = ph.machNumber || 0;
-        fullTelemetry.dynamicPressure = ph.dynamicPressure || 0;
-        fullTelemetry.gForce = ph.gForce || 0;
-        fullTelemetry.surfaceTemp = ph.surfaceTemperature || 288;
-        fullTelemetry.fuel = ph.fuel || 0;
-        fullTelemetry.maxFuel = ph.maxFuel || 1;
-        fullTelemetry.time = ph.time || 0;
-        fullTelemetry.currentStage = (ph.currentStage !== undefined) ? ph.currentStage : 0;
-        fullTelemetry.totalStages = (ph.stages || []).length;
-
-        fullTelemetry.warnings = {
-            q: (fullTelemetry.dynamicPressure > (ph.MAX_Q_LIMIT || 30000) * 0.9) ? 2 : 0,
-            g: (Math.abs(fullTelemetry.gForce) > (ph.MAX_G_LIMIT || 10) * 0.9) ? 2 : 0,
-            temp: (fullTelemetry.surfaceTemp > (ph.MAX_TEMP_LIMIT || 1000) * 0.9) ? 2 : 0
-        };
-
-        // Part 2: Advanced Data
-        let advData = {};
-        if (typeof getAdvancedTelemetry === 'function') {
-            try { advData = getAdvancedTelemetry() || {}; } catch (e) { }
+        if (typeof getTelemetry === 'function') {
+            fullTelemetry = getTelemetry();
+        } else {
+            console.warn("getTelemetry function missing!");
+            return;
         }
-
-        fullTelemetry.orbit = advData.orbit || { isOrbital: false };
-        fullTelemetry.throttleLag = advData.throttleLag || 0;
-        fullTelemetry.ignitionFailed = advData.ignitionFailed || false;
-        fullTelemetry.cavitating = advData.cavitating || false;
-        fullTelemetry.cavitationLoss = advData.cavitationLoss || 0;
 
         // B. Update UI Elements
         // Helper to safely update text content
@@ -683,6 +656,10 @@ function updateFlightData() {
             const el = document.getElementById(id);
             if (el) el.textContent = val;
         };
+
+        // Ensure Physics Global is available for Constants if needed (though telemetry should provide warnings)
+        // Access safely
+        let ph = (typeof PHYSICS !== 'undefined') ? PHYSICS : {};
 
         // Basic Data Updates
         update('data-altitude', formatAltitude(fullTelemetry.altitude));

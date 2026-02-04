@@ -471,7 +471,27 @@ function getOrbitalInfo() {
 
 console.log('🚀 Advanced physics module loaded');
 
-// Export alias for main.js
-if (typeof getTelemetry === 'undefined') {
-    window.getTelemetry = getAdvancedTelemetry;
-}
+// Unified Telemetry Export
+// Merges basic physics data with advanced orbital data
+window.getTelemetry = function () {
+    // 1. Get Basic Telemetry (if available)
+    let basic = {};
+    if (typeof getBaseTelemetry === 'function') {
+        basic = getBaseTelemetry();
+    } else if (typeof PHYSICS !== 'undefined') {
+        // Fallback manual construction if physics.js isn't fully loaded or updated
+        // This shouldn't happen if getBaseTelemetry rename worked, but good for safety
+        console.warn("getBaseTelemetry not found, using fallback.");
+    }
+
+    // 2. Get Advanced Telemetry
+    const advanced = getAdvancedTelemetry();
+
+    // 3. Merge (Advanced overwrites basic if collision, but keys should be distinct)
+    return {
+        ...basic,
+        ...advanced,
+        // Ensure orbit is always present even if advanced failed
+        orbit: advanced.orbit || { isOrbital: false }
+    };
+};

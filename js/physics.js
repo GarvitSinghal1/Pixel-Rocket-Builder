@@ -1263,7 +1263,7 @@ function getFlightResults(targetAltitude = 10000) {
 /**
  * Get current telemetry data for display
  */
-function getTelemetry() {
+function getBaseTelemetry() {
     return {
         altitude: PHYSICS.altitude,
         velocity: PHYSICS.velocity,
@@ -1290,6 +1290,9 @@ function getTelemetry() {
         }
     };
 }
+
+// Default Telemetry Export (can be overridden by advanced.js)
+window.getTelemetry = getBaseTelemetry;
 
 /**
  * Get detailed failure explanation with improvement suggestions
