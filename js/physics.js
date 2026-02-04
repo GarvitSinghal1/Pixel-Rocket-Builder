@@ -289,7 +289,7 @@ function calculateDrag(velocity, altitude, parts) {
     PHYSICS.crossSectionalArea = area;
 
     // Check for aerodynamic parts
-    const hasNoseCone = parts.some(p => p.partId === 'nose_cone');
+    const hasNoseCone = parts.some(p => p.partId.includes('nose_cone'));
     const hasFairing = parts.some(p => p.partId === 'fairing');
 
     // Get Mach number
