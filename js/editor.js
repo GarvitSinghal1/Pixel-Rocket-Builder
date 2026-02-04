@@ -1125,7 +1125,20 @@ function updateStats() {
     document.getElementById('stat-thrust').textContent = `${thrust} kN`;
     document.getElementById('stat-deltav').textContent = `${Math.round(deltaV)} m/s`;
     document.getElementById('stat-altitude').textContent = formatAltitude(altitude);
-    document.getElementById('stat-efficiency').textContent = `${Math.round(efficiency)}%`;
+
+    // Efficiency -> Average ISP (Updated)
+    const avgIsp = calculateAverageISP(connectedParts); // Changed from joinedParts to connectedParts
+    // document.getElementById('stat-efficiency').innerText = efficiency.toFixed(0) + '%';
+    // document.getElementById('stat-efficiency-bar').style.width = efficiency + '%';
+
+    // We repurpose the ID 'stat-efficiency' to show ISP
+    // Ideally we rename the HTML ID, but for now we just change the text
+    const effLabel = document.getElementById('stat-efficiency-label');
+    if (effLabel) effLabel.innerText = 'AVG ISP';
+
+    document.getElementById('stat-efficiency').innerText = avgIsp + ' s';
+    // Max bar width approx 400s
+    document.getElementById('stat-efficiency-bar').style.width = Math.min(100, (avgIsp / 400) * 100) + '%';
 
     // Color TWR based on value
     const twrEl = document.getElementById('stat-twr');

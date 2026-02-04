@@ -700,14 +700,18 @@ function estimateAltitude(parts) {
 /**
  * Calculate fuel efficiency
  */
-function calculateEfficiency(parts) {
-    const thrust = calculateTotalThrust(parts);
-    const consumption = calculateFuelConsumption(parts);
+/**
+ * Calculate Average ISP (Weighted by Thrust)
+ * Combined ISP = Total Thrust / (Total Mass Flow * g0)
+ */
+function calculateAverageISP(parts) {
+    const thrustN = calculateTotalThrust(parts) * 1000; // kN -> N
+    const massFlow = calculateFuelConsumption(parts); // kg/s
 
-    if (consumption === 0) return 0;
+    if (massFlow === 0 || thrustN === 0) return 0;
 
-    const efficiency = thrust / consumption;
-    return Math.min(100, (efficiency / 20) * 100);
+    // Isp = F / (m_dot * g0)
+    return Math.round(thrustN / (massFlow * 9.81));
 }
 
 /**
