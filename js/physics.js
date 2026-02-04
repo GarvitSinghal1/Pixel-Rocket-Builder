@@ -787,23 +787,10 @@ function detectStages(parts) {
             }
         }
 
-        // Fallback 2: Geometric Force (The "Sledgehammer")
-        // If graph search still finds everything connected, assume parts strictly below the decoupler line SHOULD drop.
+        // Fallback 2: Geometric Force (REMOVED)
+        // Rely purely on graph connectivity. If parts are strutted, they should stay connected.
         if (nextStageParts.length === currentParts.length) {
-            console.warn(`[Staging] Staging still blocked. Attempting Geometric Cut...`);
-
-            // Define cut line at the bottom of these decouplers
-            const decouplerHeight = getPartById('decoupler').height * TILE_SIZE;
-            const cutY = groupDecouplers[0].y + decouplerHeight - 5; // -5 tolerance
-
-            // Keep parts that are largely ABOVE the cut line
-            // Drop parts that are largely BELOW the cut line
-            const forcedKeep = currentParts.filter(p => p.y < cutY);
-
-            if (forcedKeep.length < currentParts.length) {
-                console.log(`[Staging] Geometric Cut success! Dropped ${currentParts.length - forcedKeep.length} parts.`);
-                nextStageParts = forcedKeep;
-            }
+            console.warn(`[Staging] Staging blocked by connectivity (likely struts). No separation occurred.`);
         }
 
         console.log(`[Staging] Result: ${nextStageParts.length} parts (Prev: ${currentParts.length})`);
