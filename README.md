@@ -328,7 +328,7 @@ The rocket is treated as a **Connectivity Graph**.
 
 ---
 
-## 🛰️ Advanced Mode Simulation
+## �️ Advanced Mode Simulation
 
 Advanced mode introduces professional-grade flight dynamics.
 
