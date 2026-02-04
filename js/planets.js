@@ -130,6 +130,10 @@ const ATMOSPHERE_LAYERS = {
         { height: 47000, temp: 270.65, lapse: 0, press: 110.91 },
         { height: 51000, temp: 270.65, lapse: -0.0028, press: 66.94 },
         { height: 71000, temp: 214.65, lapse: -0.002, press: 3.96 }
+    ],
+    mars: [
+        { height: 0, temp: 210.15, lapse: -0.0025, press: 636 },
+        { height: 7000, temp: 192.65, lapse: -0.0009, press: 400 } // Slower cooling aloft
     ]
 };
 
@@ -158,13 +162,14 @@ function getPlanetAtmosphere(altitude, planetId = null) {
 
     let pressure, temperature, density;
 
-    // Use Earth Standard Atmosphere layers if Earth
-    if (planet.id === 'earth' && ATMOSPHERE_LAYERS.earth) {
+    // Use Planet Specific Atmosphere layers if defined
+    if (ATMOSPHERE_LAYERS[planet.id]) {
         // Find current layer
-        let layer = ATMOSPHERE_LAYERS.earth[0];
-        for (let i = 0; i < ATMOSPHERE_LAYERS.earth.length; i++) {
-            if (altitude >= ATMOSPHERE_LAYERS.earth[i].height) {
-                layer = ATMOSPHERE_LAYERS.earth[i];
+        const layers = ATMOSPHERE_LAYERS[planet.id];
+        let layer = layers[0];
+        for (let i = 0; i < layers.length; i++) {
+            if (altitude >= layers[i].height) {
+                layer = layers[i];
             } else {
                 break;
             }
