@@ -321,7 +321,19 @@ Aerodynamic heating is modeled using stagnation point physics:
 - **Stagnation Temp ($T_{stag}$):** $T_{stag} = T_{ambient} \times (1 + 0.2 \times M^2)$ (assuming $\gamma = 1.4$).
 - **Radiative Cooling:** The hull cools according to the **Stefan-Boltzmann law**: $P_{rad} = \epsilon \sigma A T^4$.
 
-### 4. Staging & Connectivity
+### 4. Thermodynamic Accuracy & Atmosphere
+We solve the **Hydrostatic Equation** coupled with the **Ideal Gas Law** to generate physically consistent atmospheres for Earth, Mars, and other bodies:
+- **Hydrostatic Equilibrium:** $dP/dh = -\rho g$. Pressure decays naturally based on gravity ($g$) and density ($\rho$).
+- **Ideal Gas Law:** $\rho = P / (R_{specific} \cdot T)$. Density is dynamically derived from local pressure and temperature.
+- **Planet-Specific Composition:** Mars atmosphere handles different molar masses ($CO_2$ vs $N_2/O_2$), affecting the Specific Gas Constant ($R_s$) and speed of sound.
+
+### 5. High-Fidelity Propulsion
+Engine performance is simulated with engineering-grade formulas:
+- **Weighted ISP:** Multi-engine stages calculate Specific Impulse using the **Thrust-Weighted Harmonic Mean**, ensuring combined ISP is physically accurate.
+- **Mass Flow Consistency:** Fuel consumption is strictly derived from thrust and ISP ($\dot{m} = F / (I_{sp} \cdot g_0)$), preventing arbitrary fuel usage.
+- **Dynamic Gravity Loss:** Altitude estimation accounts for real-time Thrust-to-Weight Ratio (TWR) and local planetary gravity.
+
+### 6. Staging & Connectivity
 The rocket is treated as a **Connectivity Graph**.
 - **BFS Search:** When a stage is triggered, a Breadth-First Search starts from the **Root Part** (Command Pod or Probe).
 - **Disconnected Components:** Any parts no longer reachable from the Root are tagged for separation and converted into physical debris.
