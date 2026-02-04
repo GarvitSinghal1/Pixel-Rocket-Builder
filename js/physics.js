@@ -501,7 +501,7 @@ function calculateFuelConsumption(parts) {
             const isp = partDef.isp || 250;
             const thrustN = partDef.thrust * 1000;
             // m_dot = Thrust / (Isp * g0)
-            const consumption = thrustN / (isp * 9.81);
+            const consumption = thrustN / (isp * PHYSICS.GRAVITY);
             return total + consumption;
         }
         return total;
@@ -714,7 +714,8 @@ function calculateAverageISP(parts) {
     if (massFlow === 0 || thrustN === 0) return 0;
 
     // Isp = F / (m_dot * g0)
-    return Math.round(thrustN / (massFlow * 9.81));
+    // Use Standard Gravity (9.80665) for ISP definition
+    return Math.round(thrustN / (massFlow * PHYSICS.GRAVITY));
 }
 
 /**

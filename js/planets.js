@@ -10,7 +10,7 @@ const PLANETS = {
         radius: 6371000,           // m
         mass: 5.972e24,            // kg
         mu: 3.986e14,              // GM (m³/s²) - gravitational parameter
-        surfaceGravity: 9.81,      // m/s²
+        surfaceGravity: 9.80665,   // m/s² (Standard Gravity)
         atmosphereHeight: 100000,  // m (Kármán line)
         scaleHeight: 8500,         // m - atmospheric scale height
         seaLevelPressure: 101325,  // Pa
