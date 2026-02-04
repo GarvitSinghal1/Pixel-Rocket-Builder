@@ -493,7 +493,15 @@ function calculateTotalThrust(parts) {
 function calculateFuelConsumption(parts) {
     return parts.reduce((total, p) => {
         const partDef = getPartById(p.partId);
-        return total + (partDef.fuelConsumption || 0);
+        // Only engines consume fuel
+        if (partDef.category === 'engines') {
+            const isp = partDef.isp || 250;
+            const thrustN = partDef.thrust * 1000;
+            // m_dot = Thrust / (Isp * g0)
+            const consumption = thrustN / (isp * 9.81);
+            return total + consumption;
+        }
+        return total;
     }, 0);
 }
 
@@ -552,7 +560,12 @@ function consumeFuelAndGetThrust(parts, dt, throttle) {
     // 2. Process each engine
     engines.forEach(engine => {
         // Calculate fuel needed for this engine
-        const consumptionRate = engine.def.fuelConsumption;
+        // Mass Flow Rate = Thrust / (Isp * g0)
+        // Thrust is in kN, so multiply by 1000
+        const isp = engine.def.isp || 250;
+        const thrustN = engine.def.thrust * 1000;
+        const consumptionRate = thrustN / (isp * 9.81);
+
         const fuelNeeded = consumptionRate * throttle * dt;
 
         if (activeTanks.length === 0) {
