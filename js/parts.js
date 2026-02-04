@@ -23,7 +23,7 @@ const PARTS = {
             color: '#666677',
             accentColor: '#ff6600',
             description: 'Compact engine for lightweight rockets',
-            tooltip: 'Low thrust (10kN) but fuel-efficient (ISP 280s). Best for altitudes up to 10km. Mass: 50kg'
+            tooltip: 'Low thrust but fuel-efficient. Best for altitudes up to 10km'
         },
         standard_engine: {
             id: 'standard_engine',
@@ -40,7 +40,7 @@ const PARTS = {
             color: '#555566',
             accentColor: '#ff8800',
             description: 'Reliable workhorse engine',
-            tooltip: 'Balanced thrust (120kN) and efficiency (ISP 320s). Good for reaching 50km+. Mass: 500kg'
+            tooltip: 'Balanced thrust and efficiency. Good for reaching 50km+'
         },
         heavy_lifter: {
             id: 'heavy_lifter',
@@ -57,7 +57,7 @@ const PARTS = {
             color: '#444455',
             accentColor: '#ffaa00',
             description: 'Powerful main stage engine',
-            tooltip: 'High thrust (450kN) for heavy payloads. Can reach space (100km+). Mass: 1.5t'
+            tooltip: 'High thrust for heavy payloads. Can reach space (100km+)'
         },
         booster: {
             id: 'booster',
@@ -75,7 +75,7 @@ const PARTS = {
             color: '#cc4444',
             accentColor: '#ff6600',
             description: 'Solid rocket booster for extra thrust',
-            tooltip: 'Side-mounted booster (250kN). Contains 1500 fuel. Burns fast. Mass: 2t (Wet)'
+            tooltip: 'Side-mounted booster. Burns fast'
         },
         ion_drive: {
             id: 'ion_drive',
@@ -92,7 +92,7 @@ const PARTS = {
             color: '#aaaaaa',
             accentColor: '#00ffff',
             description: 'High-efficiency deep space engine',
-            tooltip: 'Tiny thrust (2kN) but insane efficiency (ISP 4000s). Vacuum only. Mass: 100kg'
+            tooltip: 'Tiny thrust but insane efficiency. Vacuum only'
         },
         aerospike: {
             id: 'aerospike',
@@ -109,7 +109,7 @@ const PARTS = {
             color: '#775555',
             accentColor: '#ffccaa',
             description: 'Altitude compensating engine',
-            tooltip: 'Efficient in both atmo and vacuum. 350kN Thrust. Mass: 800kg'
+            tooltip: 'Efficient in both atmo and vacuum'
         },
         mammoth_engine: {
             id: 'mammoth_engine',
@@ -126,7 +126,7 @@ const PARTS = {
             color: '#333333',
             accentColor: '#ff4400',
             description: 'Super-heavy lifter',
-            tooltip: 'Massive thrust (1000kN) for huge rockets. Low efficiency. Mass: 3t'
+            tooltip: 'Massive thrust for huge rockets. Low efficiency'
         }
     },
 
@@ -147,7 +147,7 @@ const PARTS = {
             color: '#ddddee',
             accentColor: '#aabbcc',
             description: 'Lightweight fuel tank',
-            tooltip: '500 units of fuel. Perfect for small rockets. Mass: 100kg (Dry)'
+            tooltip: 'Perfect for small rockets'
         },
         medium_tank: {
             id: 'medium_tank',
@@ -162,7 +162,7 @@ const PARTS = {
             color: '#ccccdd',
             accentColor: '#99aacc',
             description: 'Standard capacity fuel tank',
-            tooltip: '2000 units of fuel. Balanced size and capacity. Mass: 400kg (Dry)'
+            tooltip: 'Balanced size and capacity'
         },
         large_tank: {
             id: 'large_tank',
@@ -177,7 +177,7 @@ const PARTS = {
             color: '#bbbbcc',
             accentColor: '#8899bb',
             description: 'High-capacity main stage tank',
-            tooltip: '5000 units of fuel. For heavy lifters reaching space. Mass: 800kg (Dry)'
+            tooltip: 'For heavy lifters reaching space'
         },
         radial_tank: {
             id: 'radial_tank',
@@ -192,7 +192,7 @@ const PARTS = {
             color: '#ddddcc',
             accentColor: '#ff8844',
             description: 'Side-mounted fuel canister',
-            tooltip: '600 units of fuel. Mounts on sides for extra capacity. Mass: 150kg'
+            tooltip: 'Mounts on sides for extra capacity'
         },
         tiny_tank: {
             id: 'tiny_tank',
@@ -207,7 +207,7 @@ const PARTS = {
             color: '#eeeeff',
             accentColor: '#aabbcc',
             description: 'Micro fuel tank',
-            tooltip: '100 units. Specific for probes/ion drives. Mass: 20kg'
+            tooltip: 'Micro fuel tank. Specific for probes/ion drives'
         },
         huge_tank: {
             id: 'huge_tank',
@@ -222,7 +222,7 @@ const PARTS = {
             color: '#cccccc',
             accentColor: '#999999',
             description: 'Massive main stage tank',
-            tooltip: '15000 units by volume. For Mammoth engines. Mass: 3t (Dry)'
+            tooltip: 'For Mammoth engines'
         }
     },
 
@@ -243,7 +243,7 @@ const PARTS = {
             color: '#ff4444',
             accentColor: '#cc2222',
             description: 'Lightweight aerodynamic nose for small rockets',
-            tooltip: 'Reduces drag by 20%. Perfect for 1-tile wide rockets. Mass: 5kg'
+            tooltip: 'Reduces drag by 20%. Perfect for 1-tile wide rockets'
         },
         nose_cone: {
             id: 'nose_cone',
@@ -258,7 +258,7 @@ const PARTS = {
             color: '#ee4444',
             accentColor: '#cc2222',
             description: 'Standard aerodynamic nose cone',
-            tooltip: 'Reduces drag by 30%. Ideal for medium rockets. Mass: 20kg'
+            tooltip: 'Reduces drag by 30%. Ideal for medium rockets'
         },
         small_fairing: {
             id: 'small_fairing',
@@ -273,7 +273,7 @@ const PARTS = {
             color: '#eeeeee',
             accentColor: '#ccddee',
             description: 'Compact payload fairing',
-            tooltip: 'Protects small payloads. Reduces drag by 30%. Mass: 10kg'
+            tooltip: 'Protects small payloads. Reduces drag by 30%'
         },
         decoupler: {
             id: 'decoupler',
@@ -288,7 +288,7 @@ const PARTS = {
             color: '#444466',
             accentColor: '#ffcc00',
             description: 'Stage separation mechanism',
-            tooltip: 'Separates rocket stages. Essential for multi-stage designs. Mass: 15kg'
+            tooltip: 'Separates rocket stages. Essential for multi-stage designs'
         },
         strut: {
             id: 'strut',
@@ -302,7 +302,7 @@ const PARTS = {
             color: '#666666',
             accentColor: '#888888',
             description: 'Structural support beam',
-            tooltip: 'Adds structural integrity. Connects to all sides. Mass: 5kg'
+            tooltip: 'Adds structural integrity. Connects to all sides'
         },
         fairing: {
             id: 'fairing',
@@ -317,7 +317,7 @@ const PARTS = {
             color: '#ffffff',
             accentColor: '#ddddee',
             description: 'Large payload protection fairing',
-            tooltip: 'Heavy-duty payload protection. Reduces drag by 50%. Best for large rockets. Mass: 30kg'
+            tooltip: 'Heavy-duty payload protection. Reduces drag by 50%. Best for large rockets'
         }
     },
 
@@ -338,7 +338,7 @@ const PARTS = {
             color: '#888899',
             accentColor: '#666677',
             description: 'Aerodynamic stabilizers',
-            tooltip: 'Increases stability by 20%. Prevents rocket from tumbling. Mass: 10kg'
+            tooltip: 'Increases stability by 20%. Prevents rocket from tumbling'
         },
         large_fins: {
             id: 'large_fins',
@@ -353,7 +353,7 @@ const PARTS = {
             color: '#777788',
             accentColor: '#555566',
             description: 'Heavy-duty stabilizers',
-            tooltip: 'Increases stability by 50%. Essential for large rockets. Mass: 25kg'
+            tooltip: 'Increases stability by 50%. Essential for large rockets'
         },
         reaction_wheel: {
             id: 'reaction_wheel',
@@ -368,7 +368,7 @@ const PARTS = {
             color: '#333344',
             accentColor: '#00ffff',
             description: 'Active attitude control',
-            tooltip: 'Provides 50Nm torque for precise control. Works in space. Mass: 40kg'
+            tooltip: 'Provides 50Nm torque for precise control. Works in space'
         },
         gimbal: {
             id: 'gimbal',
@@ -383,7 +383,7 @@ const PARTS = {
             color: '#445566',
             accentColor: '#667788',
             description: 'Engine vectoring system',
-            tooltip: '±15° gimbal range. Allows engine to pivot for thrust vectoring. Mass: 30kg'
+            tooltip: '±15° gimbal range. Allows engine to pivot for thrust vectoring'
         }
     },
 
@@ -405,7 +405,7 @@ const PARTS = {
             color: '#334455',
             accentColor: '#00ccff',
             description: 'Manned spacecraft',
-            tooltip: 'Carries crew to space. High value (100pts). Very heavy. Mass: 500kg'
+            tooltip: 'Carries crew to space. High value (100pts). Very heavy'
         },
         satellite: {
             id: 'satellite',
@@ -421,7 +421,7 @@ const PARTS = {
             color: '#225588',
             accentColor: '#44aaff',
             description: 'Communications satellite',
-            tooltip: 'Medium payload (50pts). Orbital deployment. Mass: 200kg'
+            tooltip: 'Medium payload (50pts). Orbital deployment'
         },
         probe: {
             id: 'probe',
@@ -437,7 +437,7 @@ const PARTS = {
             color: '#447755',
             accentColor: '#66aa77',
             description: 'Unmanned science probe',
-            tooltip: 'Lightweight payload (30pts). Good for testing. Mass: 100kg'
+            tooltip: 'Lightweight payload (30pts). Good for testing'
         },
         cargo_bay: {
             id: 'cargo_bay',
@@ -453,7 +453,7 @@ const PARTS = {
             color: '#556666',
             accentColor: '#778888',
             description: 'Cargo storage module',
-            tooltip: 'Small payload (20pts). Can stack parts. Connects top/bottom. Mass: 50kg'
+            tooltip: 'Small payload (20pts). Can stack parts. Connects top/bottom'
         },
         habitation_module: {
             id: 'habitation_module',
@@ -469,7 +469,7 @@ const PARTS = {
             color: '#ccccdd',
             accentColor: '#ffaa44',
             description: 'Long-term space habitaiton',
-            tooltip: 'Massive payload (200pts). Requires heavy lifting capability. Mass: 1500kg'
+            tooltip: 'Massive payload (200pts). Requires heavy lifting capability'
         }
     },
 
@@ -489,7 +489,7 @@ const PARTS = {
             color: '#888899',
             accentColor: '#ffffff',
             description: 'Standard docking interface',
-            tooltip: 'Allows spacecraft connection. Mass: 50kg'
+            tooltip: 'Allows spacecraft connection'
         },
         solar_panel: {
             id: 'solar_panel',
@@ -503,7 +503,7 @@ const PARTS = {
             color: '#223344',
             accentColor: '#0066aa',
             description: 'Deployable solar array',
-            tooltip: 'Generates power (visual only). Side mount. Mass: 20kg'
+            tooltip: 'Generates power (visual only). Side mount'
         }
     }
 };
