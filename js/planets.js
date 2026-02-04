@@ -119,6 +119,23 @@ function getGravityAtAltitude(altitude, planetId = null) {
  * Calculate atmospheric properties at altitude
  * Uses exponential atmosphere model with scale height
  */
+const ATMOSPHERE_LAYERS = {
+    earth: [
+        { height: 0, temp: 288.15, lapse: -0.0065, press: 101325 },
+        { height: 11000, temp: 216.65, lapse: 0, press: 22632.1 },
+        { height: 20000, temp: 216.65, lapse: 0.001, press: 5474.89 },
+        { height: 32000, temp: 228.65, lapse: 0.0028, press: 868.02 },
+        { height: 47000, temp: 270.65, lapse: 0, press: 110.91 },
+        { height: 51000, temp: 270.65, lapse: -0.0028, press: 66.94 },
+        { height: 71000, temp: 214.65, lapse: -0.002, press: 3.96 }
+    ]
+};
+
+/**
+ * Calculate atmospheric properties at altitude
+ * Uses Hydrostatic Integration and Ideal Gas Law
+ * Correctly couples T, P, and Density
+ */
 function getPlanetAtmosphere(altitude, planetId = null) {
     const planet = planetId ? getPlanet(planetId) : getCurrentPlanet();
 
@@ -126,38 +143,80 @@ function getPlanetAtmosphere(altitude, planetId = null) {
         return {
             pressure: 0,
             density: 0,
-            temperature: planet.seaLevelTemp * 0.5, // Space is cold
+            temperature: 0, // Space is cold
             speedOfSound: 0
         };
     }
 
-    // Exponential atmosphere model
-    const scaleHeight = planet.scaleHeight;
-    const altitudeFactor = Math.exp(-altitude / scaleHeight);
+    // Physical Constants
+    const g0 = planet.surfaceGravity;
+    const R = 8.3144598; // Universal Gas Constant (J/mol·K)
+    const M = 0.0289644; // Molar Mass of Earth Air (kg/mol)
+    const Rs = 287.058;  // Specific Gas Constant for Air (J/kg·K) [R/M]
 
-    const pressure = planet.seaLevelPressure * altitudeFactor;
-    const density = planet.seaLevelDensity * altitudeFactor;
+    let pressure, temperature, density;
 
-    // Temperature varies with altitude (simplified lapse rate)
-    let temperature;
-    if (altitude < 11000) {
-        // Troposphere: -6.5°C per km
-        temperature = planet.seaLevelTemp - 0.0065 * altitude;
-    } else if (altitude < 25000) {
-        // Tropopause: constant temp
-        temperature = planet.seaLevelTemp - 71.5;
-    } else if (altitude < 47000) {
-        // Stratosphere: warming
-        temperature = planet.seaLevelTemp - 71.5 + 0.003 * (altitude - 25000);
+    // Use Earth Standard Atmosphere layers if Earth
+    if (planet.id === 'earth' && ATMOSPHERE_LAYERS.earth) {
+        // Find current layer
+        let layer = ATMOSPHERE_LAYERS.earth[0];
+        for (let i = 0; i < ATMOSPHERE_LAYERS.earth.length; i++) {
+            if (altitude >= ATMOSPHERE_LAYERS.earth[i].height) {
+                layer = ATMOSPHERE_LAYERS.earth[i];
+            } else {
+                break;
+            }
+        }
+
+        const h = altitude;
+        const h_b = layer.height;
+        const T_b = layer.temp;
+        const P_b = layer.press;
+        const L = layer.lapse;
+
+        // Calculate Temperature (Linear Lapse Rate)
+        // T = Tb + L * (h - hb)
+        temperature = T_b + L * (h - h_b);
+
+        // Hydrostatic Equation Integration
+        if (Math.abs(L) < 1e-10) {
+            // Isothermal Layer (L = 0)
+            // P = Pb * exp( -g0 * M * (h - hb) / (R * Tb) )
+            const exponent = (-g0 * M * (h - h_b)) / (R * T_b);
+            pressure = P_b * Math.exp(exponent);
+        } else {
+            // Non-Isothermal Layer
+            // P = Pb * (Tb / (Tb + L(h-hb))) ^ (g0 * M / (R * L))
+            // P = Pb * (T / Tb) ^ (-g0 * M / (R * L))
+            const exponent = (g0 * M) / (R * L);
+            const base = (T_b) / (T_b + L * (h - h_b));
+            pressure = P_b * Math.pow(base, exponent);
+        }
+
     } else {
-        // Upper atmosphere: cooling again
-        temperature = Math.max(180, planet.seaLevelTemp - 50 - 0.002 * (altitude - 47000));
+        // Fallback for Mars/Others (Single Layer Exponential)
+        // Kept simple but derived consistently
+        const scaleHeight = planet.scaleHeight || 8500;
+
+        // Simple temp model
+        temperature = planet.seaLevelTemp - 0.002 * altitude;
+        if (temperature < 150) temperature = 150;
+
+        // Exponential Pressure
+        pressure = planet.seaLevelPressure * Math.exp(-altitude / scaleHeight);
     }
 
-    // Speed of sound: c = sqrt(γRT/M) where γ=1.4, R=8.314, M≈0.029 for air
+    // IDEAL GAS LAW: rho = P / (Rs * T)
+    // This ensures density is physically consistent with Pressure and Temperature!
+    if (temperature > 0) {
+        density = pressure / (Rs * temperature);
+    } else {
+        density = 0;
+    }
+
+    // Speed of sound: c = sqrt(gamma * Rs * T)
     const gamma = 1.4;
-    const R = 287; // J/(kg·K) specific gas constant for air
-    const speedOfSound = temperature > 0 ? Math.sqrt(gamma * R * temperature) : 0;
+    const speedOfSound = temperature > 0 ? Math.sqrt(gamma * Rs * temperature) : 0;
 
     return {
         pressure,

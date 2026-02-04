@@ -1279,6 +1279,8 @@ function getBaseTelemetry() {
         fuel: PHYSICS.fuel,
         maxFuel: PHYSICS.maxFuel,
         time: PHYSICS.time,
+        currentStage: PHYSICS.currentStage,
+        totalStages: (PHYSICS.stages || []).length,
         // Warning levels (0 = safe, 1 = caution, 2 = danger)
         warnings: {
             q: PHYSICS.dynamicPressure > PHYSICS.MAX_Q_LIMIT * 0.9 ? 2 :
