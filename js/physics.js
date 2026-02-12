@@ -259,7 +259,9 @@ function getDragCoefficient(mach, maxDragReduction = 0) {
         baseCd = 1.2 - 0.4 * (mach - 1.0) / 0.2;
     } else if (mach < 5.0) {
         // Supersonic: decreases with Mach
-        baseCd = 0.8 / Math.sqrt(mach);
+        // Match value at Mach 1.2: 1.2 - 0.4(1) = 0.8
+        // Curve: k / sqrt(M). At M=1.2, k/sqrt(1.2) = 0.8 -> k = 0.8 * 1.0954 = ~0.876
+        baseCd = 0.876 / Math.sqrt(mach);
     } else {
         // Hypersonic
         baseCd = 0.35;
