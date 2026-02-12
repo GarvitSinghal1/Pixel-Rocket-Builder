@@ -671,7 +671,8 @@ function consumeFuelAndGetThrust(parts, dt, throttle) {
             currentISP = getAltitudeAdjustedISP(ispASL, ispVac, PHYSICS.altitude);
         }
 
-        const consumptionRate = thrustN / (currentISP * PHYSICS.GRAVITY);
+        // FIXED: Use Vacuum ISP for constant mass flow (Fuel consumption shouldn't drop in vacuum)
+        const consumptionRate = thrustN / (ispVac * PHYSICS.GRAVITY);
         const fuelNeeded = consumptionRate * throttle * dt;
 
         // 3. Identify reachable tanks for THIS engine
@@ -698,7 +699,8 @@ function consumeFuelAndGetThrust(parts, dt, throttle) {
 
             // ISP effect on thrust: F = m_dot * Isp * g
             // Since m_dot is constant (consumptionRate), thrust scales linearly with ISP
-            thrustMultiplier *= (currentISP / ispASL);
+            // We scale relative to Vacuum ISP since consumption is based on that
+            thrustMultiplier *= (currentISP / ispVac);
 
             // Advanced: Cavitation Check
             if (typeof checkCavitation === 'function') {

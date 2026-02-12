@@ -1,68 +1,65 @@
-PIXEL ROCKET BUILDER - COMPREHENSIVE PHYSICS & LOGIC AUDIT
-========================================================
+### PHYSICAL ENGINE AUDIT REPORT ###
+Project: Pixel Rocket Builder
+Status: ANNOYINGLY THOROUGH
 
---------------------------------------------------------------------------------
-[CRITICAL PHYSICS BUGS]
---------------------------------------------------------------------------------
+--- PHYSICS BUGS ---
 
-1. Gravity Constant Inconsistency (physics.js vs planets.js)
-   - Description: physics.js uses 9.8 or 9.81 in various local functions, while planets.js defines Earth surface gravity as 9.80665. 
-   - Impact: Slight errors in TWR and Delta-V telemetry.
+1. [CRITICAL] ISP/Thrust Scaling Paradox
+   Location: js/physics.js (consumeFuelAndGetThrust)
+   Bug: The simulation calculates mass flow (consumptionRate) using current ISP but then scales thrust separately. 
+   Effect: As the rocket enters vacuum, its fuel consumption rate DECREASES while thrust INCREASES. 
+   Reality: Rocket engines have a fixed mass flow (set by pumps); thrust increases in vacuum because exhaust velocity increases. 
+   Annoyance level: High. Your rockets are getting "free" fuel efficiency in space.
 
-2. Cross-Stage Fuel Draining (physics.js)
-   - Description: The engine logic gathers ALL connected fuel tanks and drains them equally. It does NOT check if a tank is separated by a decoupler.
-   - Impact: Engines drain fuel from upper stages prematurely, effectively giving first-stage engines access to the entire rocket's fuel pool.
+2. [MAJOR] G-Force Vector Ignorance
+   Location: js/physics.js (line 1353)
+   Bug: G-force is calculated as: (|Thrust| + |Drag|) / Mass / G0.
+   Effect: It adds magnitudes regardless of direction. If a rocket is decelerating (re-entry), Drag and Thrust might oppose or align, but they shouldn't just be summed as absolute scalars. 
+   Reality: G-force is the magnitude of the vector sum of all non-gravitational forces.
+   Annoyance level: Medium. Telemetry is lying to the pilot about structural stress.
 
-3. 1D Orbital Projection / "Fake" Orbit (advanced.js)
-   - Description: The simulation projects 1D vertical altitude/velocity into a 2D state vector assuming zero horizontal velocity. 
-   - Impact: It is impossible to achieve a stable circular orbit; the rocket is always on a purely radial trajectory. Orbital elements like Eccentricity and True Anomaly are mathematically "pinned" to a radial plunge.
+3. [MAJOR] Cross-Sectional Area Underestimation
+   Location: js/physics.js (calculateDrag)
+   Bug: maxWidth is calculated as Math.max(maxWidth, partDef.width) across ALL parts.
+   Effect: For a rocket with side-boosters (e.g., Falcon Heavy style), it only calculates the area of the single widest stack. 
+   Reality: Projected frontal area should be the sum of all stacks perpendicular to the flow. 
+   Annoyance level: Medium. Wide rockets have significantly less drag than they should.
 
-4. False RK4 Integration (physics.js)
-   - Description: The code comments claim "RK4-like integration sub-stepping". ACTUAL: The code uses standard first-order Euler integration.
-   - Impact: Higher inaccuracy in trajectory calculation at high speeds or low framerates.
+4. [MINOR] Delta-V Display Inaccuracy
+   Location: js/physics.js (calculateDeltaV)
+   Bug: Uses total fuel capacity (calculateTotalFuel) instead of current fuel (calculateCurrentFuel) for Delta-V.
+   Effect: The Delta-V metric doesn't decrease as fuel is consumed during flight.
+   Annoyance level: Low but irritating.
 
-5. Missing ISP/Altitude Scaling (physics.js / advanced.js)
-   - Description: The physics engine does NOT adjust thrust or ISP based on altitude. Engines produce 100% thrust from sea level to vacuum.
-   - Impact: Unrealistic performance profile throughout ascent.
+5. [MINOR] Arbitrary Speed of Sound in Vacuum
+   Location: js/planets.js (getPlanetAtmosphere)
+   Bug: Returns 273 m/s as a "safe" speed of sound for Mach calculations in vacuum.
+   Effect: Mach number is still reported in vacuum, which is physically meaningless.
+   Annoyance level: Low.
 
---------------------------------------------------------------------------------
-[INTEGRATION & LOGIC BUGS]
---------------------------------------------------------------------------------
+6. [MINOR] TWR Surface Constraint
+   Location: js/physics.js (calculateTWR)
+   Bug: Always scales weight by surfaceGravity of the planet.
+   Effect: TWR doesn't increase as the rocket gains altitude and gravity weakens.
+   Annoyance level: Minimal.
 
-6. Disconnected Advanced Physics Modules (advanced.js)
-   - Description: `attemptIgnition`, `checkCavitation`, and `updateThrottleWithLag` are implemented but NEVER CALLED in the main `physicsStep` loop.
-   - Impact: Advanced mode features are purely cosmetic or non-functional.
+--- HTML / UI BUGS ---
 
-7. Auto-Build Decoupler Shift Bug (editor.js)
-   - Description: Auto-decoupler shifts ALL parts with Y > engineBottom further down. 
-   - Impact: Side boosters or radially attached parts lower than a central engine are shifted, breaking their side-attachments.
+1. [BROKEN] Missing Main Script
+   Location: index.html (line 122)
+   Bug: <script src="js/script.js"></script> references a file that does not exist in the repository.
+   
+2. [UI] Inconsistent Link Styling
+   Location: index.html (line 25)
+   Bug: The "LAUNCH GAME" link has a hardcoded inline style for color instead of using a CSS class.
 
-8. Staging Mechanics - Missing Physical Separation (physics.js)
-   - Description: `triggerStage` acts as a simple index switch. Actual physical separation (velocity impulse, decoupler force) is missing. Parts just "disappear" from the active list.
+3. [TYPO] Documentation Typo
+   Location: js/parts.js (line 485)
+   Bug: "habitation_module" description contains "habitaiton".
 
-9. Global Fuel Pool Logic (physics.js)
-   - Description: `calculateTotalFuel` sums capacity of ALL placed tanks. No fuel flow logic or tank connectivity exists.
-   - Impact: Prevents realistic stage-based fuel management.
+4. [UI] Telemetry Z-Index
+   Location: css/styles.css (line 446)
+   Bug: Potential for overlays to block controls if not carefully managed (though currently mitigated by z-index: 200).
 
---------------------------------------------------------------------------------
-[UI & UX BUGS]
---------------------------------------------------------------------------------
-
-10. Advanced Telemetry Overflow (simulator.html)
-    - Description: Advanced mode adds 9+ rows of labels. On small screens, the telemetry panel overflows the flight controls.
-    - Impact: Critical flight controls can be obscured.
-
-11. G-Force Indicator Saturation (main.js)
-    - Description: The G-indicator caps at 100% for 10G. 
-    - Impact: Fails to visualize the severity of structural-failure-level G-forces (e.g., 50G+).
-
-12. Disconnected Part Warning Threshold (validation.js)
-    - [FIXED]: Resolved by renaming `getConnectedParts` -> `getLaunchableParts` and adding strict BFS seed logic.
-
---------------------------------------------------------------------------------
-[PLACEHOLDERS & UNUSED FEATURES]
---------------------------------------------------------------------------------
-
-13. Planet Visuals Placeholder: Sky color and atmosphere don't update visually when changing planets.
-14. Unused Orbital Elements: True Anomaly, Inclination, etc., are calculated but never displayed or used.
-15. Debris Physics: It is a purely visual effect in `main.js` and does not follow the core physics engine.
+--- SUMMARY ---
+The physics engine is "educational-grade" but suffers from basic vector math errors and non-conservative mass-flow logic. Fix the ISP scaling first if you want any semblance of realism.
