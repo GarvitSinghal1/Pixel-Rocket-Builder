@@ -884,6 +884,8 @@ function calculateDeltaV(parts) {
     const avgIsp = totalThrust / totalFlowRate;
 
     // Tsiolkovsky rocket equation
+    // NOTE: This assumes all engines and fuel are in a single stage (parallel burn).
+    // For multi-stage rockets, this is an approximation that underestimates total Delta-V.
     return avgIsp * PHYSICS.GRAVITY * Math.log(wetMass / dryMass);
 }
 
