@@ -282,15 +282,48 @@ function calculateDrag(velocity, altitude, parts) {
     const density = getAirDensity(altitude);
     if (density === 0 || velocity === 0) return 0;
 
-    // Calculate cross-sectional area from widest part
-    let maxWidth = 0;
+    // FIXED: Calculate projected area of all stacks (e.g. core + boosters)
+    // 1. Collect all X intervals [start, end] in pixels
+    const tileSize = (typeof TILE_SIZE !== 'undefined' ? TILE_SIZE : 32);
+    const intervals = [];
     parts.forEach(p => {
         const partDef = getPartById(p.partId);
-        maxWidth = Math.max(maxWidth, partDef.width);
+        if (!partDef) return;
+
+        // Use part width in pixels
+        const widthPx = (partDef.width || 1) * tileSize;
+        const start = p.x;
+        const end = p.x + widthPx;
+        intervals.push({ start, end });
     });
 
-    // Area in m² (1 tile = 1m, circular cross-section approximation)
-    const area = Math.PI * Math.pow(maxWidth * 0.5, 2);
+    // 2. Sort and merge intervals to find independent stacks
+    intervals.sort((a, b) => a.start - b.start);
+    const merged = [];
+    if (intervals.length > 0) {
+        let current = intervals[0];
+        for (let i = 1; i < intervals.length; i++) {
+            const next = intervals[i];
+            if (next.start <= current.end + 1) { // Allow 1px overlap/slop
+                current.end = Math.max(current.end, next.end);
+            } else {
+                merged.push(current);
+                current = next;
+            }
+        }
+        merged.push(current);
+    }
+
+    // 3. Sum areas of each stack
+    let totalArea = 0;
+    merged.forEach(interval => {
+        const widthPx = interval.end - interval.start;
+        const widthMeters = widthPx / tileSize;
+        const radius = widthMeters * 0.5;
+        totalArea += Math.PI * radius * radius;
+    });
+
+    const area = totalArea > 0 ? totalArea : Math.PI * 0.25; // Min 1x1 circle fallback
     PHYSICS.crossSectionalArea = area;
 
     // Check for aerodynamic parts and calculate maximum drag reduction
