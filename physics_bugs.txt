@@ -1,59 +1,26 @@
-[PHYSICS BUGS - SPACE SIM AUDIT]
-DATE: 2026-02-12
-LEVEL: ANNOYINGLY THOROUGH
+# PHYSICS BUGS AUDIT - SPACESIM
+# ============================
 
---- PHYSICS CORE ---
+1. CRITICAL: ReferenceError in `js/physics.js:665`.
+   The variable `thrustN` is used in `calculateFuelConsumption` but is not defined in scope. Fuel consumption tracking is likely broken or crashing.
 
-1. [CRITICAL] ERRONEOUS PROJECTED AREA MERGING
-File: js/physics.js:285-326
-Bug: The area calculation merges all overlapping part intervals into a single width and calculates area as Math.PI * r^2. 
-Impact: Side-by-side boosters are treated as a single larger cylinder rather than independent bodies. This results in significantly lower cross-sectional area and drag for wide-body rockets than physics dictates.
+2. LOGIC BUG: Incorrect G-Force Vector Calculation in `js/physics.js:1469-1470`.
+   The G-force telemetry logic calculates the thrust vector using `Math.cos(PHYSICS.rotation)` and `Math.sin(PHYSICS.rotation)` without adding the planet's positional angle (`posAngle`). This means G-force readings are only correct at the planet's North Pole (where posAngle = π/2 and rotation=0 is vertical). At the equator, the G-force vector will be rotated by 90 degrees incorrectly.
 
-2. [MAJOR] THERMAL INERTIA IS MASS-INVARIANT
-File: js/physics.js:410
-Bug: `thermalMass` is hardcoded to 10000 J/K. 
-Impact: A 100kg probe and a 100,000kg heavy lifter heat up at the same rate given the same heat flux. Thermal mass must scale with the actual mass of the rocket stages.
+3. MISIMPLEMENTATION: Thrust Magnitude ignoring Throttle in `js/physics.js:648-653`.
+   `calculateTotalThrust` returns the sum of max thrusts but ignores the current throttle setting. This leads to incorrect TWR and flight stats in the editor/pre-launch if throttle isn't at 100%.
 
-3. [MODERATE] ISP LOGIC DISCREPANCY
-Files: js/physics.js:601, js/physics.js:715
-Bug: `calculateFuelConsumption` uses `partDef.isp` for prediction, but `consumeFuelAndGetThrust` uses `ispVac` for the actual simulation loop.
-Impact: Pre-launch fuel consumption predictions will be slightly off compared to actual flight performance.
+4. APPROXIMATION ERROR: Thermal Mass Model in `js/physics.js:472`.
+   The thermal mass calculation assumes the specific heat of aluminum (900 J/kg·K) for the entire rocket, including fuel. Kerosene and LOX have different specific heats, and as fuel is consumed, the thermal mass should drop significantly. The hull temperature simulation is too sluggish for empty rockets.
 
-4. [MINOR] MACH-DEPENDENT CD DISCONTINUITY
-File: js/physics.js:260-264
-Bug: The transition from the Mach 1.0-1.2 linear ramp (ending at 0.8) to the Mach 5.0 square root curve (starting at 0.8/sqrt(1.2) ≈ 0.73) has a jump.
-Impact: Unnatural "snap" in drag force exactly at Mach 1.2.
+5. MISIMPLEMENTATION: Projected Area transition in `js/physics.js:334`.
+   The drag model transitions from circular area to linear scaling at 2.5m width. However, at exactly 2.5m, `PI*(1.25)^2 ≈ 4.9` whereas `2.5*2 = 5`. There is a small jump in drag force as a rocket crosses this width threshold.
 
-5. [DESIGN FLAY] GLOBAL DRAG REDUCTION LEAK
-File: js/physics.js:248, 346
-Bug: A single part with `dragReduction` (like a nose cone) reduces the drag coefficient for the ENTIRE projected area of the rocket.
-Impact: Putting a tiny nose cone on a giant, flat-topped rocket makes the whole thing aerodynamic. Drag reduction should only apply to the area projected by that specific part.
+6. UI/DOCS BUG: Stagnation Temp formula in `index.html:112` vs `js/physics.js:443`.
+   The UI claims `T_stag = T_amb * (1 + 0.18 * M^2)`. While this matches the code's `recoveryFactor = 0.9`, it is technically a simplification for turbulent flow. The "technical specs" should clarify this is an approximation.
 
-6. [TELEMETRY] INFINITE TWR IN ORBIT
-File: js/physics.js:628
-Bug: TWR uses local gravity during flight. In orbit, gravity is still present but weightlessness (centrifugal force balance) is the context. If local gravity approaches zero (very far out), TWR approaches infinity.
-Impact: Confusing telemetry for players. TWR should generally display relative to surface gravity or handle orbital mechanics explicitly.
+7. UI BUG: Telemetry Overflow.
+   The flight data panel in `html/simulator.html` has a `max-height: 80vh`. On small laptop screens, the advanced orbital telemetry will overflow the container or require scrolling during high-stakes flight maneuvers, which is a UX failure for "educational-grade" software.
 
-7. [CONSISTENCY] ATMOSPHERIC CONSTANT MISMATCH
-Files: js/physics.js:35, js/planets.js:161
-Bug: `SPECIFIC_GAS_CONSTANT` is defined as 287.058 in physics.js, but calculated as ~287.052 in planets.js.
-Impact: Negligible but scientifically sloppy.
-
---- HTML & DOCUMENTATION ---
-
-1. [DOCS] STAGNATION TEMPERATURE FORMULA MISMATCH
-File: index.html:111 vs js/physics.js:387
-Bug: Home page claims T_stag = T_amb * (1 + 0.2 * M^2), but the code uses a recovery factor of 0.9, making it (1 + 0.18 * M^2). 
-Impact: Misleading technical specifications for "educational-grade" software.
-
-2. [UI] TELEMETRY OVERFLOW RISK
-File: css/styles.css:407
-Bug: `flight-data` uses max-height: 60vh. 
-Impact: With advanced telemetry and engine data expanded, critical warnings at the bottom of the column may require scrolling to see, which is dangerous during high-velocity flight.
-
-3. [STYLE] MISSING FONT IN HOME PAGE
-File: index.html
-Bug: Home page does not load 'Press Start 2P', causing inconsistent branding if fonts fall back.
-
---- SUMMARY ---
-The physics engine is "good enough" for a game but fails as an "educational aerospace model" due to the projected area and thermal mass bugs. Fix the merging logic first.
+8. EDITOR BUG: Delta-V calculation with Mixed Engines.
+   `calculateDeltaV` in `js/physics.js:880` uses a weighted average Isp based on max thrust. If engines have vastly different Isp profiles (e.g., Ion + Solid) and are fired sequentially via staging, the pre-launch Delta-V estimate is mathematically incorrect as it assumes they fire together.

@@ -330,9 +330,11 @@ function calculateDrag(velocity, altitude, parts) {
             area = Math.PI * radius * radius;
         } else {
             // Wide objects: treat as slab (Linear scaling)
-            // Area = Width * Depth (approx 2m depth for standard tanks)
-            // Transition point: at 2.5m, PI*(1.25)^2 = 4.9m². 2.5 * 2 = 5m². Close enough.
-            area = widthMeters * 2.0;
+            // Use blended depth to match circular area at 2.5m width
+            // Area(2.5) = PI * 1.25^2 = 4.9087
+            // Depth = Area / Width = 4.9087 / 2.5 = 1.9635
+            const effectiveDepth = 1.9635;
+            area = widthMeters * effectiveDepth;
         }
         totalArea += area;
     });
