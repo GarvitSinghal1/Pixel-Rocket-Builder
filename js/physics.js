@@ -112,6 +112,11 @@ const PHYSICS = {
         this.time = 0;
         this.throttle = 1.0;
         this.altitude = 0;
+        this.x = 0; // Relative to planet center (on surface: rotation * radius)
+        this.y = 0; // Relative to planet center (on surface: radius)
+        this.vx = 0;
+        this.vy = 0;
+        this.rotation = 0; // Radians, 0 is vertical UP (relative to local surface)
         this.velocity = 0;
         this.acceleration = 0;
         this.airDensity = 1.225;
@@ -989,7 +994,13 @@ function initPhysics(placedParts) {
     PHYSICS.throttle = 1.0;
 
     // Reset motion
+    const planet = getCurrentPlanet();
     PHYSICS.altitude = 0;
+    PHYSICS.x = 0;
+    PHYSICS.y = planet.radius; // At surface
+    PHYSICS.vx = 0;
+    PHYSICS.vy = 0;
+    PHYSICS.rotation = 0;
     PHYSICS.velocity = 0;
     PHYSICS.acceleration = 0;
 
@@ -1036,60 +1047,91 @@ function initPhysics(placedParts) {
 }
 
 /**
- * Calculate instantaneous acceleration
- * Used by RK4 integrator
+ * Calculate forces and return acceleration vector [ax, ay]
  */
-function getAcceleration(altitude, velocity, mass, thrustForce, parts) {
-    // Gravity (Force = mass * gravity_accel)
-    // We want Force magnitude, Direction is Down
-    // getGravity returns Acceleration (m/s^2)
-    const gAccel = getGravity(altitude);
-    const gravityForce = mass * gAccel;
+function getAcceleration2D(posX, posY, velX, velY, mass, thrustForce, rotation, parts) {
+    const planet = getCurrentPlanet();
+    const distSq = posX * posX + posY * posY;
+    const dist = Math.sqrt(distSq);
+    const altitude = dist - planet.radius;
 
-    // Drag (Signed Force)
-    const dragForce = calculateDrag(velocity, altitude, parts);
+    // 1. Gravity (Direction towards center (0,0))
+    const gMagnitude = planet.mu / distSq;
+    const gx = -(posX / dist) * gMagnitude;
+    const gy = -(posY / dist) * gMagnitude;
 
-    // Net Force = Thrust (Up) - Gravity (Down) + Drag (Opposes Motion)
-    const netForce = thrustForce - gravityForce + dragForce;
+    // 2. Thrust (Direction along rotation)
+    const posAngle = Math.atan2(posY, posX);
+    const globalThrustAngle = posAngle + rotation;
 
-    return netForce / mass;
+    const tx = Math.cos(globalThrustAngle) * (thrustForce / mass);
+    const ty = Math.sin(globalThrustAngle) * (thrustForce / mass);
+
+    // 3. Drag (Direction opposite to velocity)
+    const vMagSq = velX * velX + velY * velY;
+    const vMag = Math.sqrt(vMagSq);
+    let dx = 0, dy = 0;
+
+    if (vMag > 0.1 && altitude < (planet.atmosphereHeight || 100000)) {
+        const dragMag = calculateDrag(vMag, altitude, parts);
+        const dragAccel = dragMag / mass;
+        dx = -(velX / vMag) * dragAccel;
+        dy = -(velY / vMag) * dragAccel;
+    }
+
+    return { ax: gx + tx + dx, ay: gy + ty + dy, gx, gy, dx, dy };
 }
 
 /**
- * Perform Runge-Kutta 4 Integration Step
+ * Perform RK4 integration for 2D vectors
  */
-function integrateRK4(state, dt, mass, thrustForce, parts) {
-    const { y, v } = state;
+function integrateRK4(state, dt, mass, thrustForce, rotation, parts) {
+    const { x, y, vx, vy } = state;
 
     // k1
-    const a1 = getAcceleration(y, v, mass, thrustForce, parts);
-    const v1 = v;
+    const a1 = getAcceleration2D(x, y, vx, vy, mass, thrustForce, rotation, parts);
+    const v1x = vx, v1y = vy;
 
     // k2
-    const y2 = y + v1 * 0.5 * dt;
-    const v2 = v + a1 * 0.5 * dt;
-    const a2 = getAcceleration(y2, v2, mass, thrustForce, parts);
+    const x2 = x + v1x * 0.5 * dt;
+    const y2 = y + v1y * 0.5 * dt;
+    const vx2 = vx + a1.ax * 0.5 * dt;
+    const vy2 = vy + a1.ay * 0.5 * dt;
+    const a2 = getAcceleration2D(x2, y2, vx2, vy2, mass, thrustForce, rotation, parts);
 
     // k3
-    const y3 = y + v2 * 0.5 * dt;
-    const v3 = v + a2 * 0.5 * dt;
-    const a3 = getAcceleration(y3, v3, mass, thrustForce, parts);
+    const x3 = x + vx2 * 0.5 * dt;
+    const y3 = y + vy2 * 0.5 * dt;
+    const vx3 = vx + a2.ax * 0.5 * dt;
+    const vy3 = vy + a2.ay * 0.5 * dt;
+    const a3 = getAcceleration2D(x3, y3, vx3, vy3, mass, thrustForce, rotation, parts);
 
     // k4
-    const y4 = y + v3 * dt;
-    const v4 = v + a3 * dt;
-    const a4 = getAcceleration(y4, v4, mass, thrustForce, parts);
+    const x4 = x + vx3 * dt;
+    const y4 = y + vy3 * dt;
+    const vx4 = vx + a3.ax * dt;
+    const vy4 = vy + a3.ay * dt;
+    const a4 = getAcceleration2D(x4, y4, vx4, vy4, mass, thrustForce, rotation, parts);
 
     // Weighted Average
-    const finalY = y + (dt / 6) * (v1 + 2 * v2 + 2 * v3 + v4);
-    const finalV = v + (dt / 6) * (a1 + 2 * a2 + 2 * a3 + a4);
+    const finalX = x + (dt / 6) * (v1x + 2 * vx2 + 2 * vx3 + vx4);
+    const finalY = y + (dt / 6) * (v1y + 2 * vy2 + 2 * vy3 + vy4);
+    const finalVX = vx + (dt / 6) * (a1.ax + 2 * a2.ax + 2 * a3.ax + a4.ax);
+    const finalVY = vy + (dt / 6) * (a1.ay + 2 * a2.ay + 2 * a3.ay + a4.ay);
+
+    const planet = getCurrentPlanet();
+    const finalDist = Math.sqrt(finalX * finalX + finalY * finalY);
 
     return {
-        altitude: finalY,
-        velocity: finalV,
-        acceleration: a1,  // Use initial acceleration for G-force display
-        dragForce: calculateDrag(v, y, parts), // Approximate drag for display
-        gravityForce: mass * getGravity(y)     // Approximate gravity for display
+        x: finalX,
+        y: finalY,
+        vx: finalVX,
+        vy: finalVY,
+        altitude: finalDist - planet.radius,
+        velocity: Math.sqrt(finalVX * finalVX + finalVY * finalVY),
+        acceleration: Math.sqrt(a1.ax * a1.ax + a1.ay * a1.ay),
+        dragForce: Math.sqrt(a1.dx * a1.dx + a1.dy * a1.dy) * mass,
+        gravityForce: Math.sqrt(a1.gx * a1.gx + a1.gy * a1.gy) * mass
     };
 }
 
@@ -1146,33 +1188,38 @@ function physicsStep(dt) {
         PHYSICS.fuel = calculateCurrentFuel(parts);
     }
 
-    // --- RK4 INTEGRATION ---
-    const startState = { y: PHYSICS.altitude, v: PHYSICS.velocity };
-    const result = integrateRK4(startState, dt, mass, PHYSICS.thrustForce, parts);
+    // --- RK4 INTEGRATION (2D) ---
+    const startState = {
+        x: PHYSICS.x,
+        y: PHYSICS.y,
+        vx: PHYSICS.vx,
+        vy: PHYSICS.vy
+    };
+
+    const result = integrateRK4(startState, dt, mass, PHYSICS.thrustForce, PHYSICS.rotation, parts);
 
     // Apply results
+    PHYSICS.x = result.x;
+    PHYSICS.y = result.y;
+    PHYSICS.vx = result.vx;
+    PHYSICS.vy = result.vy;
     PHYSICS.altitude = result.altitude;
     PHYSICS.velocity = result.velocity;
     PHYSICS.acceleration = result.acceleration;
 
-    // Update forces for UI display (using values from the integration step)
+    // Update forces for UI display
     PHYSICS.dragForce = result.dragForce;
     PHYSICS.gravityForce = result.gravityForce;
-    PHYSICS.netForce = PHYSICS.thrustForce - PHYSICS.gravityForce + PHYSICS.dragForce;
 
-    // Calc Derived Stats
-    PHYSICS.gForce = PHYSICS.acceleration / PHYSICS.GRAVITY;
-
-    // ============================================
-    // UPDATE CRITICAL PARAMETERS
-    // ============================================
+    // Standard 1D G-force approximation for display
+    PHYSICS.gForce = PHYSICS.acceleration / 9.81;
 
     // Dynamic pressure
     PHYSICS.dynamicPressure = calculateDynamicPressure(PHYSICS.velocity, PHYSICS.altitude);
 
     // Advanced: Update Orbital State
     if (typeof updateOrbitalState === 'function') {
-        updateOrbitalState(PHYSICS.altitude, PHYSICS.velocity);
+        updateOrbitalState(PHYSICS.x, PHYSICS.y, PHYSICS.vx, PHYSICS.vy);
     }
 
     // Surface temperature
@@ -1205,17 +1252,23 @@ function physicsStep(dt) {
     // ============================================
     // CHECK FOR LANDING/CRASH
     // ============================================
+    // Calculate radial velocity (positive = moving away)
+    const dist = Math.sqrt(PHYSICS.x * PHYSICS.x + PHYSICS.y * PHYSICS.y);
+    const radialVel = (PHYSICS.x * PHYSICS.vx + PHYSICS.y * PHYSICS.vy) / dist;
+
     // Only check landing if we've actually lifted off and are now on/below ground
-    if (PHYSICS.altitude <= 0 && PHYSICS.hasLiftedOff && PHYSICS.velocity < 0) {
+    if (PHYSICS.altitude <= 0 && PHYSICS.hasLiftedOff && radialVel < 0) {
         PHYSICS.altitude = 0;
-        PHYSICS.velocity = 0;
+
+        // Final velocity magnitude for impact check
+        const totalVel = PHYSICS.velocity;
 
         // Check if it was a hard landing
-        if (Math.abs(PHYSICS.velocity) > PHYSICS.MAX_LANDING_VELOCITY) {
+        if (totalVel > PHYSICS.MAX_LANDING_VELOCITY) {
             const crash = {
                 failed: true,
                 reason: 'IMPACT',
-                message: `CRASH: Impact velocity too high! (${Math.abs(PHYSICS.velocity).toFixed(1)} m/s > ${PHYSICS.MAX_LANDING_VELOCITY} m/s safe limit)`
+                message: `CRASH: Impact velocity too high! (${totalVel.toFixed(1)} m/s > ${PHYSICS.MAX_LANDING_VELOCITY} m/s safe limit)`
             };
             PHYSICS.hasFailed = true;
             PHYSICS.failureReason = crash.reason;
@@ -1223,10 +1276,9 @@ function physicsStep(dt) {
         }
 
         PHYSICS.isRunning = false;
-    } else if (PHYSICS.altitude < 0) {
+    } else if (PHYSICS.altitude < 0 && !PHYSICS.hasLiftedOff) {
         // Clamp to ground while on pad
         PHYSICS.altitude = 0;
-        PHYSICS.velocity = Math.max(0, PHYSICS.velocity);
     }
 
     // Update time
@@ -1302,10 +1354,16 @@ function triggerStage() {
         }
 
         // Apply Staging Impulse (Sepratrons / Decoupler Springs)
-        // Add a small kick to velocity to simulate separation
+        // Add a small kick in the current forward direction
         const STAGING_IMPULSE = 5.0; // m/s
-        PHYSICS.velocity += STAGING_IMPULSE;
-        console.log(`[Physics] Staging Impulse applied! Velocity +${STAGING_IMPULSE} m/s`);
+        const posAngle = Math.atan2(PHYSICS.y, PHYSICS.x);
+        const impulseAngle = posAngle + PHYSICS.rotation;
+
+        PHYSICS.vx += Math.cos(impulseAngle) * STAGING_IMPULSE;
+        PHYSICS.vy += Math.sin(impulseAngle) * STAGING_IMPULSE;
+        PHYSICS.velocity = Math.sqrt(PHYSICS.vx * PHYSICS.vx + PHYSICS.vy * PHYSICS.vy);
+
+        console.log(`[Physics] Staging Impulse applied in direction: ${impulseAngle.toFixed(2)} rad`);
 
         return { success: true, droppedParts: droppedParts };
     }

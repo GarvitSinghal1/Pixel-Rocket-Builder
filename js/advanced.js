@@ -382,23 +382,15 @@ function getPeriapsis() {
  * Update orbital state based on current physics
  * Called from physics.js loop
  */
-function updateOrbitalState(altitude, velocity) {
-    // Calculate orbital state always (telemetry might be requested even in simple mode)
+function updateOrbitalState(posX, posY, velX, velY) {
+    // Calculate orbital state always
     const planet = getCurrentPlanet();
     if (!planet) return;
 
-    // Convert 1D vertical physics to 2D orbital state
-    // We assume launch is from "top" of planet (y-axis)
-    // x = 0, y = R + alt
-    const position = { x: 0, y: planet.radius + altitude };
+    const position = { x: posX, y: posY };
+    const velocity = { vx: velX, vy: velY };
 
-    // Velocity:
-    // vx = Surface rotation (simplified) or 0
-    // vy = Vertical speed
-    // For now, let's assume 0 tangential speed until we implement gravity turn
-    const velVector = { vx: 0, vy: velocity };
-
-    calculateOrbitalElements(position, velVector, planet.mu);
+    calculateOrbitalElements(position, velocity, planet.mu);
 }
 
 /**
@@ -438,12 +430,9 @@ function getOrbitalInfo() {
     if (!planet) return null;
 
     try {
-        // For 1D simulation:
-        // Radial Velocity = Vertical Velocity (PHYSICS.velocity)
-        // Prograde Velocity = Horizontal Velocity (0 for now)
-        // Position vector = (0, radius + altitude)
-        const velocityVector = { vx: 0, vy: PHYSICS.velocity || 0 };
-        const positionVector = { x: 0, y: planet.radius + (PHYSICS.altitude || 0) };
+        // Use real 2D orbital state from PHYSICS
+        const velocityVector = { vx: PHYSICS.vx || 0, vy: PHYSICS.vy || 0 };
+        const positionVector = { x: PHYSICS.x || 0, y: PHYSICS.y || 0 };
 
         const vectors = getVelocityVectors(velocityVector, positionVector);
 

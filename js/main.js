@@ -23,6 +23,9 @@ const GAME = {
     // Skip simulation flag
     skipRequested: false,
 
+    // 2D Motion Tracking
+    driftX: 0,
+
     // Store the actual rocket parts for rendering during flight
     launchParts: [],
     rocketBounds: { minX: 0, maxX: 0, minY: 0, maxY: 0, width: 0, height: 0 }
@@ -250,6 +253,18 @@ function setupGameEvents() {
     // Level selection
     document.getElementById('btn-close-levels').addEventListener('click', () => {
         document.getElementById('level-modal').classList.remove('active');
+    });
+
+    // Keyboard Controls for 2D Flight
+    window.addEventListener('keydown', (e) => {
+        if (!PHYSICS.isRunning || PHYSICS.isPaused) return;
+
+        const rotationSpeed = 0.05; // Radians per frame
+        if (e.key === 'ArrowLeft' || e.key === 'a') {
+            PHYSICS.rotation += rotationSpeed;
+        } else if (e.key === 'ArrowRight' || e.key === 'd') {
+            PHYSICS.rotation -= rotationSpeed;
+        }
     });
 
     // Planet Selector
@@ -813,9 +828,9 @@ function renderLaunchScene(dt) {
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
-    // Draw stars (more visible in space or if no atmosphere)
-    // If no atmosphere, stars are always visible (alpha 1)
-    // If atmosphere, alpha increases with altitude
+    // Draw stars with parallax horizontal drift
+    GAME.driftX += -(PHYSICS.vx * dt * 0.001); // Slow drift for stars
+
     let starAlpha = 1;
     if (planet.hasAtmosphere) {
         starAlpha = 0.3 + spaceProgress * 0.7;
@@ -824,24 +839,31 @@ function renderLaunchScene(dt) {
     ctx.fillStyle = `rgba(255, 255, 255, ${starAlpha})`;
     GAME.stars.forEach(star => {
         ctx.globalAlpha = star.brightness * starAlpha;
-        ctx.fillRect(star.x * width, star.y * height, star.size, star.size);
+        // Apply horizontal wrap-around drift
+        let drawX = (star.x * width + GAME.driftX * 0.1) % width;
+        if (drawX < 0) drawX += width;
+
+        ctx.fillRect(drawX, star.y * height, star.size, star.size);
     });
     ctx.globalAlpha = 1;
 
-    // Draw clouds (only in atmosphere)
+    // Draw clouds (only in atmosphere) with faster drift
     if (planet.hasAtmosphere && spaceProgress < 0.3) {
         const cloudOffset = PHYSICS.altitude * 0.5;
+        const cloudDrift = GAME.driftX * 0.5;
+
         // Clouds fade out higher up
         ctx.fillStyle = `rgba(255, 255, 255, ${0.6 * (1 - spaceProgress / 0.3)})`;
 
-        // Tint clouds slightly with atmosphere color? 
-        // For now white is fine, but maybe Mars clouds are dusty?
-        // Let's keep them white/default for now to avoid complexity.
-
         GAME.clouds.forEach(cloud => {
-            const y = cloud.y + cloudOffset % (height * 2) - height;
-            if (y > -cloud.height && y < height + cloud.height) {
-                drawCloud(ctx, (cloud.x + cloud.speed * PHYSICS.time * 100) % (width + cloud.width) - cloud.width / 2, y, cloud.width, cloud.height);
+            let drawX = (cloud.x + cloudDrift) % width;
+            if (drawX < 0) drawX += width;
+            const drawY = cloud.y + cloudOffset;
+
+            if (drawY < height + cloud.size) {
+                ctx.beginPath();
+                ctx.arc(drawX, drawY, cloud.size, 0, Math.PI * 2);
+                ctx.fill();
             }
         });
     }
@@ -933,17 +955,26 @@ function drawRocketAtPosition(ctx, x, y, throttle) {
     const shakeX = (Math.random() - 0.5) * shakeIntensity;
     const shakeY = (Math.random() - 0.5) * shakeIntensity;
 
-    // Position rocket centered at x, with top at y
-    const drawX = x - rocketWidth / 2 + shakeX;
-    const drawY = y + shakeY;
+    ctx.save();
 
-    // Draw each part in the rocket
+    // Position rocket centered at x, with top at y
+    const centerX = x + shakeX;
+    const centerY = y + rocketHeight / 2 + shakeY;
+
+    ctx.translate(centerX, centerY);
+    ctx.rotate(-PHYSICS.rotation); // Negative because rotation is counter-clockwise in 2D coords
+
+    // Draw each part relative to the center
     GAME.launchParts.forEach(placedPart => {
         const partDef = placedPart.partDef;
 
-        // Calculate relative position within rocket
+        // Calculate relative position within rocket (relative to rocketBounds.minX/minY)
         const relX = (placedPart.x - GAME.rocketBounds.minX) * scale;
         const relY = (placedPart.y - GAME.rocketBounds.minY) * scale;
+
+        // Adjust to be relative to the rocket center
+        const drawX = relX - rocketWidth / 2;
+        const drawY = relY - rocketHeight / 2;
 
         // Calculate flip based on position relative to rocket center
         const partW = partDef.width * TILE_SIZE;
@@ -951,8 +982,10 @@ function drawRocketAtPosition(ctx, x, y, throttle) {
         const flipX = partCX < GAME.rocketBounds.centerX - 1;
 
         // Draw the part
-        drawPart(ctx, partDef, drawX + relX, drawY + relY, scale, flipX);
+        drawPart(ctx, partDef, drawX, drawY, scale, flipX);
     });
+
+    ctx.restore();
 
     // Draw heat glow overlay when hot
     if (stressLevels.heat > 0.1) {
