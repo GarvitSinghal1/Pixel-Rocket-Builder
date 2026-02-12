@@ -578,10 +578,17 @@ function drawPart(ctx, part, x, y, scale = 1, flipX = false) {
     ctx.save();
 
     // Apply horizontal flip if requested
+    // Apply horizontal flip if requested
     if (flipX) {
-        ctx.translate(x + w / 2, y + h / 2);
+        // Pivot around the center vertical axis of the part
+        // We translate to the right edge (x+w), flip X axis (points left), then draw from x (which is now -x relative to origin)?
+        // Actually simpler:
+        // Map x -> x + w
+        // Map x + w -> x
+        // Use translate(x + w, y) -> scale(-1, 1) -> translate(-x, -y)
+        ctx.translate(x + w, y);
         ctx.scale(-1, 1);
-        ctx.translate(-(x + w / 2), -(y + h / 2));
+        ctx.translate(-x, -y);
     }
 
     ctx.imageSmoothingEnabled = false;
