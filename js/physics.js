@@ -761,8 +761,18 @@ function calculateDeltaV(parts) {
         return total + partDef.mass;
     }, 0);
 
-    const fuelCapacity = calculateTotalFuel(parts);
-    const wetMass = dryMass + fuelCapacity;
+    // FIXED: Use current fuel for flight delta-V
+    let fuelMass = 0;
+    // Check if parts have state (flight) or are definitions (editor)
+    const hasFuelState = parts.some(p => typeof p.currentFuel !== 'undefined');
+
+    if (hasFuelState) {
+        fuelMass = calculateCurrentFuel(parts);
+    } else {
+        fuelMass = calculateTotalFuel(parts);
+    }
+
+    const wetMass = dryMass + fuelMass;
 
     if (dryMass === 0 || wetMass === 0) return 0;
 
