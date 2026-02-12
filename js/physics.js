@@ -337,7 +337,8 @@ function calculateDrag(velocity, altitude, parts) {
 
     // Get Mach number
     const speedOfSound = getSpeedOfSound(altitude);
-    const mach = Math.abs(velocity) / speedOfSound;
+    // Handle vacuum (speedOfSound = 0)
+    const mach = (speedOfSound > 0.1) ? Math.abs(velocity) / speedOfSound : 0;
     PHYSICS.machNumber = mach;
     PHYSICS.speedOfSound = speedOfSound;
 
@@ -376,7 +377,8 @@ function calculateAerodynamicHeating(velocity, altitude) {
     const density = getAirDensity(altitude);
     const ambientTemp = getTemperature(altitude);
     const speedOfSound = getSpeedOfSound(altitude);
-    const mach = Math.abs(velocity) / speedOfSound;
+    // Handle vacuum (speedOfSound = 0)
+    const mach = (speedOfSound > 0.1) ? Math.abs(velocity) / speedOfSound : 0;
 
     // Stagnation temperature (temperature at stagnation point)
     // T_stag = T_ambient * (1 + (γ-1)/2 * M²)

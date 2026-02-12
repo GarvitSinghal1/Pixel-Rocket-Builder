@@ -150,7 +150,7 @@ function getPlanetAtmosphere(altitude, planetId = null) {
             pressure: 0,
             density: 0,
             temperature: 0, // Space is cold
-            speedOfSound: 273 // Prevents div/0 in Mach Calc (approx 0°C air)
+            speedOfSound: 0 // Vacuum has no speed of sound
         };
     }
 
