@@ -529,6 +529,45 @@ function calculateTWR(parts, fuel = null) {
 }
 
 /**
+ * Get all fuel tanks reachable from an engine without passing through a decoupler
+ */
+function getReachableFuelTanks(root, allParts) {
+    const reachableTanks = [];
+    const visited = new Set();
+    const queue = [root];
+    visited.add(root.id);
+
+    while (queue.length > 0) {
+        const current = queue.shift();
+        const currentDef = getPartById(current.partId);
+
+        // If this is a fuel tank, add to list
+        if (currentDef.category === 'fuel' && current.currentFuel > 0) {
+            reachableTanks.push(current);
+        }
+
+        // If this part is a decoupler, we DO NOT pass through it
+        // However, we can pull FROM a decoupler if it's the root (unlikely for fuel)
+        // or if we just reached it. But we don't explore PAST it.
+        if (currentDef.isDecoupler && current.id !== root.id) {
+            continue;
+        }
+
+        // Check neighbors
+        for (const other of allParts) {
+            if (visited.has(other.id)) continue;
+
+            if (arePartsConnected(current, currentDef, other)) {
+                visited.add(other.id);
+                queue.push(other);
+            }
+        }
+    }
+
+    return reachableTanks;
+}
+
+/**
  * Consume fuel from active tanks and return produced thrust
  */
 function consumeFuelAndGetThrust(parts, dt, throttle) {
@@ -536,25 +575,17 @@ function consumeFuelAndGetThrust(parts, dt, throttle) {
 
     // Advanced: Ignition Check
     if (typeof attemptIgnition === 'function') {
-        // Fuel pressure approximation (Fuel / Capacity)
         const fuelPressure = PHYSICS.maxFuel > 0 ? (PHYSICS.fuel / PHYSICS.maxFuel) : 0;
         const ignitionSuccess = attemptIgnition(fuelPressure);
-
-        if (!ignitionSuccess) {
-            return 0; // Engine failed to start
-        }
+        if (!ignitionSuccess) return 0;
     }
 
-    // 1. Identify engines and tanks
+    // 1. Identify engines
     const engines = [];
-    const activeTanks = [];
-
     parts.forEach(p => {
         const def = getPartById(p.partId);
         if (def.category === 'engines') {
             engines.push({ part: p, def: def });
-        } else if (def.category === 'fuel' && p.currentFuel > 0) {
-            activeTanks.push(p);
         }
     });
 
@@ -564,25 +595,19 @@ function consumeFuelAndGetThrust(parts, dt, throttle) {
 
     // 2. Process each engine
     engines.forEach(engine => {
-        // Calculate fuel needed for this engine
-        // Mass Flow Rate = Thrust / (Isp * g0)
-        // Thrust is in kN, so multiply by 1000
         const isp = engine.def.isp || 250;
         const thrustN = engine.def.thrust * 1000;
         const consumptionRate = thrustN / (isp * 9.81);
-
         const fuelNeeded = consumptionRate * throttle * dt;
 
+        // 3. Identify reachable tanks for THIS engine
+        const activeTanks = getReachableFuelTanks(engine.part, parts);
+
         if (activeTanks.length === 0) {
-            // No fuel available -> Engine Flameout
-            return;
+            return; // Flameout for this engine
         }
 
-        // 3. Drain fuel from tanks (Equal distribution)
-        // Simple logic: Divide draw equally among all tanks with fuel
-        // If a tank runs dry during this step, we just take what's left.
-        // For a perfect simulation, we'd iterate, but for 60fps, this approximation is fine.
-
+        // 4. Drain fuel (Equal distribution)
         const drawPerTank = fuelNeeded / activeTanks.length;
         let fuelObtained = 0;
 
@@ -592,36 +617,28 @@ function consumeFuelAndGetThrust(parts, dt, throttle) {
             fuelObtained += amountToTake;
         });
 
-        // 4. Calculate Thrust based on fuel obtained vs needed
-        // If we got 100% of needed fuel, we get 100% thrust.
-        // If we got 50%, we get 50% thrust (fizzling out).
+        // 5. Calculate Thrust based on fuel obtained
         const efficiency = fuelObtained / fuelNeeded;
-
-        // Add thrust (kN -> N conversion happens here or in caller? Caller expects N)
-        // engine.def.thrust is in kN.
         if (efficiency > 0.1) {
-            // Calculate ISP scaling
-            let thrustMultiplier = 1.0;
+            let thrustMultiplier = efficiency; // Scale thrust by fuel available
             const baseISP = engine.def.isp || 250;
 
             if (typeof getAltitudeAdjustedISP === 'function' && typeof getVacuumISP === 'function') {
                 const vacuumISP = getVacuumISP(baseISP);
                 const currentISP = getAltitudeAdjustedISP(baseISP, vacuumISP, PHYSICS.altitude);
-                thrustMultiplier = currentISP / baseISP;
+                thrustMultiplier *= (currentISP / baseISP);
             }
 
             // Advanced: Cavitation Check
             if (typeof checkCavitation === 'function') {
                 const tankPressure = PHYSICS.maxFuel > 0 ? (PHYSICS.fuel / PHYSICS.maxFuel) : 0;
-                // Flow rate approx = throttle
                 const cavResult = checkCavitation(tankPressure, throttle);
                 if (cavResult.cavitating) {
                     thrustMultiplier *= (1 - cavResult.efficiencyLoss);
                 }
             }
 
-            // Apply thrust with ISP scaling
-            totalThrust += engine.def.thrust * 1000 * throttle * efficiency * thrustMultiplier;
+            totalThrust += (thrustN * throttle * thrustMultiplier);
         }
     });
 
