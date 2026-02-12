@@ -780,28 +780,34 @@ function renderLaunchScene(dt) {
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
 
     if (planet.hasAtmosphere) {
-        if (spaceProgress < 0.5) {
-            // Atmosphere
-            // We derive sky colors from the planet's base color
-            // This is a simplification: assuming planet.color is a good "sky" representation or "map" representation
-            // Earth #4477ff is good for sky. Mars #ff6644 is good for sky.
+        // Atmosphere logic
+        const skyColor = planet.color;
+        const horizonColor = lerpColor(skyColor, '#ffffff', 0.3); // Glow at horizon
+        const spaceColor = '#000005';
 
-            // Horizon color (lighter)
-            const horizonColor = planet.color;
-            // Zenith color (darker, approximated by mixing with black)
-            const zenithColor = lerpColor(planet.color, '#000000', 0.7);
+        if (spaceProgress < 1.0) {
+            // Smoothly shift zenith to space
+            const zenithColor = lerpColor(skyColor, spaceColor, spaceProgress);
+            // Horizon stays bright longer, then fades to dark blue/black
+            const adjustedHorizon = lerpColor(horizonColor, '#000011', Math.pow(spaceProgress, 0.5));
 
-            gradient.addColorStop(0, lerpColor(zenithColor, '#000000', spaceProgress * 2));
-            gradient.addColorStop(1, lerpColor(horizonColor, '#000011', spaceProgress * 2));
+            gradient.addColorStop(0, zenithColor);
+            gradient.addColorStop(1, adjustedHorizon);
+
+            // Add a thin "limb" glow when entering space
+            if (spaceProgress > 0.7) {
+                const glowAlpha = (spaceProgress - 0.7) / 0.3;
+                gradient.addColorStop(0.8, `rgba(255, 255, 255, ${0.2 * (1 - glowAlpha)})`);
+            }
         } else {
-            // Space
-            gradient.addColorStop(0, '#000005');
-            gradient.addColorStop(1, '#000011');
+            // Full Space
+            gradient.addColorStop(0, '#000002');
+            gradient.addColorStop(1, '#000008');
         }
     } else {
-        // No atmosphere (Moon) - Black sky immediately
+        // No atmosphere (Moon) - Gradient towards a slightly lighter horizon for depth
         gradient.addColorStop(0, '#000000');
-        gradient.addColorStop(1, '#000000');
+        gradient.addColorStop(1, '#050505');
     }
 
     ctx.fillStyle = gradient;
@@ -1411,10 +1417,10 @@ function updateAndDrawDebris(ctx, dt, centerX) {
     const scale = Math.min(1.5, maxHeight / Math.max(GAME.rocketBounds.height, 50));
     const pixelsPerMeter = TILE_SIZE * scale;
 
-    // Remove debris that has hit the ground
-    GAME.debris = GAME.debris.filter(p => p.altitude > 0);
+    // List to keep track of debris to remove
+    const toRemove = [];
 
-    GAME.debris.forEach(p => {
+    GAME.debris.forEach((p, index) => {
         // --- PHYSICS UPDATE ---
 
         // Gravity
@@ -1425,11 +1431,8 @@ function updateAndDrawDebris(ctx, dt, centerX) {
         const density = atmo.density;
 
         // Drag
-        // Cd * Area * 0.5 * rho * v^2
-        // Simplified: Assume generic drag coefficient and area based on part size
-        // Width * Height (in meters) approx area
         const area = (p.partDef.width * p.partDef.height);
-        const cd = 0.75; // Generic blunt body
+        const cd = 0.75 + (Math.abs(p.rotSpeed % 1) * 0.2); // Drag varies slightly with tumble
         const vSq = p.vx * p.vx + p.vy * p.vy;
         const v = Math.sqrt(vSq);
 
@@ -1438,24 +1441,30 @@ function updateAndDrawDebris(ctx, dt, centerX) {
             dragForce = 0.5 * density * vSq * cd * area;
         }
 
-        // Apply forces (F=ma) -> a=F/m
-        const mass = p.partDef.mass; // Dry mass (assuming empty fuel tank if staged)
+        const mass = p.partDef.mass;
         const dragAccel = dragForce / mass;
 
-        // Drag opposes velocity
         const ax = v > 0 ? -(p.vx / v) * dragAccel : 0;
         const ay = -gravity + (v > 0 ? -(p.vy / v) * dragAccel : 0);
 
-        // Update Velocity (Euler)
         p.vx += ax * dt;
         p.vy += ay * dt;
 
-        // Update Position
         p.altitude += p.vy * dt;
-        p.relX += p.vx * dt; // Horizontal drift (meters)
+        p.relX += p.vx * dt;
 
         p.rot += p.rotSpeed * dt;
         p.time = (p.time || 0) + dt;
+
+        // Ground check
+        if (p.altitude <= 0) {
+            p.altitude = 0;
+            const planet = getCurrentPlanet();
+            // Trigger ground impact effect (dust/sparks)
+            createParticleEffect(centerX + (p.relX * pixelsPerMeter), ctx.canvas.height - 50,
+                planet.groundColor || '#555555', 15);
+            toRemove.push(index);
+        }
 
 
         // --- RENDERING ---
@@ -1501,24 +1510,37 @@ function updateAndDrawDebris(ctx, dt, centerX) {
 
         ctx.restore();
     });
+
+    // Remove debris that hit the ground
+    if (toRemove.length > 0) {
+        GAME.debris = GAME.debris.filter((_, i) => !toRemove.includes(i));
+    }
 }
 /**
  * Create a puff of smoke at position
  */
-function createStagingEffect(x, y) {
+/**
+ * Create a generic particle effect at position
+ */
+function createParticleEffect(x, y, color = 'rgba(200, 200, 200, 0.5)', count = 15) {
     if (!GAME.smokeParticles) GAME.smokeParticles = [];
 
-    // Add 10-20 particles
-    const count = 10 + Math.random() * 10;
     for (let i = 0; i < count; i++) {
         GAME.smokeParticles.push({
-            x: x + (Math.random() - 0.5) * 20,
-            y: y + (Math.random() - 0.5) * 20,
-            vx: (Math.random() - 0.5) * 50,
-            vy: (Math.random() - 0.5) * 50,
-            life: 1.0, // Seconds
-            color: `rgba(200, 200, 200, ${0.5 + Math.random() * 0.5})`,
-            size: 5 + Math.random() * 10
+            x: x + (Math.random() - 0.5) * 15,
+            y: y + (Math.random() - 0.5) * 15,
+            vx: (Math.random() - 0.5) * 60,
+            vy: (Math.random() - 0.5) * 60 - 20, // Slight upward bias
+            life: 0.5 + Math.random() * 1.0,
+            color: color,
+            size: 4 + Math.random() * 8
         });
     }
+}
+
+/**
+ * Legacy wrapper for staging effects
+ */
+function createStagingEffect(x, y) {
+    createParticleEffect(x, y, 'rgba(220, 220, 220, 0.6)', 15);
 }

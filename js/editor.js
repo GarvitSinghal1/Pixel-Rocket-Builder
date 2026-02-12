@@ -949,12 +949,26 @@ function renderEditor() {
     // Clear canvas
     ctx.clearRect(0, 0, EDITOR.width, EDITOR.height);
 
-    // Draw sky gradient
+    // Draw sky gradient based on current planet
+    const planet = getCurrentPlanet();
     const gradient = ctx.createLinearGradient(0, 0, 0, EDITOR.height);
-    gradient.addColorStop(0, '#000011');
-    gradient.addColorStop(0.4, '#000033');
-    gradient.addColorStop(0.7, '#001144');
-    gradient.addColorStop(1, '#003366');
+
+    if (planet.hasAtmosphere) {
+        // Atmosphere colors
+        const skyColor = planet.color;
+        const spaceColor = lerpColor(skyColor, '#000000', 0.8);
+        const zenithColor = lerpColor(skyColor, '#000000', 0.4);
+
+        gradient.addColorStop(0, spaceColor);
+        gradient.addColorStop(0.3, zenithColor);
+        gradient.addColorStop(0.7, skyColor);
+        gradient.addColorStop(1, lerpColor(skyColor, '#ffffff', 0.2)); // Slight horizon glow
+    } else {
+        // No atmosphere (Moon/Vacuum)
+        gradient.addColorStop(0, '#000000');
+        gradient.addColorStop(1, '#111111');
+    }
+
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, EDITOR.width, EDITOR.height);
 
