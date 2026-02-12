@@ -622,7 +622,12 @@ function calculateTWR(parts, fuel = null) {
     // TWR = Thrust / Weight
     // Weight = Mass * Gravity
     const planet = typeof getCurrentPlanet === 'function' ? getCurrentPlanet() : { surfaceGravity: PHYSICS.GRAVITY };
-    const localGravity = planet.surfaceGravity;
+
+    // FIXED: Use local gravity for flight telemetry, surface gravity for pre-launch
+    let localGravity = planet.surfaceGravity;
+    if (PHYSICS.isRunning && typeof getGravity === 'function') {
+        localGravity = getGravity(PHYSICS.altitude);
+    }
 
     const weight = mass * localGravity;
 
