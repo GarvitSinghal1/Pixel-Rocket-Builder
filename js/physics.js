@@ -1348,11 +1348,27 @@ function physicsStep(dt) {
 
     // We don't have the vectors stored from RK4, so let's approximate:
     // During launch, Thrust > Drag, they differ by 180 deg. 
-    // Felt = |Thrust - Drag| / Mass? No, Drag pushes you into your seat just like Thrust does (if decelerating).
-    // Actually, both Thrust (engine pushing) and Drag (air pushing) cause G-force.
-    // Gravity is the only one that DOESN'T.
-    // So G = (|Thrust| + |Drag|) / Mass / 9.81
-    PHYSICS.gForce = (PHYSICS.thrustForce + Math.abs(PHYSICS.dragForce)) / mass / PHYSICS.GRAVITY;
+    // FIXED: Calculate G-force via proper vector sum (accelerometer physics)
+    // Thrust Vector (Aligned with rotation)
+    const tX = PHYSICS.thrustForce * Math.cos(PHYSICS.rotation);
+    const tY = PHYSICS.thrustForce * Math.sin(PHYSICS.rotation);
+
+    // Drag Vector (Opposes velocity)
+    const vMag = Math.sqrt(PHYSICS.vx * PHYSICS.vx + PHYSICS.vy * PHYSICS.vy);
+    let dX = 0, dY = 0;
+    if (vMag > 0.0001) {
+        // PHYSICS.dragForce is the magnitude of drag
+        dX = - (PHYSICS.vx / vMag) * PHYSICS.dragForce;
+        dY = - (PHYSICS.vy / vMag) * PHYSICS.dragForce;
+    }
+
+    // Net Non-Gravitational Force Vector (F_proper)
+    const fX = tX + dX;
+    const fY = tY + dY;
+
+    // G-Force = |F_proper| / mass / g0
+    const fMag = Math.sqrt(fX * fX + fY * fY);
+    PHYSICS.gForce = fMag / mass / PHYSICS.GRAVITY;
 
     // Dynamic pressure
     PHYSICS.dynamicPressure = calculateDynamicPressure(PHYSICS.velocity, PHYSICS.altitude);
