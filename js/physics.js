@@ -662,6 +662,7 @@ function calculateFuelConsumption(parts) {
         if (partDef.category === 'engines') {
             const ispVac = partDef.ispVac || (partDef.isp * 1.15) || 280;
             // m_dot = Thrust / (Isp * g0)
+            const thrustN = (partDef.thrust || 0) * 1000;
             const consumption = thrustN / (ispVac * PHYSICS.GRAVITY);
             return total + consumption;
         }
