@@ -139,6 +139,8 @@ const PHYSICS = {
         this.maxTemp = 0;
         this.fuel = 0;
         this.maxFuel = 0;
+        this.activeFuel = 0;
+        this.activeMaxFuel = 0;
         this.currentStage = 0;
         this.stages = [];
         this.hasFailed = false;
@@ -470,6 +472,64 @@ function calculateCurrentFuel(parts) {
     return parts.reduce((total, p) => {
         return total + (p.currentFuel || 0);
     }, 0);
+}
+
+/**
+ * Calculate fuel for the active stage (reachable from active engines)
+ */
+function calculateActiveFuelStats(parts) {
+    // 1. Identify active engines in the current part list
+    const activeEngines = parts.filter(p => {
+        const def = getPartById(p.partId);
+        return def.category === 'engines';
+    });
+
+    if (activeEngines.length === 0) return { current: 0, capacity: 0 };
+
+    // 2. BFS to find all reachable fuel tanks from all engines
+    const reachableTanks = new Set();
+    const visited = new Set();
+    const queue = [];
+
+    // Seed BFS with all active engines
+    activeEngines.forEach(eng => {
+        queue.push(eng);
+        visited.add(eng.id);
+    });
+
+    while (queue.length > 0) {
+        const current = queue.shift();
+        const currentDef = getPartById(current.partId);
+
+        if (currentDef.category === 'fuel') {
+            reachableTanks.add(current);
+        }
+
+        // Stop at decouplers (don't pull fuel FROM above a decoupler)
+        if (currentDef.isDecoupler && !activeEngines.includes(current)) {
+            continue;
+        }
+
+        // Neighbors
+        for (const other of parts) {
+            if (visited.has(other.id)) continue;
+            if (arePartsConnected(current, currentDef, other)) {
+                visited.add(other.id);
+                queue.push(other);
+            }
+        }
+    }
+
+    // 3. Sum up stats for reachable tanks
+    let currentTotal = 0;
+    let capacityTotal = 0;
+    reachableTanks.forEach(tank => {
+        const def = getPartById(tank.partId);
+        currentTotal += (tank.currentFuel || 0);
+        capacityTotal += (def.fuelCapacity || 0);
+    });
+
+    return { current: currentTotal, capacity: capacityTotal };
 }
 
 /**
@@ -1034,6 +1094,8 @@ function initPhysics(placedParts) {
     // Fuel
     PHYSICS.maxFuel = calculateTotalFuel(placedParts);
     PHYSICS.fuel = PHYSICS.maxFuel;
+    PHYSICS.activeFuel = 0;
+    PHYSICS.activeMaxFuel = 0;
 
     // Stages
     PHYSICS.stages = detectStages(placedParts);
@@ -1184,8 +1246,26 @@ function physicsStep(dt) {
     if (PHYSICS.fuel > 0 && effectiveThrottle > 0) {
         // Calculate thrust and consume fuel
         PHYSICS.thrustForce = consumeFuelAndGetThrust(parts, dt, effectiveThrottle);
-        // Update fuel again for UI
+        // Fuel consumption (Total)
+        if (PHYSICS.thrustForce > 0) {
+            PHYSICS.fuel = calculateCurrentFuel(parts);
+
+            // Update active fuel stats
+            const activeStats = calculateActiveFuelStats(parts);
+            PHYSICS.activeFuel = activeStats.current;
+            PHYSICS.activeMaxFuel = activeStats.capacity;
+        } else {
+            // Still update active stats even if not thrusting (for UI while drifting)
+            const activeStats = calculateActiveFuelStats(parts);
+            PHYSICS.activeFuel = activeStats.current;
+            PHYSICS.activeMaxFuel = activeStats.capacity;
+        }
+    } else {
+        // If not thrusting, still update total fuel and active fuel stats
         PHYSICS.fuel = calculateCurrentFuel(parts);
+        const activeStats = calculateActiveFuelStats(parts);
+        PHYSICS.activeFuel = activeStats.current;
+        PHYSICS.activeMaxFuel = activeStats.capacity;
     }
 
     // --- RK4 INTEGRATION (2D) ---
@@ -1420,6 +1500,8 @@ function getBaseTelemetry() {
         throttle: PHYSICS.throttle,
         fuel: PHYSICS.fuel,
         maxFuel: PHYSICS.maxFuel,
+        activeFuel: PHYSICS.activeFuel,
+        activeMaxFuel: PHYSICS.activeMaxFuel,
         time: PHYSICS.time,
         currentStage: PHYSICS.currentStage,
         totalStages: (PHYSICS.stages || []).length,

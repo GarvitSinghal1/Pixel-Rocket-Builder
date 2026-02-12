@@ -726,7 +726,9 @@ function updateFlightData() {
             else if (fullTelemetry.warnings.temp === 1) tInd.classList.add('warning');
         }
 
-        const fuelPct = Math.round((fullTelemetry.fuel / fullTelemetry.maxFuel) * 100);
+        const fuelVal = fullTelemetry.activeMaxFuel > 0 ? fullTelemetry.activeFuel : fullTelemetry.fuel;
+        const fuelMax = fullTelemetry.activeMaxFuel > 0 ? fullTelemetry.activeMaxFuel : (fullTelemetry.maxFuel || 1);
+        const fuelPct = Math.round((fuelVal / fuelMax) * 100);
         update('data-fuel', fuelPct + "%");
 
         const stagesEl = document.getElementById('data-stages');
