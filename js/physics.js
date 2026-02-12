@@ -645,10 +645,10 @@ function calculateTotalMass(parts, currentFuel) {
 /**
  * Calculate total thrust from active engines
  */
-function calculateTotalThrust(parts) {
+function calculateTotalThrust(parts, throttle = 1.0) {
     return parts.reduce((total, p) => {
         const partDef = getPartById(p.partId);
-        return total + (partDef.thrust || 0);
+        return total + ((partDef.thrust || 0) * throttle);
     }, 0);
 }
 
@@ -673,12 +673,12 @@ function calculateFuelConsumption(parts) {
 /**
  * Calculate Thrust-to-Weight Ratio
  */
-function calculateTWR(parts, fuel = null) {
+function calculateTWR(parts, fuel = null, throttle = 1.0) {
     if (fuel === null) {
         fuel = calculateTotalFuel(parts);
     }
     const mass = calculateTotalMass(parts, fuel);
-    const thrust = calculateTotalThrust(parts) * 1000; // kN to N
+    const thrust = calculateTotalThrust(parts, throttle) * 1000; // kN to N
 
     // Use surface gravity of current planet for TWR check (launch capability)
     // TWR = Thrust / Weight
@@ -1466,9 +1466,12 @@ function physicsStep(dt) {
     // We don't have the vectors stored from RK4, so let's approximate:
     // During launch, Thrust > Drag, they differ by 180 deg. 
     // FIXED: Calculate G-force via proper vector sum (accelerometer physics)
-    // Thrust Vector (Aligned with rotation)
-    const tX = PHYSICS.thrustForce * Math.cos(PHYSICS.rotation);
-    const tY = PHYSICS.thrustForce * Math.sin(PHYSICS.rotation);
+    // Thrust Vector (Aligned with rotation relative to planet surface)
+    const posAngle = Math.atan2(PHYSICS.y, PHYSICS.x);
+    const globalThrustAngle = posAngle + PHYSICS.rotation;
+
+    const tX = PHYSICS.thrustForce * Math.cos(globalThrustAngle);
+    const tY = PHYSICS.thrustForce * Math.sin(globalThrustAngle);
 
     // Drag Vector (Opposes velocity)
     const vMag = Math.sqrt(PHYSICS.vx * PHYSICS.vx + PHYSICS.vy * PHYSICS.vy);
