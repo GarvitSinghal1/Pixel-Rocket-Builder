@@ -1299,7 +1299,58 @@ function physicsStep(dt) {
     PHYSICS.gravityForce = result.gravityForce;
 
     // Standard 1D G-force approximation for display
-    PHYSICS.gForce = PHYSICS.acceleration / PHYSICS.GRAVITY;
+    // flight G-force = (Thrust + Drag) / Weight
+    // OR simpler: Total Acceleration - Gravity Component?
+    // Actually, "G-Force" felt by crew is Contact Forces (Thrust + Drag) / Mass / g0
+    const nonGravAccel = Math.sqrt(
+        (result.acceleration * result.acceleration) + (planet.surfaceGravity * planet.surfaceGravity)
+        // This is complex in 2D. Let's use Force Sum:
+    );
+
+    // Better way:
+    // F_felt = F_thrust + F_drag
+    // a_felt = F_felt / m
+    // g_felt = a_felt / g0
+    const thrustMag = PHYSICS.thrustForce;
+    const dragMag = PHYSICS.dragForce;
+    // Assume they are roughly collinear for simple display or vector sum them
+    // Drag opposes motion, Thrust is along heading. 
+    // For simple "G-meter", we just want magnitude of non-gravity forces.
+    // In vector form: F_contact = F_tot - F_grav.
+    // F_tot = m * a_tot. F_grav = m * g.
+
+    // Let's use the scalar sum approximation for the UI as it's most robust
+    const totalFeltForce = Math.sqrt(
+        Math.pow(PHYSICS.thrustForce, 2) + Math.pow(PHYSICS.dragForce, 2)
+        // This assumes orthogonality which isn't true, but decent proxy. 
+        // Actually, let's just use the computed drag/thrust components from RK4 if possible, 
+        // but we don't have them easily here.
+
+        // Simpler approximation for game: 
+        // G = currentAccel / G0 (classic) -> fails in orbit (shows 0g but implies 1g if stationary)
+        // Space Engineers style: Gravity is NOT felt. 
+        // So we want: |a_total - g_vector| / g0.
+    );
+
+    // Re-calculating proper felt Gs
+    // acceleration (a_tot) = g + (thrust+drag)/m
+    // felt_accel = a_tot - g = (thrust+drag)/m
+    // We have PHYSICS.dragForce and PHYSICS.thrustForce scalars.
+    // Use them directly.
+    // We need to know if they oppose or align. 
+    // Thrust is forward. Drag is backward.
+    // Net felt force magnitude?
+    // If Angle(v) == Angle(heading), they oppose.
+    // For simple display, max Gs usually matter most during launch (aligned).
+    // Let's us Vector Sum of Thrust and Drag divided by Mass.
+
+    // We don't have the vectors stored from RK4, so let's approximate:
+    // During launch, Thrust > Drag, they differ by 180 deg. 
+    // Felt = |Thrust - Drag| / Mass? No, Drag pushes you into your seat just like Thrust does (if decelerating).
+    // Actually, both Thrust (engine pushing) and Drag (air pushing) cause G-force.
+    // Gravity is the only one that DOESN'T.
+    // So G = (|Thrust| + |Drag|) / Mass / 9.81
+    PHYSICS.gForce = (PHYSICS.thrustForce + Math.abs(PHYSICS.dragForce)) / mass / PHYSICS.GRAVITY;
 
     // Dynamic pressure
     PHYSICS.dynamicPressure = calculateDynamicPressure(PHYSICS.velocity, PHYSICS.altitude);
