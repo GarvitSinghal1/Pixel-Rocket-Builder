@@ -337,119 +337,77 @@ function calculateDrag(velocity, altitude, parts) {
         totalArea += area;
     });
 
-});
+    // Check for aerodynamic parts (nose cones) at the TOP of each stack
+    // Enhanced Logic: Calculate "Aerodynamic Area" vs "Blunt Area"
 
-// Check for aerodynamic parts (nose cones) at the TOP of each stack
-// We need to know which stack has a nose cone.
-// Enhanced Logic:
-// 1. Map intervals back to parts? Difficult with current logic.
-// 2. Simplified: Calculate "Aerodynamic Area" vs "Blunt Area"
+    // Helper to find checking occlusion
+    const isOccluded = (part) => {
+        const pDef = getPartById(part.partId);
+        const pLeft = part.x + 1;
+        const pRight = part.x + (pDef.width * tileSize) - 1;
 
-// Re-scanning parts to find "top" parts
-// A part is exposed to airflow if nothing is above it.
-let bluntArea = 0;
-let aeroArea = 0;
+        return parts.some(other => {
+            if (other === part) return false;
+            const oDef = getPartById(other.partId);
+            const oLeft = other.x;
+            const oRight = other.x + (oDef.width * tileSize);
 
-// Helper to find checking occlusion
-const isOccluded = (part) => {
-    const pDef = getPartById(part.partId);
-    const pLeft = part.x + 1;
-    const pRight = part.x + (pDef.width * tileSize) - 1;
-    const pTop = part.y;
+            // Check horizontal overlap
+            if (pRight < oLeft || pLeft > oRight) return false;
 
-    return parts.some(other => {
-        if (other === part) return false;
-        const oDef = getPartById(other.partId);
-        const oLeft = other.x;
-        const oRight = other.x + (oDef.width * tileSize);
-        const oBottom = other.y + (oDef.height * tileSize);
+            // Check vertical occlusion (other must be ABOVE current)
+            // In canvas, Y=0 is top. Flow comes from top (negative Y relative to rocket).
+            // A part is occluded if there is a part with SAME X and LOWER Y.
+            return (other.y < part.y) && (Math.max(pLeft, oLeft) < Math.min(pRight, oRight));
+        });
+    };
 
-        // Check horizontal overlap
-        if (pRight < oLeft || pLeft > oRight) return false;
+    let weightedDragReduction = 0;
+    let exposedTotalArea = 0;
 
-        // Check vertical occlusion (other must be ABOVE current)
-        // In canvas, Y=0 is top. So "Above" means smaller Y.
-        // If other.bottom >= part.top, it occludes? No, touching is fine.
-        // If other is strictly above (y < part.y) and covers it.
-        // Actually, flow comes from top (-Y direction in flight? No, velocity vector)
-        // Launch: moving up (neg Y). Flow comes from top.
-        // So parts with lower Y are "in front".
-        // A part is occluded if there is a part with SAME X and LOWER Y.
-        return (other.y < part.y) && (Math.max(pLeft, oLeft) < Math.min(pRight, oRight));
+    parts.forEach(p => {
+        const def = getPartById(p.partId);
+        if (!isOccluded(p)) {
+            // This part is exposed to the front
+            const w = (def.width * tileSize) / tileSize;
+            // Area contribution (using the same wide-body logic as above)
+            const partArea = (w <= 2.5) ? (Math.PI * w * w * 0.25) : (w * 2.0);
+
+            exposedTotalArea += partArea;
+
+            if (def.dragReduction > 0) {
+                weightedDragReduction += (def.dragReduction * partArea);
+            }
+        }
     });
-};
 
-parts.forEach(p => {
-    const def = getPartById(p.partId);
-    if (!isOccluded(p)) {
-        // This part is exposed to the front
-        const w = (def.width * tileSize) / tileSize;
-        // Area contribution (using the same wide-body logic as above approx)
-        const partArea = (w <= 2.5) ? (Math.PI * w * w * 0.25) : (w * 2.0);
-
-        if (def.dragReduction > 0) {
-            aeroArea += partArea;
-        } else {
-            bluntArea += partArea;
-        }
+    // If we have no exposed parts (weird?), fallback to merged area
+    if (exposedTotalArea === 0) {
+        exposedTotalArea = totalArea;
     }
-});
 
-// If we have no exposed parts (weird?), fallback to totalArea
-if (bluntArea + aeroArea === 0) {
-    bluntArea = totalArea;
-}
+    PHYSICS.crossSectionalArea = exposedTotalArea;
 
-const calculatedTotalArea = bluntArea + aeroArea;
-
-// Effective Cd Multiplier
-// Weighted average: (Blunt * 1.0 + Aero * (1 - reduction)) / Total
-// simplified: assume standard reduction of 0.3 for aero parts if not specified? 
-// Actually def.dragReduction is the value.
-// But we summed aeroArea regardless of *how much* reduction.
-// Let's refine:
-
-let weightedDragReduction = 0;
-let exposedTotalArea = 0;
-
-parts.forEach(p => {
-    const def = getPartById(p.partId);
-    if (!isOccluded(p)) {
-        const w = (def.width * tileSize) / tileSize;
-        const partArea = (w <= 2.5) ? (Math.PI * w * w * 0.25) : (w * 2.0);
-        exposedTotalArea += partArea;
-
-        if (def.dragReduction > 0) {
-            weightedDragReduction += (def.dragReduction * partArea);
-        }
+    let globalReductionFactor = 0;
+    if (exposedTotalArea > 0) {
+        globalReductionFactor = weightedDragReduction / exposedTotalArea;
     }
-});
 
-let globalReductionFactor = 0;
-if (exposedTotalArea > 0) {
-    globalReductionFactor = weightedDragReduction / exposedTotalArea;
-}
+    // Get Mach number
+    const speedOfSound = getSpeedOfSound(altitude);
+    // Handle vacuum (speedOfSound = 0)
+    const mach = (speedOfSound > 0.1) ? Math.abs(velocity) / speedOfSound : 0;
+    PHYSICS.machNumber = mach;
+    PHYSICS.speedOfSound = speedOfSound;
 
-PHYSICS.crossSectionalArea = (exposedTotalArea > 0) ? exposedTotalArea : totalArea; // Use the smarter exposed area calculation
+    // Get Mach-dependent drag coefficient
+    const cd = getDragCoefficient(mach, globalReductionFactor);
+    PHYSICS.dragCoefficient = cd;
 
-
-// Get Mach number
-const speedOfSound = getSpeedOfSound(altitude);
-// Handle vacuum (speedOfSound = 0)
-const mach = (speedOfSound > 0.1) ? Math.abs(velocity) / speedOfSound : 0;
-PHYSICS.machNumber = mach;
-PHYSICS.speedOfSound = speedOfSound;
-
-// Get Mach-dependent drag coefficient
-const cd = getDragCoefficient(mach, globalReductionFactor);
-PHYSICS.dragCoefficient = cd;
-
-// Drag force: F = 0.5 * ρ * v² * Cd * A
-// Direction opposes velocity
-// If going UP (v > 0), Drag must be DOWN (Negative)
-// If going DOWN (v < 0), Drag must be UP (Positive)
-const dragMagnitude = 0.5 * density * velocity * velocity * cd * area;
-return velocity > 0 ? -dragMagnitude : dragMagnitude;
+    // Drag force: F = 0.5 * ρ * v² * Cd * A
+    // Direction opposes velocity
+    const dragMagnitude = 0.5 * density * velocity * velocity * cd * PHYSICS.crossSectionalArea;
+    return velocity > 0 ? -dragMagnitude : dragMagnitude;
 }
 
 /**
