@@ -684,11 +684,16 @@ function calculateTWR(parts, fuel = null) {
     // Weight = Mass * Gravity
     const planet = typeof getCurrentPlanet === 'function' ? getCurrentPlanet() : { surfaceGravity: PHYSICS.GRAVITY };
 
-    // FIXED: Use local gravity for flight telemetry, surface gravity for pre-launch
-    let localGravity = planet.surfaceGravity;
+    // FIXED: Use surface gravity ALWAYS for TWR. 
+    // TWR is a reference metric relative to planetary surface gravity.
+    // In orbit, "Weight" is zero, so local TWR would be infinite.
+    // For actual acceleration, we use F/m. TWR is F/(m*g0).
+    const localGravity = planet.surfaceGravity;
+    /*
     if (PHYSICS.isRunning && typeof getGravity === 'function') {
         localGravity = getGravity(PHYSICS.altitude);
     }
+    */
 
     const weight = mass * localGravity;
 
