@@ -273,6 +273,10 @@ function getDragCoefficient(mach, maxDragReduction = 0) {
         baseCd *= (1 - maxDragReduction);
     }
     */
+    // FIX: Re-enabling global reduction factor passed from calculateDrag logic
+    if (maxDragReduction > 0) {
+        baseCd *= (1 - maxDragReduction);
+    }
 
     return baseCd;
 }
