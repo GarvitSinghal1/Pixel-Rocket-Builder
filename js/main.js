@@ -761,12 +761,21 @@ function updateFlightData() {
 
             update('data-radial', Math.round(orb.radialVelocity || 0) + " m/s");
             update('data-prograde', Math.round(orb.progradeVelocity || 0) + " m/s");
+        }
 
+        // Advanced Telemetry (Ignition, Cavitation, etc.)
+        if (typeof isAdvancedMode === 'function' && isAdvancedMode()) {
             const ignEl = document.getElementById('data-ignition');
             if (ignEl) {
-                if (fullTelemetry.ignitionFailed) { ignEl.textContent = 'FAIL'; ignEl.style.color = '#ff0000'; }
-                else { ignEl.textContent = 'OK'; ignEl.style.color = '#00ff00'; }
+                if (fullTelemetry.ignitionFailed) {
+                    ignEl.textContent = 'FAIL';
+                    ignEl.style.color = '#ff0000';
+                } else {
+                    ignEl.textContent = 'OK';
+                    ignEl.style.color = '#00ff00';
+                }
             }
+
             const cavEl = document.getElementById('data-cavitation');
             if (cavEl) {
                 if (fullTelemetry.cavitating) {

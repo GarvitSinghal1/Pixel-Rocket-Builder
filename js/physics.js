@@ -1397,6 +1397,11 @@ function togglePause() {
  */
 function setThrottle(value) {
     PHYSICS.throttle = Math.max(0, Math.min(1, value));
+
+    // Advanced: Reset ignition if throttle is cut to 0
+    if (value === 0 && typeof resetIgnition === 'function') {
+        resetIgnition();
+    }
 }
 
 /**
@@ -1441,6 +1446,11 @@ function triggerStage() {
         // Apply Staging Impulse (Sepratrons / Decoupler Springs)
         // Add a small kick in the current forward direction
         const STAGING_IMPULSE = 5.0; // m/s
+
+        // Advanced: Reset ignition for new stage
+        if (typeof resetIgnition === 'function') {
+            resetIgnition();
+        }
         const posAngle = Math.atan2(PHYSICS.y, PHYSICS.x);
         const impulseAngle = posAngle + PHYSICS.rotation;
 
