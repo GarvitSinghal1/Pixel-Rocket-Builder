@@ -418,7 +418,13 @@ function updateSurfaceTemperature(dt) {
     PHYSICS.heatFlux = heating.heatFlux;
 
     // Thermal mass model (simplified)
-    const thermalMass = 10000; // J/K - effective thermal capacity
+    // Thermal mass model
+    // Aluminum specific heat ~900 J/(kg·K)
+    const currentMass = (typeof calculateTotalMass === 'function' && PHYSICS.rocket)
+        ? calculateTotalMass(PHYSICS.rocket, PHYSICS.fuel)
+        : 1000;
+
+    const thermalMass = Math.max(1000, currentMass * 900); // J/K
     const emissivity = 0.8;
     const stefanBoltzmann = 5.67e-8;
     const surfaceArea = PHYSICS.crossSectionalArea * 4; // Approximate total surface
