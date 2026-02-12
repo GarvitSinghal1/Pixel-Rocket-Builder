@@ -1401,26 +1401,30 @@ function handleStagingEvent(droppedParts) {
     const rocketCenterEditorX = GAME.rocketBounds.centerX;
 
     droppedParts.forEach(p => {
-        // Calculate ejection velocity (random lateral push)
-        const ejectionSpeed = 2 + Math.random() * 3;
-        const direction = Math.random() > 0.5 ? 1 : -1;
+        // Identify orientation of the rocket
+        const posAngle = Math.atan2(PHYSICS.y, PHYSICS.x);
+        const rocketRotation = PHYSICS.rotation; // 0 is UP relative to radial
+        const worldAngle = posAngle + rocketRotation;
+
+        // Calculate ejection velocity (inherits rocket velocity + small kick backward)
+        const separationImpulse = 2 + Math.random() * 2;
+        const kickX = -Math.cos(worldAngle) * separationImpulse;
+        const kickY = -Math.sin(worldAngle) * separationImpulse;
 
         GAME.debris.push({
+            partId: p.partId,
             partDef: getPartById(p.partId),
-            // World Coordinates
-            // Horizontal position relative to rocket center (meters)
-            // (PartEditorX - RocketCenterEditorX) / TILE_SIZE
+            // Position in editor-relative meters (converted to 2D world in renderer)
             relX: (p.x - rocketCenterEditorX) / TILE_SIZE,
-            altitude: PHYSICS.altitude, // Start at current rocket altitude
+            altitude: PHYSICS.altitude,
 
-            // World Velocity
-            // Inherit rocket vertical velocity + small downward push from ejection
-            vy: PHYSICS.velocity - 1,
-            vx: ejectionSpeed * direction,
+            // World Velocity (Inherit rocket 2D velocity + small separation kick)
+            vx: PHYSICS.vx + kickX,
+            vy: PHYSICS.vy + kickY,
 
             // Rotation
-            rot: 0,
-            rotSpeed: (Math.random() - 0.5) * 2,
+            rot: -rocketRotation, // Match rocket's current rotation
+            rotSpeed: (Math.random() - 0.5) * 5,
 
             time: 0
         });

@@ -775,7 +775,16 @@ function autoAddDecouplers() {
             if (!hasDecoupler) {
                 // Determine insertion (shift parts down)
                 EDITOR.placedParts.forEach(p => {
-                    if (p.y >= engineBottom - 5 && p.id !== engine.id) {
+                    // Only shift parts that are below the engine AND horizontally overlap with it
+                    // (prevents side boosters from being shifted)
+                    const pDef = getPartById(p.partId);
+                    const pWidth = pDef.width * TILE_SIZE;
+                    const horizontalOverlap = !(
+                        engine.x + engineWidth <= p.x + 5 ||
+                        p.x + pWidth <= engine.x + 5
+                    );
+
+                    if (p.y >= engineBottom - 5 && p.id !== engine.id && horizontalOverlap) {
                         p.y += decouplerHeightPx;
                     }
                 });
