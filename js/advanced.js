@@ -198,20 +198,22 @@ function getVelocityVectors(velocity, position) {
  * Calculate ISP at altitude (varies with atmospheric pressure)
  * Sea level ISP is lower than vacuum ISP
  */
-function getAltitudeAdjustedISP(baseISP, vacuumISP, altitude) {
-    if (!ADVANCED.enabled) return baseISP;
-
+function getAltitudeAdjustedISP(ispASL, ispVac, altitude) {
+    // ISP variation is a fundamental physics effect, but we only apply scaling in advanced mode or 
+    // if the user wants realistic behavior. For now, always scale if altitude > 0.
     const atmo = getPlanetAtmosphere(altitude);
     const planet = getCurrentPlanet();
 
-    if (planet.seaLevelPressure === 0) {
-        // No atmosphere = vacuum ISP
-        return vacuumISP;
+    if (!planet || planet.seaLevelPressure === 0) {
+        return ispVac;
     }
 
-    // ISP varies linearly with pressure ratio
-    const pressureRatio = atmo.pressure / planet.seaLevelPressure;
-    return baseISP + (vacuumISP - baseISP) * (1 - pressureRatio);
+    // ISP varies linearly with pressure ratio (simplified linear model)
+    const pressureRatio = Math.max(0, Math.min(1, atmo.pressure / planet.seaLevelPressure));
+
+    // In vacuum (pressureRatio -> 0), ISP -> ispVac
+    // At sea level (pressureRatio -> 1), ISP -> ispASL
+    return ispVac - (ispVac - ispASL) * pressureRatio;
 }
 
 /**

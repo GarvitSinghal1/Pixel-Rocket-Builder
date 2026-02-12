@@ -16,6 +16,8 @@ const PARTS = {
             thrust: 10,
             fuelConsumption: 0.5,
             isp: 280,
+            ispASL: 250,
+            ispVac: 280,
             width: 1,
             height: 1,
             attachPoints: { top: true, bottom: false, left: false, right: false },
@@ -33,6 +35,8 @@ const PARTS = {
             thrust: 120, // Nerfed from 300
             fuelConsumption: 5,
             isp: 320,
+            ispASL: 280,
+            ispVac: 320,
             width: 2,
             height: 2,
             attachPoints: { top: true, bottom: false, left: false, right: false },
@@ -50,6 +54,8 @@ const PARTS = {
             thrust: 450, // Nerfed from 1200
             fuelConsumption: 18,
             isp: 300,
+            ispASL: 270,
+            ispVac: 300,
             width: 3,
             height: 2,
             attachPoints: { top: true, bottom: false, left: false, right: false },
@@ -68,6 +74,8 @@ const PARTS = {
             thrust: 250, // Nerfed from 600
             fuelConsumption: 15,
             isp: 250,
+            ispASL: 230,
+            ispVac: 250,
             width: 1,
             height: 3,
             attachPoints: { top: true, bottom: false, left: true, right: true },
@@ -85,6 +93,8 @@ const PARTS = {
             thrust: 2, // Nerfed back to logical low thrust
             fuelConsumption: 0.1,
             isp: 4000,
+            ispASL: 100, // Virtually useless in atmosphere
+            ispVac: 4000,
             width: 1,
             height: 1,
             attachPoints: { top: true, bottom: false, left: false, right: false },
@@ -102,6 +112,8 @@ const PARTS = {
             thrust: 350, // Nerfed from 500
             fuelConsumption: 14,
             isp: 340,
+            ispASL: 320, // Altitude compensating
+            ispVac: 340,
             width: 2,
             height: 2,
             attachPoints: { top: true, bottom: false, left: false, right: false },
@@ -119,6 +131,8 @@ const PARTS = {
             thrust: 1000, // Nerfed from 4000
             fuelConsumption: 50,
             isp: 295,
+            ispASL: 260,
+            ispVac: 295,
             width: 3,
             height: 3,
             attachPoints: { top: true, bottom: false, left: false, right: false },

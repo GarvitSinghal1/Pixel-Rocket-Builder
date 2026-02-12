@@ -660,9 +660,16 @@ function consumeFuelAndGetThrust(parts, dt, throttle) {
 
     // 2. Process each engine
     engines.forEach(engine => {
-        const isp = engine.def.isp || 250;
+        const ispASL = engine.def.ispASL || engine.def.isp || 250;
+        const ispVac = engine.def.ispVac || (ispASL * 1.15);
         const thrustN = engine.def.thrust * 1000;
-        const consumptionRate = thrustN / (isp * 9.81);
+
+        let currentISP = ispASL;
+        if (typeof getAltitudeAdjustedISP === 'function') {
+            currentISP = getAltitudeAdjustedISP(ispASL, ispVac, PHYSICS.altitude);
+        }
+
+        const consumptionRate = thrustN / (currentISP * PHYSICS.GRAVITY);
         const fuelNeeded = consumptionRate * throttle * dt;
 
         // 3. Identify reachable tanks for THIS engine
@@ -686,13 +693,10 @@ function consumeFuelAndGetThrust(parts, dt, throttle) {
         const efficiency = fuelObtained / fuelNeeded;
         if (efficiency > 0.1) {
             let thrustMultiplier = efficiency; // Scale thrust by fuel available
-            const baseISP = engine.def.isp || 250;
 
-            if (typeof getAltitudeAdjustedISP === 'function' && typeof getVacuumISP === 'function') {
-                const vacuumISP = getVacuumISP(baseISP);
-                const currentISP = getAltitudeAdjustedISP(baseISP, vacuumISP, PHYSICS.altitude);
-                thrustMultiplier *= (currentISP / baseISP);
-            }
+            // ISP effect on thrust: F = m_dot * Isp * g
+            // Since m_dot is constant (consumptionRate), thrust scales linearly with ISP
+            thrustMultiplier *= (currentISP / ispASL);
 
             // Advanced: Cavitation Check
             if (typeof checkCavitation === 'function') {
@@ -765,7 +769,7 @@ function estimateAltitude(parts) {
     const twr = calculateTWR(parts);
 
     // Get current planet gravity
-    const planet = typeof getCurrentPlanet === 'function' ? getCurrentPlanet() : { surfaceGravity: 9.81 };
+    const planet = typeof getCurrentPlanet === 'function' ? getCurrentPlanet() : { surfaceGravity: PHYSICS.GRAVITY };
     const g = planet.surfaceGravity;
 
     if (twr <= 1) return 0;
@@ -799,7 +803,8 @@ function calculateAverageISP(parts) {
 
     // Isp = F / (m_dot * g0)
     // Use Standard Gravity (9.80665) for ISP definition
-    return Math.round(thrustN / (massFlow * PHYSICS.GRAVITY));
+    const g0 = PHYSICS.GRAVITY;
+    return Math.round(thrustN / (massFlow * g0));
 }
 
 /**
@@ -1292,7 +1297,7 @@ function physicsStep(dt) {
     PHYSICS.gravityForce = result.gravityForce;
 
     // Standard 1D G-force approximation for display
-    PHYSICS.gForce = PHYSICS.acceleration / 9.81;
+    PHYSICS.gForce = PHYSICS.acceleration / PHYSICS.GRAVITY;
 
     // Dynamic pressure
     PHYSICS.dynamicPressure = calculateDynamicPressure(PHYSICS.velocity, PHYSICS.altitude);
@@ -1544,7 +1549,7 @@ function getFailureExplanation(failureReason) {
             title: 'Structural Failure - G-Force Limit Exceeded',
             icon: '🏋️',
             whatHappened: 'Your rocket accelerated too quickly, exceeding structural and/or crew limits. The forces bent and broke the rocket frame.',
-            physics: 'G-force = Acceleration / 9.81. A thrust-to-weight ratio (TWR) of 3 means 3g acceleration at launch. Higher TWR = higher g-forces. Most rockets have TWR of 1.2-1.5 at launch.',
+            physics: 'G-force = Acceleration / 9.80665. A thrust-to-weight ratio (TWR) of 3 means 3g acceleration at launch. Higher TWR = higher g-forces. Most rockets have TWR of 1.2-1.5 at launch.',
             realWorld: 'Astronauts experience about 3g during launch. Fighter pilots can handle up to 9g briefly. Most rocket structures are rated for 10-15g.',
             improvements: [
                 'Add more fuel tanks to increase mass (lower TWR)',
@@ -1762,7 +1767,7 @@ function estimateMaxQ(parts, twr, hasNoseCone) {
 
     // Estimate velocity at ~10km (where Max Q typically occurs)
     // v ≈ sqrt(2 * (TWR-1) * g * altitude) simplified
-    const estimatedVelocity = Math.sqrt(2 * (twr - 1) * 9.81 * 10000);
+    const estimatedVelocity = Math.sqrt(2 * (twr - 1) * PHYSICS.GRAVITY * 10000);
 
     // Air density at ~10km ≈ 0.4 kg/m³
     const densityAt10km = 0.4;
