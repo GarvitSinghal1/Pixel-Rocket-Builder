@@ -482,7 +482,7 @@ const PARTS = {
             unlockLevel: 12,
             color: '#ccccdd',
             accentColor: '#ffaa44',
-            description: 'Long-term space habitaiton',
+            description: 'Long-term space habitation',
             tooltip: 'Massive payload (200pts). Requires heavy lifting capability'
         }
     },
