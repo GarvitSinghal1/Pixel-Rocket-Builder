@@ -697,7 +697,17 @@ function updateFlightData() {
         // G Indicator
         const gFill = document.getElementById('g-fill');
         const gInd = document.getElementById('g-indicator');
-        if (gFill) gFill.style.width = Math.min(100, (Math.abs(fullTelemetry.gForce) / (ph.MAX_G_LIMIT || 10)) * 100) + '%';
+        if (gFill) {
+            const gVal = Math.abs(fullTelemetry.gForce);
+            const gLimit = ph.MAX_G_LIMIT || 10;
+            let gPercent;
+            if (gVal <= gLimit) {
+                gPercent = (gVal / gLimit) * 75; // 0-10G takes 75% of bar
+            } else {
+                gPercent = 75 + (Math.min(40, gVal - gLimit) / 40) * 25; // 10-50G takes remaining 25%
+            }
+            gFill.style.width = gPercent + '%';
+        }
         if (gInd) {
             gInd.classList.remove('warning', 'danger');
             if (fullTelemetry.warnings.g === 2) gInd.classList.add('danger');

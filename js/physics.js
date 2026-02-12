@@ -1698,7 +1698,8 @@ function estimateMaxQ(parts, twr, hasNoseCone) {
 function getStressLevels() {
     return {
         heat: Math.min(1, (PHYSICS.surfaceTemperature - 288) / (PHYSICS.MAX_TEMP_LIMIT - 288)),
-        gForce: Math.min(1, Math.abs(PHYSICS.gForce) / PHYSICS.MAX_G_LIMIT),
+        // Allow G-force stress to go above 1.0 for extreme failure events
+        gForce: Math.abs(PHYSICS.gForce) / PHYSICS.MAX_G_LIMIT,
         pressure: Math.min(1, PHYSICS.dynamicPressure / PHYSICS.MAX_Q_LIMIT)
     };
 }
