@@ -155,8 +155,10 @@ function getPlanetAtmosphere(altitude, planetId = null) {
     }
 
     // Physical Constants
+    // Physical Constants
     const g0 = planet.surfaceGravity;
-    const R = 8.3144598; // Universal Gas Constant (J/mol·K)
+    // 2019 SI Value for R
+    const R = 8.314462618; // Universal Gas Constant (J/mol·K)
     const M = planet.molarMass || 0.0289644; // Molar Mass (default to Earth Air)
     const Rs = R / M;  // Specific Gas Constant (J/kg·K)
 
