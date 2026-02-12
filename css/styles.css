@@ -391,6 +391,7 @@ body {
     right: 0;
     padding: var(--gap-md);
     pointer-events: none;
+    z-index: 90;
 }
 
 #flight-data {
