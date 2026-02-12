@@ -384,12 +384,35 @@ body {
 
 #flight-data {
     display: flex;
-    justify-content: center;
-    gap: var(--gap-xl);
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: var(--gap-xs);
     background: rgba(0, 0, 0, 0.7);
-    padding: var(--gap-md);
+    padding: var(--gap-md) var(--gap-lg);
     border-radius: var(--pixel);
     border: 2px solid var(--border-color);
+    /* Prevent overflow on small screens */
+    max-height: 40vh;
+    overflow-y: auto;
+    pointer-events: auto;
+    /* Enable scrolling */
+
+    /* Custom Scrollbar */
+    scrollbar-width: thin;
+    scrollbar-color: var(--accent-primary) transparent;
+}
+
+#flight-data::-webkit-scrollbar {
+    width: 4px;
+}
+
+#flight-data::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#flight-data::-webkit-scrollbar-thumb {
+    background: var(--accent-primary);
+    border-radius: var(--pixel);
 }
 
 .data-item {
@@ -928,8 +951,9 @@ body {
 
 .telemetry-row {
     display: flex;
-    justify-content: center;
-    gap: var(--gap-lg);
+    justify-content: space-around;
+    gap: var(--gap-md);
+    padding: var(--gap-xs) 0;
 }
 
 .telemetry-row.critical {
@@ -1501,8 +1525,8 @@ body {
 
 /* Orbital Telemetry */
 .telemetry-row.orbital-data {
-    margin-top: var(--gap-sm);
-    padding-top: var(--gap-sm);
+    margin-top: var(--gap-xs);
+    padding-top: var(--gap-xs);
     border-top: 1px solid var(--accent-warning);
 }
 
