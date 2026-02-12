@@ -404,7 +404,7 @@ body {
     border-radius: var(--pixel);
     border: 2px solid var(--border-color);
     /* Prevent overflow on small screens */
-    max-height: 60vh;
+    max-height: 80vh;
     overflow-y: auto;
     pointer-events: auto;
     /* Enable scrolling */
