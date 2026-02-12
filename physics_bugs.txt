@@ -1,65 +1,59 @@
-### PHYSICAL ENGINE AUDIT REPORT ###
-Project: Pixel Rocket Builder
-Status: ANNOYINGLY THOROUGH
+[PHYSICS BUGS - SPACE SIM AUDIT]
+DATE: 2026-02-12
+LEVEL: ANNOYINGLY THOROUGH
 
---- PHYSICS BUGS ---
+--- PHYSICS CORE ---
 
-1. [CRITICAL] ISP/Thrust Scaling Paradox
-   Location: js/physics.js (consumeFuelAndGetThrust)
-   Bug: The simulation calculates mass flow (consumptionRate) using current ISP but then scales thrust separately. 
-   Effect: As the rocket enters vacuum, its fuel consumption rate DECREASES while thrust INCREASES. 
-   Reality: Rocket engines have a fixed mass flow (set by pumps); thrust increases in vacuum because exhaust velocity increases. 
-   Annoyance level: High. Your rockets are getting "free" fuel efficiency in space.
+1. [CRITICAL] ERRONEOUS PROJECTED AREA MERGING
+File: js/physics.js:285-326
+Bug: The area calculation merges all overlapping part intervals into a single width and calculates area as Math.PI * r^2. 
+Impact: Side-by-side boosters are treated as a single larger cylinder rather than independent bodies. This results in significantly lower cross-sectional area and drag for wide-body rockets than physics dictates.
 
-2. [MAJOR] G-Force Vector Ignorance
-   Location: js/physics.js (line 1353)
-   Bug: G-force is calculated as: (|Thrust| + |Drag|) / Mass / G0.
-   Effect: It adds magnitudes regardless of direction. If a rocket is decelerating (re-entry), Drag and Thrust might oppose or align, but they shouldn't just be summed as absolute scalars. 
-   Reality: G-force is the magnitude of the vector sum of all non-gravitational forces.
-   Annoyance level: Medium. Telemetry is lying to the pilot about structural stress.
+2. [MAJOR] THERMAL INERTIA IS MASS-INVARIANT
+File: js/physics.js:410
+Bug: `thermalMass` is hardcoded to 10000 J/K. 
+Impact: A 100kg probe and a 100,000kg heavy lifter heat up at the same rate given the same heat flux. Thermal mass must scale with the actual mass of the rocket stages.
 
-3. [MAJOR] Cross-Sectional Area Underestimation
-   Location: js/physics.js (calculateDrag)
-   Bug: maxWidth is calculated as Math.max(maxWidth, partDef.width) across ALL parts.
-   Effect: For a rocket with side-boosters (e.g., Falcon Heavy style), it only calculates the area of the single widest stack. 
-   Reality: Projected frontal area should be the sum of all stacks perpendicular to the flow. 
-   Annoyance level: Medium. Wide rockets have significantly less drag than they should.
+3. [MODERATE] ISP LOGIC DISCREPANCY
+Files: js/physics.js:601, js/physics.js:715
+Bug: `calculateFuelConsumption` uses `partDef.isp` for prediction, but `consumeFuelAndGetThrust` uses `ispVac` for the actual simulation loop.
+Impact: Pre-launch fuel consumption predictions will be slightly off compared to actual flight performance.
 
-4. [MINOR] Delta-V Display Inaccuracy
-   Location: js/physics.js (calculateDeltaV)
-   Bug: Uses total fuel capacity (calculateTotalFuel) instead of current fuel (calculateCurrentFuel) for Delta-V.
-   Effect: The Delta-V metric doesn't decrease as fuel is consumed during flight.
-   Annoyance level: Low but irritating.
+4. [MINOR] MACH-DEPENDENT CD DISCONTINUITY
+File: js/physics.js:260-264
+Bug: The transition from the Mach 1.0-1.2 linear ramp (ending at 0.8) to the Mach 5.0 square root curve (starting at 0.8/sqrt(1.2) ≈ 0.73) has a jump.
+Impact: Unnatural "snap" in drag force exactly at Mach 1.2.
 
-5. [MINOR] Arbitrary Speed of Sound in Vacuum
-   Location: js/planets.js (getPlanetAtmosphere)
-   Bug: Returns 273 m/s as a "safe" speed of sound for Mach calculations in vacuum.
-   Effect: Mach number is still reported in vacuum, which is physically meaningless.
-   Annoyance level: Low.
+5. [DESIGN FLAY] GLOBAL DRAG REDUCTION LEAK
+File: js/physics.js:248, 346
+Bug: A single part with `dragReduction` (like a nose cone) reduces the drag coefficient for the ENTIRE projected area of the rocket.
+Impact: Putting a tiny nose cone on a giant, flat-topped rocket makes the whole thing aerodynamic. Drag reduction should only apply to the area projected by that specific part.
 
-6. [MINOR] TWR Surface Constraint
-   Location: js/physics.js (calculateTWR)
-   Bug: Always scales weight by surfaceGravity of the planet.
-   Effect: TWR doesn't increase as the rocket gains altitude and gravity weakens.
-   Annoyance level: Minimal.
+6. [TELEMETRY] INFINITE TWR IN ORBIT
+File: js/physics.js:628
+Bug: TWR uses local gravity during flight. In orbit, gravity is still present but weightlessness (centrifugal force balance) is the context. If local gravity approaches zero (very far out), TWR approaches infinity.
+Impact: Confusing telemetry for players. TWR should generally display relative to surface gravity or handle orbital mechanics explicitly.
 
---- HTML / UI BUGS ---
+7. [CONSISTENCY] ATMOSPHERIC CONSTANT MISMATCH
+Files: js/physics.js:35, js/planets.js:161
+Bug: `SPECIFIC_GAS_CONSTANT` is defined as 287.058 in physics.js, but calculated as ~287.052 in planets.js.
+Impact: Negligible but scientifically sloppy.
 
-1. [BROKEN] Missing Main Script
-   Location: index.html (line 122)
-   Bug: <script src="js/script.js"></script> references a file that does not exist in the repository.
-   
-2. [UI] Inconsistent Link Styling
-   Location: index.html (line 25)
-   Bug: The "LAUNCH GAME" link has a hardcoded inline style for color instead of using a CSS class.
+--- HTML & DOCUMENTATION ---
 
-3. [TYPO] Documentation Typo
-   Location: js/parts.js (line 485)
-   Bug: "habitation_module" description contains "habitaiton".
+1. [DOCS] STAGNATION TEMPERATURE FORMULA MISMATCH
+File: index.html:111 vs js/physics.js:387
+Bug: Home page claims T_stag = T_amb * (1 + 0.2 * M^2), but the code uses a recovery factor of 0.9, making it (1 + 0.18 * M^2). 
+Impact: Misleading technical specifications for "educational-grade" software.
 
-4. [UI] Telemetry Z-Index
-   Location: css/styles.css (line 446)
-   Bug: Potential for overlays to block controls if not carefully managed (though currently mitigated by z-index: 200).
+2. [UI] TELEMETRY OVERFLOW RISK
+File: css/styles.css:407
+Bug: `flight-data` uses max-height: 60vh. 
+Impact: With advanced telemetry and engine data expanded, critical warnings at the bottom of the column may require scrolling to see, which is dangerous during high-velocity flight.
+
+3. [STYLE] MISSING FONT IN HOME PAGE
+File: index.html
+Bug: Home page does not load 'Press Start 2P', causing inconsistent branding if fonts fall back.
 
 --- SUMMARY ---
-The physics engine is "educational-grade" but suffers from basic vector math errors and non-conservative mass-flow logic. Fix the ISP scaling first if you want any semblance of realism.
+The physics engine is "good enough" for a game but fails as an "educational aerospace model" due to the projected area and thermal mass bugs. Fix the merging logic first.

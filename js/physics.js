@@ -319,8 +319,19 @@ function calculateDrag(velocity, altitude, parts) {
     merged.forEach(interval => {
         const widthPx = interval.end - interval.start;
         const widthMeters = widthPx / tileSize;
-        const radius = widthMeters * 0.5;
-        totalArea += Math.PI * radius * radius;
+
+        let area;
+        if (widthMeters <= 2.5) {
+            // Small objects: treat as circular (Aerodynamic)
+            const radius = widthMeters * 0.5;
+            area = Math.PI * radius * radius;
+        } else {
+            // Wide objects: treat as slab (Linear scaling)
+            // Area = Width * Depth (approx 2m depth for standard tanks)
+            // Transition point: at 2.5m, PI*(1.25)^2 = 4.9m². 2.5 * 2 = 5m². Close enough.
+            area = widthMeters * 2.0;
+        }
+        totalArea += area;
     });
 
     const area = totalArea > 0 ? totalArea : Math.PI * 0.25; // Min 1x1 circle fallback
