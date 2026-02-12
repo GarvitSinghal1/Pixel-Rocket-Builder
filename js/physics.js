@@ -462,14 +462,18 @@ function updateSurfaceTemperature(dt) {
     const heating = calculateAerodynamicHeating(PHYSICS.velocity, PHYSICS.altitude);
     PHYSICS.heatFlux = heating.heatFlux;
 
-    // Thermal mass model (simplified)
     // Thermal mass model
     // Aluminum specific heat ~900 J/(kg·K)
-    const currentMass = (typeof calculateTotalMass === 'function' && PHYSICS.rocket)
-        ? calculateTotalMass(PHYSICS.rocket, PHYSICS.fuel)
-        : 1000;
+    // Fuel (RP-1/LOX) specific heat ~2000 J/(kg·K)
+    let thermalMass = 900000; // Default fallback
 
-    const thermalMass = Math.max(1000, currentMass * 900); // J/K
+    if (typeof calculateTotalMass === 'function' && PHYSICS.rocket) {
+        const totalMass = calculateTotalMass(PHYSICS.rocket, PHYSICS.fuel);
+        const fuelMass = PHYSICS.fuel;
+        const dryMass = Math.max(0, totalMass - fuelMass);
+
+        thermalMass = (dryMass * 900) + (fuelMass * 2000);
+    }
     const emissivity = 0.8;
     const stefanBoltzmann = 5.67e-8;
     const surfaceArea = PHYSICS.crossSectionalArea * 4; // Approximate total surface
