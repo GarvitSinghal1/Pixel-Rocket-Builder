@@ -1142,8 +1142,8 @@ function getAcceleration2D(posX, posY, velX, velY, mass, thrustForce, rotation, 
     if (vMag > 0.1 && altitude < (planet.atmosphereHeight || 100000)) {
         const dragMag = calculateDrag(vMag, altitude, parts);
         const dragAccel = dragMag / mass;
-        dx = -(velX / vMag) * dragAccel;
-        dy = -(velY / vMag) * dragAccel;
+        dx = (velX / vMag) * dragAccel;
+        dy = (velY / vMag) * dragAccel;
     }
 
     return { ax: gx + tx + dx, ay: gy + ty + dy, gx, gy, dx, dy };
