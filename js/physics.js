@@ -783,24 +783,56 @@ function detectStages(parts) {
         let nextStageParts = getConnectedParts(rootPart, currentParts, groupIds);
 
         // Fallback: Check if Struts are bypassing the decoupler
+        // If separation didn't happen, force break any struts that cross the decoupler line
         if (nextStageParts.length === currentParts.length) {
-            console.warn(`[Staging] Decoupler fired but connection remains. Checking for struts...`);
+            console.log(`[Staging] Staging blocked. Attempting to break crossing struts...`);
+
             const struts = currentParts.filter(p => p.partId === 'strut');
-            if (struts.length > 0) {
-                const ignoreWithStruts = new Set([...groupIds, ...struts.map(s => s.id)]);
+            // Find struts that are "crossing" the decoupler level
+            // A crossing strut has Y < level < Y+H (roughly) or connects parts across the level
+            // Simple heuristic: If a strut exists, and we are staging, assume struts CROSSING the cut line should break.
+
+            const crossingStruts = struts.filter(s => {
+                // Check if strut essentially overlaps the decoupler Y plane
+                // Level is the center Y of the decoupler group
+                // Strut top
+                const sTop = s.y;
+                // Strut bottom
+                const sBot = s.y + 32; // 1 tile assumed
+
+                // If the strut is reasonably close to the cut line, break it
+                // Level is roughly the Y coordinate of the cut
+                return Math.abs(s.y - level) < 60; // 60px tolerance (approx 2 tiles)
+            });
+
+            if (crossingStruts.length > 0) {
+                console.log(`[Staging] Breaking ${crossingStruts.length} struts crossing level ${level}`);
+                const ignoreWithStruts = new Set([...groupIds, ...crossingStruts.map(s => s.id)]);
                 const nextStageNoStruts = getConnectedParts(rootPart, currentParts, ignoreWithStruts);
 
                 if (nextStageNoStruts.length < currentParts.length) {
-                    console.log(`[Staging] Success! Ignoring struts allowed staging.`);
+                    console.log(`[Staging] Success! Breaking struts allowed staging.`);
                     nextStageParts = nextStageNoStruts;
                 }
             }
         }
 
-        // Fallback 2: Geometric Force (REMOVED)
-        // Rely purely on graph connectivity. If parts are strutted, they should stay connected.
+        // Fallback 2: Geometric Force (RESTORED)
+        // If physical separation failed, force a geometric cut.
+        // This handles cases where parts are "glued" by side-attachments that the graph doesn't handle well.
         if (nextStageParts.length === currentParts.length) {
-            console.warn(`[Staging] Staging blocked by connectivity (likely struts). No separation occurred.`);
+            console.warn(`[Staging] Physical staging failed. Forcing Geometric Cut at Y=${level}`);
+
+            // Keep parts ABOVE the decoupler (y < level)
+            // Allow a small tolerance (e.g. 10px) to include the decoupler itself or adjacent parts
+            nextStageParts = currentParts.filter(p => {
+                // Keep if above the cut line (with slight buffer)
+                // Also always keep the root part to ensure we track the main ship
+                if (p.id === rootPart.id) return true;
+                return p.y < level + 16; // 16px = half a tile tolerance
+            });
+
+            console.log(`[Staging] Geometric Cut Result: ${nextStageParts.length} parts (Prev: ${currentParts.length})`);
         }
 
         console.log(`[Staging] Result: ${nextStageParts.length} parts (Prev: ${currentParts.length})`);

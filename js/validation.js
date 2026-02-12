@@ -11,10 +11,19 @@ function validateRocketDesign(parts) {
     const errors = [];
     const warnings = [];
 
-    // Get only connected parts
-    const connectedParts = typeof getConnectedParts === 'function' ? getConnectedParts() : parts;
+    // Get only launchable parts (contiguous assembly from main engine)
+    const connectedParts = typeof getLaunchableParts === 'function' ? getLaunchableParts() : parts;
 
-    // Warn about disconnected parts (don't block)
+    // 1. Must not have multiple disconnected engine assemblies
+    const allEngines = parts.filter(p => getPartById(p.partId).category === 'engines');
+    const connectedEngines = connectedParts.filter(p => getPartById(p.partId).category === 'engines');
+
+    if (connectedEngines.length < allEngines.length) {
+        errors.push('Multiple disconnected rocket assemblies detected! All engines must be part of the same connected rocket structure.');
+        return { valid: false, errors, warnings };
+    }
+
+    // Warn about disconnected parts (don't block if they don't have engines)
     if (connectedParts.length < parts.length) {
         const disconnected = parts.length - connectedParts.length;
         warnings.push(`⚠️ ${disconnected} disconnected part(s) will be ignored during launch.`);

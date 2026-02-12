@@ -490,10 +490,10 @@ function arePartsConnected(part1, part2) {
 }
 
 /**
- * Get all connected parts starting from engines at the bottom
- * Returns only parts that form a connected structure with at least one engine
+ * Get all connected parts starting from the main engine at the bottom
+ * Returns only parts that form a connected structure with the primary root engine
  */
-function getConnectedParts() {
+function getLaunchableParts() {
     if (EDITOR.placedParts.length === 0) return [];
 
     // Find all engine parts
@@ -504,9 +504,33 @@ function getConnectedParts() {
 
     if (engines.length === 0) return [];
 
-    // BFS from engines to find all connected parts
+    // SEED LOGIC: Find the "Main" engine to start BFS
+    // Criteria: Lowest Y (bottom-most) and closest to center X
+    let mainEngine = engines[0];
+    engines.forEach(e => {
+        const eDef = getPartById(e.partId);
+        const mainDef = getPartById(mainEngine.partId);
+
+        const eBottom = e.y + eDef.height * TILE_SIZE;
+        const mainBottom = mainEngine.y + mainDef.height * TILE_SIZE;
+
+        // Take strictly lower part
+        if (eBottom > mainBottom + 5) {
+            mainEngine = e;
+        }
+        // If same level, take one closer to center
+        else if (Math.abs(eBottom - mainBottom) <= 5) {
+            const eDist = Math.abs((e.x + (eDef.width * TILE_SIZE) / 2) - EDITOR.centerX);
+            const mainDist = Math.abs((mainEngine.x + (mainDef.width * TILE_SIZE) / 2) - EDITOR.centerX);
+            if (eDist < mainDist) {
+                mainEngine = e;
+            }
+        }
+    });
+
+    // BFS from the primary main engine
     const connected = new Set();
-    const queue = [...engines];
+    const queue = [mainEngine];
 
     while (queue.length > 0) {
         const current = queue.shift();
@@ -976,7 +1000,7 @@ function renderEditor() {
     }
 
     // Get connected parts for rendering
-    const connectedParts = getConnectedParts();
+    const connectedParts = getLaunchableParts();
     const connectedIds = new Set(connectedParts.map(p => p.id));
 
     // Draw placed parts
@@ -1105,7 +1129,7 @@ function renderEditor() {
  */
 function updateStats() {
     // Get only connected parts for calculations
-    const connectedParts = getConnectedParts();
+    const connectedParts = getLaunchableParts();
     const allParts = EDITOR.placedParts;
 
     // Calculate stats from connected parts only
@@ -1367,7 +1391,7 @@ function loadRocket() {
  * Get connected parts for physics (exported for use by main.js)
  */
 function getValidRocketParts() {
-    return getConnectedParts();
+    return getLaunchableParts();
 }
 
 // Initialize drag and drop on canvas
