@@ -606,8 +606,8 @@ function getReachableFuelTanks(root, allParts) {
         const current = queue.shift();
         const currentDef = getPartById(current.partId);
 
-        // If this is a fuel tank, add to list
-        if (currentDef.category === 'fuel' && current.currentFuel > 0) {
+        // If this part is a fuel tank (or booster with fuel), add to list
+        if (currentDef.fuelCapacity > 0 && current.currentFuel > 0) {
             reachableTanks.push(current);
         }
 
@@ -1043,7 +1043,7 @@ function initPhysics(placedParts) {
     // Initialize fuel for each tank
     placedParts.forEach(p => {
         const def = getPartById(p.partId);
-        if (def.category === 'fuel') {
+        if (def.fuelCapacity > 0) {
             p.currentFuel = def.fuelCapacity;
         } else {
             p.currentFuel = 0;
