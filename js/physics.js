@@ -615,10 +615,9 @@ function calculateFuelConsumption(parts) {
         const partDef = getPartById(p.partId);
         // Only engines consume fuel
         if (partDef.category === 'engines') {
-            const isp = partDef.isp || 250;
-            const thrustN = partDef.thrust * 1000;
+            const ispVac = partDef.ispVac || (partDef.isp * 1.15) || 280;
             // m_dot = Thrust / (Isp * g0)
-            const consumption = thrustN / (isp * PHYSICS.GRAVITY);
+            const consumption = thrustN / (ispVac * PHYSICS.GRAVITY);
             return total + consumption;
         }
         return total;
