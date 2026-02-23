@@ -256,14 +256,41 @@ function setupGameEvents() {
     });
 
     // Keyboard Controls for 2D Flight
-    window.addEventListener('keydown', (e) => {
-        if (!PHYSICS.isRunning || PHYSICS.isPaused) return;
+    const keysHeld = { left: false, right: false };
 
-        const rotationSpeed = 0.05; // Radians per frame
-        if (e.key === 'ArrowLeft' || e.key === 'a') {
-            PHYSICS.rotation += rotationSpeed;
-        } else if (e.key === 'ArrowRight' || e.key === 'd') {
-            PHYSICS.rotation -= rotationSpeed;
+    function updateControlInput() {
+        if (!PHYSICS.isRunning || PHYSICS.isPaused) {
+            PHYSICS.controlInput = 0;
+            return;
+        }
+
+        // In canvas, positive rotation is clockwise (Right). 
+        if (keysHeld.left && !keysHeld.right) {
+            PHYSICS.controlInput = -1; // Negative torque for Left
+        } else if (keysHeld.right && !keysHeld.left) {
+            PHYSICS.controlInput = 1;  // Positive torque for Right
+        } else {
+            PHYSICS.controlInput = 0;
+        }
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+            keysHeld.left = true;
+            updateControlInput();
+        } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+            keysHeld.right = true;
+            updateControlInput();
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+            keysHeld.left = false;
+            updateControlInput();
+        } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+            keysHeld.right = false;
+            updateControlInput();
         }
     });
 
@@ -1092,6 +1119,15 @@ function drawRocketAtPosition(ctx, x, y, throttle) {
             const relY = (placedPart.y - GAME.rocketBounds.minY) * scale;
             const partW = partDef.width * TILE_SIZE * scale;
             const partH = partDef.height * TILE_SIZE * scale;
+
+            // Fix: calculate drawX and drawY for the flame
+            const canvasW = ctx.canvas.width;
+            const canvasH = ctx.canvas.height;
+            const rocketW = (GAME.rocketBounds.maxX - GAME.rocketBounds.minX) * scale;
+            const rocketH = (GAME.rocketBounds.maxY - GAME.rocketBounds.minY) * scale;
+
+            const drawX = (canvasW - rocketW) / 2;
+            const drawY = (canvasH - rocketH) / 2;
 
             const flameX = drawX + relX + partW / 2;
             const flameY = drawY + relY + partH;

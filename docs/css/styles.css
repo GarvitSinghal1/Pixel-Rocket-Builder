@@ -149,6 +149,16 @@ h1 {
     text-shadow: 0 0 5px var(--accent-primary), 0 0 10px rgba(0, 255, 255, 0.2);
     margin-bottom: 0.5rem;
     letter-spacing: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.logo-icon {
+    width: 32px;
+    height: 32px;
+    image-rendering: pixelated;
 }
 
 .subtitle {

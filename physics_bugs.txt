@@ -1,26 +1,37 @@
-# PHYSICS BUGS AUDIT - SPACESIM
-# ============================
+[PHYSICS BUGS & MISIMPLEMENTED FEATURES]
 
-1. CRITICAL: ReferenceError in `js/physics.js:665`.
-   The variable `thrustN` is used in `calculateFuelConsumption` but is not defined in scope. Fuel consumption tracking is likely broken or crashing.
+1. [CRITICAL] Drag Reduction Ignored
+   File: js/physics.js (Lines 270-278, 406)
+   Bug: The `getDragCoefficient` function accepts a `maxDragReduction` parameter but the code to apply it is commented out. Consequently, adding nose cones or fairings (which provide `dragReduction`) has NO effect on the actual drag coefficient. The rocket experiences full blunt drag regardless of aerodynamic parts.
 
-2. LOGIC BUG: Incorrect G-Force Vector Calculation in `js/physics.js:1469-1470`.
-   The G-force telemetry logic calculates the thrust vector using `Math.cos(PHYSICS.rotation)` and `Math.sin(PHYSICS.rotation)` without adding the planet's positional angle (`posAngle`). This means G-force readings are only correct at the planet's North Pole (where posAngle = π/2 and rotation=0 is vertical). At the equator, the G-force vector will be rotated by 90 degrees incorrectly.
+2. [MISIMPLEMENTED] Unimplemented Rotational Physics (Torque/Inertia)
+   File: js/main.js (Lines 262-268), js/parts.js
+   Bug: Although parts like 'Reaction Wheel' have a `torque` property and all parts have `mass`, the rotation logic in `main.js` simply increments `PHYSICS.rotation` by a hardcoded `0.05` radians per frame. It completely ignores Moment of Inertia and available torque, making rotation feel identical for a tiny probe and a massive heavy lifter.
 
-3. MISIMPLEMENTATION: Thrust Magnitude ignoring Throttle in `js/physics.js:648-653`.
-   `calculateTotalThrust` returns the sum of max thrusts but ignores the current throttle setting. This leads to incorrect TWR and flight stats in the editor/pre-launch if throttle isn't at 100%.
+3. [LOGIC] True Anomaly Normalization
+   File: js/advanced.js (Line 125)
+   Bug: The true anomaly calculation `Math.atan2(position.y, position.x) - Math.atan2(ey, ex)` can return negative values. It should be normalized to the range [0, 2π) for standard orbital representation.
 
-4. APPROXIMATION ERROR: Thermal Mass Model in `js/physics.js:472`.
-   The thermal mass calculation assumes the specific heat of aluminum (900 J/kg·K) for the entire rocket, including fuel. Kerosene and LOX have different specific heats, and as fuel is consumed, the thermal mass should drop significantly. The hull temperature simulation is too sluggish for empty rockets.
+4. [MISIMPLEMENTED] TWR Calculation uses Surface Gravity
+   File: js/physics.js (Lines 698-709)
+   Issue: The TWR (Thrust-to-Weight Ratio) always uses planetary surface gravity instead of local gravity at altitude. While standard for launch references, it results in misleading "Weight" values for rockets already in flight or landing on high-elevation terrain.
 
-5. MISIMPLEMENTATION: Projected Area transition in `js/physics.js:334`.
-   The drag model transitions from circular area to linear scaling at 2.5m width. However, at exactly 2.5m, `PI*(1.25)^2 ≈ 4.9` whereas `2.5*2 = 5`. There is a small jump in drag force as a rocket crosses this width threshold.
+5. [REDUNDANCY] Redundant G-Force Logic
+   File: js/physics.js (Lines 1428-1500)
+   Issue: There are multiple conflicting ways G-force is "approximated" or "calculated" in the code. Lines 1428-1476 contain several commented-out or partial approximations before the "proper" fix at Line 1477. This creates confusion and potential for regression.
 
-6. UI/DOCS BUG: Stagnation Temp formula in `index.html:112` vs `js/physics.js:443`.
-   The UI claims `T_stag = T_amb * (1 + 0.18 * M^2)`. While this matches the code's `recoveryFactor = 0.9`, it is technically a simplification for turbulent flow. The "technical specs" should clarify this is an approximation.
+[DOCUMENTATION ERRORS]
 
-7. UI BUG: Telemetry Overflow.
-   The flight data panel in `html/simulator.html` has a `max-height: 80vh`. On small laptop screens, the advanced orbital telemetry will overflow the container or require scrolling during high-stakes flight maneuvers, which is a UX failure for "educational-grade" software.
+6. [DOCS] Stagnation Temperature Discrepancy
+   File: js/physics.js (Line 1774) vs (Line 445) vs index.html (Line 112)
+   Error: The documentation commentary in `physics.js` at line 1774 claims the formula is `T_stag = T_ambient * (1 + 0.2 * Mach²)`. However, the implementation at line 445 (using recoveryFactor=0.9) and the hero text in `index.html` use `0.18 * Mach²`. While the code is technically more detailed (using gamma), the comments are inconsistent and misleading.
 
-8. EDITOR BUG: Delta-V calculation with Mixed Engines.
-   `calculateDeltaV` in `js/physics.js:880` uses a weighted average Isp based on max thrust. If engines have vastly different Isp profiles (e.g., Ion + Solid) and are fired sequentially via staging, the pre-launch Delta-V estimate is mathematically incorrect as it assumes they fire together.
+[HTML/CSS BUGS]
+
+7. [UI] Telemetry Row Overflow
+   File: html/simulator.html, css/styles.css
+   Bug: The telemetry rows in the launch overlay (data-altitude, velocity, etc.) are fixed-width or flex-wrapped. On smaller viewports or with orbital data enabled, the "Advanced" telemetry rows can overflow the flight-data container, making them unreadable or obscuring the abort/stage buttons.
+
+8. [ASSET] Logo Icon Missing
+   File: html/simulator.html (Line 25)
+   Bug: `simulator.html` references `../assets/favicon.png` as a logo icon inside the `<h1>`. If the user is on the landing page, the icon might be missing or wrongly scaled compared to the main logo.

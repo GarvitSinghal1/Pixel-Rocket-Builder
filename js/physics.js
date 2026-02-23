@@ -55,7 +55,10 @@ const PHYSICS = {
     // Position and motion
     altitude: 0,
     velocity: 0,
+    velocity: 0,
     acceleration: 0,
+    angularVelocity: 0, // Radians per second
+    torque: 0,          // Newton-meters
 
     // Atmospheric conditions
     airDensity: 1.225,
@@ -116,9 +119,11 @@ const PHYSICS = {
         this.y = 0; // Relative to planet center (on surface: radius)
         this.vx = 0;
         this.vy = 0;
-        this.rotation = 0; // Radians, 0 is vertical UP (relative to local surface)
         this.velocity = 0;
         this.acceleration = 0;
+        this.rotation = 0;
+        this.angularVelocity = 0;
+        this.torque = 0;
         this.airDensity = 1.225;
         this.airPressure = 101325;
         this.airTemperature = 288.15;
@@ -141,6 +146,7 @@ const PHYSICS = {
         this.maxFuel = 0;
         this.activeFuel = 0;
         this.activeMaxFuel = 0;
+        this.controlInput = 0; // -1 to 1 steering input
         this.currentStage = 0;
         this.stages = [];
         this.hasFailed = false;
@@ -443,10 +449,11 @@ function calculateAerodynamicHeating(velocity, altitude) {
     const mach = (speedOfSound > 0.1) ? Math.abs(velocity) / speedOfSound : 0;
 
     // Stagnation temperature (temperature at stagnation point)
-    // T_stag = T_ambient * (1 + (γ-1)/2 * M²)
-    const recoveryFactor = 0.9; // Typical for turbulent boundary layer
+    // T_stag = T_ambient * (1 + (γ-1)/2 * r * M²)
+    const recoveryFactor = 0.9; // r - Typical for turbulent boundary layer
     const gamma = PHYSICS.SPECIFIC_HEAT_RATIO;
-    const stagnationTemp = ambientTemp * (1 + recoveryFactor * (gamma - 1) / 2 * mach * mach);
+    // Factor = (1.4 - 1) / 2 * 0.9 = 0.2 * 0.9 = 0.18
+    const stagnationTemp = ambientTemp * (1 + (gamma - 1) / 2 * recoveryFactor * mach * mach);
 
     // Heat flux (simplified Sutton-Graves correlation for stagnation point)
     // q = C * sqrt(ρ/r_n) * v³
@@ -620,7 +627,7 @@ function calculateActiveFuelStats(parts) {
         // Neighbors
         for (const other of parts) {
             if (visited.has(other.id)) continue;
-            if (arePartsConnected(current, currentDef, other)) {
+            if (isPhysicallyConnected(current, currentDef, other)) {
                 visited.add(other.id);
                 queue.push(other);
             }
@@ -695,16 +702,12 @@ function calculateTWR(parts, fuel = null, throttle = 1.0) {
     // Weight = Mass * Gravity
     const planet = typeof getCurrentPlanet === 'function' ? getCurrentPlanet() : { surfaceGravity: PHYSICS.GRAVITY };
 
-    // FIXED: Use surface gravity ALWAYS for TWR. 
-    // TWR is a reference metric relative to planetary surface gravity.
-    // In orbit, "Weight" is zero, so local TWR would be infinite.
-    // For actual acceleration, we use F/m. TWR is F/(m*g0).
-    const localGravity = planet.surfaceGravity;
-    /*
-    if (PHYSICS.isRunning && typeof getGravity === 'function') {
-        localGravity = getGravity(PHYSICS.altitude);
+    // Modified: Use local gravity for TWR during flight, 
+    // unless in editor where altitude is 0.
+    let localGravity = planet.surfaceGravity;
+    if (PHYSICS.isRunning && typeof getGravityAtAltitude === 'function') {
+        localGravity = getGravityAtAltitude(PHYSICS.altitude);
     }
-    */
 
     const weight = mass * localGravity;
 
@@ -741,7 +744,7 @@ function getReachableFuelTanks(root, allParts) {
         for (const other of allParts) {
             if (visited.has(other.id)) continue;
 
-            if (arePartsConnected(current, currentDef, other)) {
+            if (isPhysicallyConnected(current, currentDef, other)) {
                 visited.add(other.id);
                 queue.push(other);
             }
@@ -1122,7 +1125,7 @@ function getConnectedParts(root, allParts, ignoredPartIds = new Set()) {
             if (ignoredPartIds.has(other.id)) continue; // Treat fired decoupler as void
             if (!validIds.has(other.id)) continue;
 
-            if (arePartsConnected(current, currentDef, other)) {
+            if (isPhysicallyConnected(current, currentDef, other)) {
                 connected.add(other.id);
                 queue.push(other);
             }
@@ -1138,7 +1141,7 @@ function getConnectedParts(root, allParts, ignoredPartIds = new Set()) {
 /**
  * Check if two parts are physically connected
  */
-function arePartsConnected(partA, defA, partB) {
+function isPhysicallyConnected(partA, defA, partB) {
     const defB = getPartById(partB.partId);
     if (!defA || !defB) return false;
 
@@ -1416,6 +1419,61 @@ function physicsStep(dt) {
 
     const result = integrateRK4(startState, dt, mass, PHYSICS.thrustForce, PHYSICS.rotation, parts);
 
+    // Update Angular Physics (Euler Integration for rotation)
+    // 1. Calculate Properties
+    const centerOfMass = calculateCenterOfMass(parts);
+    const momentOfInertia = calculateMomentOfInertia(parts, centerOfMass);
+
+    // 2. Calculate Control Torque
+    const controlTorque = calculateControlTorque(parts, PHYSICS.controlInput || 0, centerOfMass);
+
+    // 3. Apply Passive Stability (Aerodynamic Damping / Restoration)
+    // If we have fins and air, they try to align rocket successfully with airflow
+    // Restoration Torque = -AngleOfAttack * q * FinArea * Arm
+    // Simplified Damping:
+    let dampingTorque = -PHYSICS.angularVelocity * (momentOfInertia * 2.0); // Base damping
+
+    if (PHYSICS.dynamicPressure > 100) {
+        // Aerodynamic stability
+        // Angle of Attack (alpha) approx = Rotation - VelocityAngle
+        // (Simplified for vertical launch vs gravity turn dynamics)
+        const vAngle = Math.atan2(PHYSICS.vy, PHYSICS.vx);
+        // Normalize rotation to be close to vAngle
+        let angleDiff = PHYSICS.rotation - vAngle;
+        // Wrap to -PI to PI
+        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff)); // Shortest path
+
+        // Improve stability torque logic:
+        // Fins at bottom (negative Y relative to CoM) provide STABILITY (Head to wind)
+        // Fins at top provide INSTABILITY
+
+        // This is complex 2D aero. Let's use cheat stability from parts.js
+        let stabilityFactor = 0;
+        parts.forEach(p => {
+            const def = getPartById(p.partId);
+            if (def.stability) stabilityFactor += def.stability;
+        });
+
+        // Stability tries to reduce Angle of Attack (align rotation with velocity)
+        // Only works if moving forward relative to rotation (simplified)
+        // Torque = -AngleDiff * Q * Stability
+        const aeroTorque = -angleDiff * PHYSICS.dynamicPressure * stabilityFactor * 2.0;
+        dampingTorque += aeroTorque;
+
+        // Also damp rotation more in atmosphere
+        dampingTorque -= PHYSICS.angularVelocity * PHYSICS.dynamicPressure * stabilityFactor * 0.1;
+    }
+
+    PHYSICS.torque = controlTorque + dampingTorque;
+
+    // 4. Integrate
+    const angularAccel = PHYSICS.torque / Math.max(1, momentOfInertia);
+    PHYSICS.angularVelocity += angularAccel * dt;
+    PHYSICS.rotation += PHYSICS.angularVelocity * dt;
+
+
+
+
     // Apply results
     PHYSICS.x = result.x;
     PHYSICS.y = result.y;
@@ -1429,55 +1487,10 @@ function physicsStep(dt) {
     PHYSICS.dragForce = result.dragForce;
     PHYSICS.gravityForce = result.gravityForce;
 
-    // Standard 1D G-force approximation for display
-    // flight G-force = (Thrust + Drag) / Weight
-    // OR simpler: Total Acceleration - Gravity Component?
-    // Actually, "G-Force" felt by crew is Contact Forces (Thrust + Drag) / Mass / g0
-    const nonGravAccel = Math.sqrt(
-        (result.acceleration * result.acceleration) + (planet.surfaceGravity * planet.surfaceGravity)
-        // This is complex in 2D. Let's use Force Sum:
-    );
+    const planet = typeof getCurrentPlanet === 'function' ? getCurrentPlanet() : { surfaceGravity: PHYSICS.GRAVITY };
 
-    // Better way:
-    // F_felt = F_thrust + F_drag
-    // a_felt = F_felt / m
-    // g_felt = a_felt / g0
-    const thrustMag = PHYSICS.thrustForce;
-    const dragMag = PHYSICS.dragForce;
-    // Assume they are roughly collinear for simple display or vector sum them
-    // Drag opposes motion, Thrust is along heading. 
-    // For simple "G-meter", we just want magnitude of non-gravity forces.
-    // In vector form: F_contact = F_tot - F_grav.
-    // F_tot = m * a_tot. F_grav = m * g.
-
-    // Let's use the scalar sum approximation for the UI as it's most robust
-    const totalFeltForce = Math.sqrt(
-        Math.pow(PHYSICS.thrustForce, 2) + Math.pow(PHYSICS.dragForce, 2)
-        // This assumes orthogonality which isn't true, but decent proxy. 
-        // Actually, let's just use the computed drag/thrust components from RK4 if possible, 
-        // but we don't have them easily here.
-
-        // Simpler approximation for game: 
-        // G = currentAccel / G0 (classic) -> fails in orbit (shows 0g but implies 1g if stationary)
-        // Space Engineers style: Gravity is NOT felt. 
-        // So we want: |a_total - g_vector| / g0.
-    );
-
-    // Re-calculating proper felt Gs
-    // acceleration (a_tot) = g + (thrust+drag)/m
-    // felt_accel = a_tot - g = (thrust+drag)/m
-    // We have PHYSICS.dragForce and PHYSICS.thrustForce scalars.
-    // Use them directly.
-    // We need to know if they oppose or align. 
-    // Thrust is forward. Drag is backward.
-    // Net felt force magnitude?
-    // If Angle(v) == Angle(heading), they oppose.
-    // For simple display, max Gs usually matter most during launch (aligned).
-    // Let's us Vector Sum of Thrust and Drag divided by Mass.
-
-    // We don't have the vectors stored from RK4, so let's approximate:
-    // During launch, Thrust > Drag, they differ by 180 deg. 
-    // FIXED: Calculate G-force via proper vector sum (accelerometer physics)
+    // Calculate G-force via proper vector sum (accelerometer physics)
+    // "G-Force" felt by crew is Contact Forces (Thrust + Drag) / Mass / g0
     // Thrust Vector (Aligned with rotation relative to planet surface)
     const posAngle = Math.atan2(PHYSICS.y, PHYSICS.x);
     const globalThrustAngle = posAngle + PHYSICS.rotation;
@@ -1775,8 +1788,8 @@ function getFailureExplanation(failureReason) {
             title: 'Thermal Failure - Hull Overheated',
             icon: '🔥',
             whatHappened: 'Aerodynamic heating raised your hull temperature above material limits. Air friction at hypersonic speeds generates extreme heat.',
-            physics: 'Stagnation temperature: T_stag = T_ambient × (1 + 0.2 × Mach²). At Mach 5, temperatures can exceed 1000K. At Mach 10, over 2000K.',
-            realWorld: 'This is why spacecraft need heat shields for reentry. The Space Shuttle used ceramic tiles rated to 1600°C. SpaceX Starship uses hexagonal heat tiles.',
+            physics: 'Stagnation Temperature = T_ambient * (1 + 0.18 * M²). At Mach 5, the air temperature can reach 1500K (1227°C).',
+            realWorld: 'Space Shuttle tiles protected it from 1650°C heat during Mach 25 reentry. The SR-71 Blackbird heated to 300°C at Mach 3, expanding several inches in flight. SpaceX Starship uses hexagonal heat tiles.',
             improvements: [
                 'Add a heat-resistant nose cone',
                 'Gain altitude before accelerating to hypersonic speeds',
@@ -2002,4 +2015,127 @@ function getStressLevels() {
         gForce: Math.abs(PHYSICS.gForce) / PHYSICS.MAX_G_LIMIT,
         pressure: Math.min(1, PHYSICS.dynamicPressure / PHYSICS.MAX_Q_LIMIT)
     };
+}
+
+
+
+// ============================================
+// ROTATIONAL PHYSICS HELPERS
+// ============================================
+
+/**
+ * Calculate Center of Mass (relative to stage origin 0,0)
+ */
+function calculateCenterOfMass(parts) {
+    let totalMass = 0;
+    let weightedY = 0;
+
+    parts.forEach(p => {
+        const def = getPartById(p.partId);
+        // Mass = Dry + Fuel
+        const m = def.mass + (p.currentFuel || 0);
+        // Center Y of part
+        const cy = p.y + (def.height * TILE_SIZE) / 2;
+
+        totalMass += m;
+        weightedY += m * cy;
+    });
+
+    if (totalMass === 0) return 0;
+    return weightedY / totalMass;
+}
+
+/**
+ * Calculate Moment of Inertia (I)
+ * I = Sum(m * r^2)
+ */
+function calculateMomentOfInertia(parts, comY) {
+    let I = 0;
+
+    parts.forEach(p => {
+        const def = getPartById(p.partId);
+        const m = def.mass + (p.currentFuel || 0);
+        const cy = p.y + (def.height * TILE_SIZE) / 2;
+        const dist = cy - comY;
+
+        // Parallel Axis Theoremish (Treat parts as point masses at their center for simplicity)
+        // Added baseline I for the part itself (Model as sphere/box: m*r^2/6 approx)
+        // Box height h: I_cm = m * (w^2 + h^2) / 12
+        const h = def.height * TILE_SIZE;
+        const w = def.width * TILE_SIZE;
+        const I_part = m * (w * w + h * h) / 12;
+
+        I += I_part + m * (dist * dist);
+    });
+
+    return I;
+}
+
+/**
+ * Calculate Control Torque
+ */
+function calculateControlTorque(parts, input, comY) {
+    if (Math.abs(input) < 0.01) return 0;
+
+    let torque = 0;
+
+    parts.forEach(p => {
+        const def = getPartById(p.partId);
+
+        // 1. Reaction Wheels
+        if (def.torque) {
+            torque += def.torque * input * 5.0; // Multiplier for gameplay feel
+        }
+
+        // 2. Gimballed Engines
+        if (def.gimbalRange && def.thrust && p.currentFuel > 0) {
+            // Only if active engine
+            // Check if engine is running (throttle > 0)
+            const throttle = PHYSICS.throttle; // Use global throttle
+            if (throttle > 0) {
+                const cy = p.y + (def.height * TILE_SIZE) / 2;
+                const arm = comY - cy; // Arm from CoM to Engine
+                // Gimbal force = Thrust * sin(angle)
+                // Angle = input * range
+                const maxAngle = (def.gimbalRange * Math.PI) / 180;
+                const angle = input * maxAngle;
+                const thrustN = def.thrust * 1000 * throttle;
+
+                // Lateral force component
+                const latForce = thrustN * Math.sin(angle);
+
+                // Torque = r x F
+                // Engine is usually below CoM (positive Y in canvas? No, 0 is top usually, ground is bottom)
+                // If engine is at bottom (high Y), arm (CoM - cy) is negative.
+                // Force right (positive input) -> pushes Engine LEFT?
+                // Gimbal logic: To turn RIGHT (clockwise), engine should push Tail LEFT.
+                // Inputs: +1 (Right Turn)
+                // Engine Deflection: Nozzle points LEFT (push-back vector points Right?)
+                // Actually: To turn Right, we want Torque > 0 (Clockwise).
+                // Force at Tail (negative arm) should be Left (negative X).
+                // Cross product: r (neg) x F (neg) = + Torque.
+                // So we want Lateral Force to be Negative for Positive Input?
+                // Engine Gimbal: +Input rotates nozzle +Angle. Thrust vector rotates -Angle?
+                // Let's simplify:
+                // Torque += thrust * sin(angle) * arm * -1;
+
+                torque += thrustN * Math.sin(angle) * arm * -1;
+            }
+        }
+
+        // 3. Fins (Aerodynamic)
+        if (def.stability && PHYSICS.dynamicPressure > 10) {
+            const cy = p.y + (def.height * TILE_SIZE) / 2;
+            const arm = comY - cy;
+            // Lift = q * Area * Cl * input
+            // Area ~ Stability * 10?
+            // Torque = Lift * arm
+            // Fins at bottom (neg arm) need neg Lift to create Pos Torque.
+            // Input +1 -> Fin deflects -> Lift Positive?
+            // Simplified: Stability * Q * input * arm
+            torque += def.stability * PHYSICS.dynamicPressure * input * arm * 0.1;
+        }
+    });
+
+    return torque;
 }

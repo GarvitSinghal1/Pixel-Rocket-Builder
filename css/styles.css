@@ -404,9 +404,8 @@ body {
     /* Reduced from gap-md/lg to save space */
     border-radius: var(--pixel);
     border: 2px solid var(--border-color);
-    /* Prevent overflow on small screens */
-    max-height: 90vh;
-    /* Increased from 80vh */
+    /* Prevent overflow on small screens obscuring launch controls */
+    max-height: calc(100vh - 200px);
     overflow-y: auto;
     pointer-events: auto;
     /* Enable scrolling */
@@ -966,6 +965,8 @@ body {
 .telemetry-row {
     display: flex;
     justify-content: space-around;
+    flex-wrap: wrap;
+    /* Prevent overflow on small screens */
     gap: var(--gap-md);
     padding: var(--gap-xs) 0;
 }

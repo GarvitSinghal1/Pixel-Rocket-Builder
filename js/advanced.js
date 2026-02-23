@@ -122,7 +122,8 @@ function calculateOrbitalElements(position, velocity, mu) {
     const period = e < 1 ? 2 * Math.PI * Math.sqrt(a * a * a / mu) : Infinity;
 
     // True anomaly
-    const trueAnomaly = Math.atan2(position.y, position.x) - Math.atan2(ey, ex);
+    let trueAnomaly = Math.atan2(position.y, position.x) - Math.atan2(ey, ex);
+    trueAnomaly = (trueAnomaly + 2 * Math.PI) % (2 * Math.PI);
 
     // Argument of periapsis
     const argPe = Math.atan2(ey, ex);
