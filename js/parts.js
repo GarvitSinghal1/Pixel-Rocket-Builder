@@ -573,19 +573,11 @@ function isPartUnlocked(partId, currentLevel, isFunMode = false, isAdvancedMode 
 function drawPart(ctx, part, x, y, scale = 1, flipX = false) {
     const w = part.width * TILE_SIZE * scale;
     const h = part.height * TILE_SIZE * scale;
-    const pixelSize = Math.max(1, 2 * scale); // Pixel size for details
+    const pixelSize = Math.max(1, 1 * scale); // Finer details
 
     ctx.save();
 
-    // Apply horizontal flip if requested
-    // Apply horizontal flip if requested
     if (flipX) {
-        // Pivot around the center vertical axis of the part
-        // We translate to the right edge (x+w), flip X axis (points left), then draw from x (which is now -x relative to origin)?
-        // Actually simpler:
-        // Map x -> x + w
-        // Map x + w -> x
-        // Use translate(x + w, y) -> scale(-1, 1) -> translate(-x, -y)
         ctx.translate(x + w, y);
         ctx.scale(-1, 1);
         ctx.translate(-x, -y);
@@ -593,15 +585,10 @@ function drawPart(ctx, part, x, y, scale = 1, flipX = false) {
 
     ctx.imageSmoothingEnabled = false;
 
-    // Helper for drawing pixel details
-    const drawPixel = (px, py, color) => {
-        ctx.fillStyle = color;
-        ctx.fillRect(x + px * pixelSize, y + py * pixelSize, pixelSize, pixelSize);
-    };
-
-    // Lighter and darker versions of main color
+    // --- Color Helpers ---
     const lighten = (hex, amt) => {
-        const num = parseInt(hex.slice(1), 16);
+        if(!hex) return '#ffffff';
+        const num = parseInt(hex.replace('#', ''), 16);
         const r = Math.min(255, (num >> 16) + amt);
         const g = Math.min(255, ((num >> 8) & 0xff) + amt);
         const b = Math.min(255, (num & 0xff) + amt);
@@ -609,590 +596,604 @@ function drawPart(ctx, part, x, y, scale = 1, flipX = false) {
     };
     const darken = (hex, amt) => lighten(hex, -amt);
 
+    const baseColor = part.color || '#cccccc';
+    const accentColor = part.accentColor || '#ff8800';
+    
+    // --- Drawing Helpers ---
+    const drawCylinder = (cx, cy, cw, ch, mainColor, vertical = true) => {
+        const grad = vertical ? ctx.createLinearGradient(cx, cy, cx + cw, cy) : ctx.createLinearGradient(cx, cy, cx, cy + ch);
+        grad.addColorStop(0, darken(mainColor, 60));
+        grad.addColorStop(0.1, darken(mainColor, 20));
+        grad.addColorStop(0.4, lighten(mainColor, 30));
+        grad.addColorStop(0.5, lighten(mainColor, 50)); // Specular highlight
+        grad.addColorStop(0.6, lighten(mainColor, 20));
+        grad.addColorStop(0.85, darken(mainColor, 10));
+        grad.addColorStop(1, darken(mainColor, 50));
+        ctx.fillStyle = grad;
+        ctx.fillRect(cx, cy, cw, ch);
+    };
+
+    const drawPanelDetails = (cx, cy, cw, ch, color) => {
+        ctx.strokeStyle = darken(color, 50);
+        ctx.lineWidth = pixelSize;
+        ctx.strokeRect(cx + pixelSize*2, cy + pixelSize*2, cw - pixelSize*4, ch - pixelSize*4);
+        
+        ctx.strokeStyle = lighten(color, 40);
+        ctx.beginPath();
+        ctx.moveTo(cx + pixelSize*2, cy + ch - pixelSize*2);
+        ctx.lineTo(cx + pixelSize*2, cy + pixelSize*2);
+        ctx.lineTo(cx + cw - pixelSize*2, cy + pixelSize*2);
+        ctx.stroke();
+    };
+
+    const drawRivets = (cx, cy, cw, ch, isVertical) => {
+        ctx.fillStyle = darken(baseColor, 70);
+        const padding = w * 0.1;
+        const spacing = w * 0.2;
+        if (isVertical) {
+            for (let i = padding; i < ch - padding; i += spacing) {
+                ctx.fillRect(cx + cw/2 - pixelSize, cy + i, pixelSize*2, pixelSize*2);
+            }
+        } else {
+            for (let i = padding; i < cw - padding; i += spacing) {
+                ctx.fillRect(cx + i, cy + ch/2 - pixelSize, pixelSize*2, pixelSize*2);
+            }
+        }
+    };
+
     switch (part.category) {
         case 'engines':
-            // Common Engine Body Gradient
-            const engGrad = ctx.createLinearGradient(x, y, x + w, y);
-            engGrad.addColorStop(0, darken(part.color, 30));
-            engGrad.addColorStop(0.3, lighten(part.color, 20));
-            engGrad.addColorStop(0.5, part.color);
-            engGrad.addColorStop(0.7, lighten(part.color, 20));
-            engGrad.addColorStop(1, darken(part.color, 30));
+            drawCylinder(x, y, w, h * 0.55, baseColor);
+            drawPanelDetails(x, y, w, h * 0.55, baseColor);
+            
+            // Ribbed Combustion Chamber
+            const ribH = h * 0.15;
+            const ribY = y + h * 0.55;
+            drawCylinder(x + w * 0.1, ribY, w * 0.8, ribH, darken(baseColor, 40));
+            ctx.fillStyle = darken(baseColor, 80);
+            for(let i = 0; i < 4; i++) {
+                ctx.fillRect(x + w * 0.1, ribY + i * (ribH/4), w * 0.8, pixelSize*1.5);
+            }
 
             if (part.id === 'ion_drive') {
-                // Ion Drive (1x1) - High Tech Cube
-                // Body
-                ctx.fillStyle = engGrad;
-                ctx.fillRect(x, y, w, h * 0.7);
-
-                // Grate texture
-                ctx.fillStyle = '#111';
-                ctx.fillRect(x + w * 0.15, y + h * 0.7, w * 0.7, h * 0.2);
-
-                // Ion Glow (Pixelated)
+                drawCylinder(x, y, w, h * 0.7, baseColor);
+                
                 ctx.fillStyle = '#00ffff';
-                const glowW = w * 0.5;
+                ctx.shadowColor = '#00ffff';
+                ctx.shadowBlur = pixelSize * 5;
+                ctx.fillRect(x + w * 0.2, y + h * 0.2, w * 0.6, pixelSize*2);
+                ctx.fillRect(x + w * 0.2, y + h * 0.4, w * 0.6, pixelSize*2);
+                ctx.shadowBlur = 0;
+
+                const glowW = w * 0.6;
                 const glowX = x + (w - glowW) / 2;
-                ctx.fillRect(glowX, y + h * 0.75, glowW, h * 0.2);
+                const ionGrad = ctx.createLinearGradient(x, y + h * 0.7, x, y + h);
+                ionGrad.addColorStop(0, '#00ffff');
+                ionGrad.addColorStop(1, 'rgba(0, 255, 255, 0)');
+                ctx.fillStyle = ionGrad;
+                ctx.fillRect(glowX, y + h * 0.7, glowW, h * 0.3);
 
-                // Panel lines
-                ctx.fillStyle = darken(part.color, 50);
-                ctx.fillRect(x, y + h * 0.3, w, pixelSize);
-
-            } else if (part.id === 'aerospike') {
-                // Aerospike (2x2) - V shape integrated
-                // Base housing
-                ctx.fillStyle = engGrad;
-                ctx.fillRect(x, y, w, h * 0.4);
-
-                // Spike (Conical)
-                const spikeGrad = ctx.createLinearGradient(x + w * 0.25, y, x + w * 0.75, y);
-                spikeGrad.addColorStop(0, '#444');
-                spikeGrad.addColorStop(0.5, '#999');
-                spikeGrad.addColorStop(1, '#444');
-                ctx.fillStyle = spikeGrad;
-
-                ctx.beginPath();
-                ctx.moveTo(x + w * 0.25, y + h * 0.4);
-                ctx.lineTo(x + w * 0.5, y + h); // Tip
-                ctx.lineTo(x + w * 0.75, y + h * 0.4);
-                ctx.fill();
-
-                // Combustion Chamber Ring
-                ctx.fillStyle = '#222';
-                ctx.fillRect(x + w * 0.2, y + h * 0.4, w * 0.6, h * 0.1);
+                ctx.strokeStyle = '#005555';
+                ctx.lineWidth = pixelSize;
+                ctx.strokeRect(glowX, y + h * 0.7, glowW, h * 0.1);
 
             } else if (part.id === 'mammoth_engine') {
-                // Mammoth (3x3) - Cluster of 4 bells
-                // Upper Thrust Structure
-                ctx.fillStyle = engGrad;
-                ctx.fillRect(x, y, w, h * 0.5);
+                drawCylinder(x, y, w, h * 0.4, baseColor);
+                drawRivets(x, y + h * 0.1, w, h * 0.1, false);
+                drawRivets(x, y + h * 0.3, w, h * 0.1, false);
 
-                // Heavy Ribbing
-                ctx.fillStyle = darken(part.color, 40);
-                ctx.fillRect(x, y + h * 0.1, w, pixelSize * 2);
-                ctx.fillRect(x, y + h * 0.3, w, pixelSize * 2);
-
-                // 4 Bells (Approximated as 2 wide matching ones for 2D, or 4 small ones)
-                // Let's do 2 large bells visually to represent the cluster in side profile
-                const bellW = w * 0.35;
-                const bellH = h * 0.5;
-                const positions = [x + w * 0.1, x + w * 0.55];
+                const bellW = w * 0.45;
+                const positions = [x + w * 0.02, x + w * 0.53];
 
                 positions.forEach(bx => {
-                    // Nozzle Bell Gradient
                     const bellGrad = ctx.createLinearGradient(bx, y, bx + bellW, y);
-                    bellGrad.addColorStop(0, '#222');
-                    bellGrad.addColorStop(0.5, '#666');
-                    bellGrad.addColorStop(1, '#222');
+                    bellGrad.addColorStop(0, '#1a1a1a');
+                    bellGrad.addColorStop(0.3, '#4a4a4a');
+                    bellGrad.addColorStop(0.5, '#7a7a7a');
+                    bellGrad.addColorStop(0.8, '#3a3a3a');
+                    bellGrad.addColorStop(1, '#111111');
                     ctx.fillStyle = bellGrad;
 
                     ctx.beginPath();
-                    ctx.moveTo(bx + bellW * 0.2, y + h * 0.5);
-                    ctx.lineTo(bx, y + h);
+                    ctx.moveTo(bx + bellW * 0.3, y + h * 0.4);
+                    ctx.quadraticCurveTo(bx + bellW * 0.2, y + h * 0.7, bx, y + h);
                     ctx.lineTo(bx + bellW, y + h);
-                    ctx.lineTo(bx + bellW * 0.8, y + h * 0.5);
+                    ctx.quadraticCurveTo(bx + bellW * 0.8, y + h * 0.7, bx + bellW * 0.7, y + h * 0.4);
                     ctx.fill();
 
-                    // Inner dark
-                    ctx.fillStyle = '#111';
+                    const innerGlowGrad = ctx.createLinearGradient(bx, y + h * 0.8, bx, y + h);
+                    innerGlowGrad.addColorStop(0, '#050505');
+                    innerGlowGrad.addColorStop(1, '#ff4400');
+                    ctx.fillStyle = innerGlowGrad;
                     ctx.beginPath();
-                    ctx.moveTo(bx + bellW * 0.3, y + h * 0.5);
+                    ctx.moveTo(bx + bellW * 0.4, y + h * 0.4);
                     ctx.lineTo(bx + bellW * 0.1, y + h);
                     ctx.lineTo(bx + bellW * 0.9, y + h);
-                    ctx.lineTo(bx + bellW * 0.7, y + h * 0.5);
+                    ctx.lineTo(bx + bellW * 0.6, y + h * 0.4);
                     ctx.fill();
+                    
+                    ctx.fillStyle = '#555';
+                    ctx.fillRect(bx, y + h - pixelSize*3, bellW, pixelSize*3);
                 });
 
             } else {
-                // Standard Engine rendering
-                const engGrad = ctx.createLinearGradient(x, y, x + w, y);
-                engGrad.addColorStop(0, darken(part.color, 30));
-                engGrad.addColorStop(0.3, lighten(part.color, 20));
-                engGrad.addColorStop(0.5, part.color);
-                engGrad.addColorStop(0.7, lighten(part.color, 20));
-                engGrad.addColorStop(1, darken(part.color, 30));
-                ctx.fillStyle = engGrad;
-                ctx.fillRect(x, y, w, h * 0.6);
+                const bellGrad = ctx.createLinearGradient(x, y, x + w, y);
+                bellGrad.addColorStop(0, '#1a1a1a');
+                bellGrad.addColorStop(0.4, '#555');
+                bellGrad.addColorStop(0.5, '#888');
+                bellGrad.addColorStop(0.7, '#333');
+                bellGrad.addColorStop(1, '#0a0a0a');
+                ctx.fillStyle = bellGrad;
 
-                // Nozzle bell
-                ctx.fillStyle = part.accentColor;
                 ctx.beginPath();
-                ctx.moveTo(x + w * 0.2, y + h * 0.6);
+                ctx.moveTo(x + w * 0.2, y + h * 0.7);
+                ctx.quadraticCurveTo(x + w * 0.15, y + h * 0.85, x, y + h);
+                ctx.lineTo(x + w, y + h);
+                ctx.quadraticCurveTo(x + w * 0.85, y + h * 0.85, x + w * 0.8, y + h * 0.7);
+                ctx.closePath();
+                ctx.fill();
+
+                const innerGrad = ctx.createLinearGradient(x + w * 0.2, y + h * 0.7, x + w * 0.8, y + h);
+                innerGrad.addColorStop(0, '#050505');
+                innerGrad.addColorStop(0.8, '#882200');
+                innerGrad.addColorStop(1, '#ffaa00');
+                ctx.fillStyle = innerGrad;
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.3, y + h * 0.7);
                 ctx.lineTo(x + w * 0.1, y + h);
                 ctx.lineTo(x + w * 0.9, y + h);
-                ctx.lineTo(x + w * 0.8, y + h * 0.6);
+                ctx.lineTo(x + w * 0.7, y + h * 0.7);
                 ctx.closePath();
                 ctx.fill();
+                
+                ctx.fillStyle = '#666';
+                ctx.fillRect(x, y + h - pixelSize*2, w, pixelSize*2);
 
-                // Nozzle inner dark
-                ctx.fillStyle = '#222222';
+                ctx.fillStyle = accentColor;
+                ctx.fillRect(x + w * 0.05, y + h * 0.4, w * 0.9, h * 0.05);
+
+                const glowSize = pixelSize * 4;
+                ctx.fillStyle = '#ffcc00';
+                ctx.shadowColor = '#ff6600';
+                ctx.shadowBlur = glowSize * 2;
                 ctx.beginPath();
-                ctx.moveTo(x + w * 0.3, y + h * 0.65);
-                ctx.lineTo(x + w * 0.25, y + h * 0.95);
-                ctx.lineTo(x + w * 0.75, y + h * 0.95);
-                ctx.lineTo(x + w * 0.7, y + h * 0.65);
-                ctx.closePath();
+                ctx.arc(x + w/2, y + h - glowSize/2, glowSize, 0, Math.PI*2);
                 ctx.fill();
-
-                // Highlights
-                ctx.fillStyle = 'rgba(255,255,255,0.4)';
-                ctx.fillRect(x + pixelSize, y + pixelSize, w * 0.2, h * 0.1);
-
-                // Mounting bolts
-                ctx.fillStyle = '#333344';
-                for (let i = 0; i < 3; i++) {
-                    ctx.fillRect(x + w * 0.2 + i * w * 0.25, y + h * 0.55, pixelSize * 2, pixelSize * 2);
-                }
+                ctx.shadowBlur = 0;
             }
             break;
 
         case 'fuel':
-            // Tank body gradient (cylindrical look)
-            const tankGrad = ctx.createLinearGradient(x, y, x + w, y);
-            tankGrad.addColorStop(0, darken(part.color, 40));
-            tankGrad.addColorStop(0.15, darken(part.color, 20));
-            tankGrad.addColorStop(0.35, lighten(part.color, 30));
-            tankGrad.addColorStop(0.5, lighten(part.color, 40));
-            tankGrad.addColorStop(0.65, lighten(part.color, 30));
-            tankGrad.addColorStop(0.85, darken(part.color, 20));
-            tankGrad.addColorStop(1, darken(part.color, 40));
-            ctx.fillStyle = tankGrad;
-            ctx.fillRect(x, y, w, h);
+            drawCylinder(x, y, w, h, baseColor);
+            
+            const bandH = h * 0.06;
+            const drawBand = (by) => {
+                ctx.fillStyle = darken(baseColor, 50);
+                ctx.fillRect(x, by, w, bandH + pixelSize*2);
+                drawCylinder(x, by + pixelSize, w, bandH, accentColor);
+                drawRivets(x, by + pixelSize, w, bandH, false);
+            };
 
-            // Tank stripes/bands
-            ctx.fillStyle = part.accentColor;
-            const bandH = h * 0.08;
-            ctx.fillRect(x, y + h * 0.15, w, bandH);
-            ctx.fillRect(x, y + h * 0.8, w, bandH);
+            drawBand(y + h * 0.15);
+            drawBand(y + h * 0.79);
 
-            // Extra detailing for Huge Tank
-            if (part.id === 'huge_tank') {
-                ctx.fillRect(x, y + h * 0.5, w, bandH); // Middle band
-                // Vertical pipes
-                ctx.fillStyle = '#444';
-                ctx.fillRect(x + w * 0.1, y, w * 0.05, h);
-                ctx.fillRect(x + w * 0.9, y, w * 0.05, h);
+            if (part.id === 'huge_tank' || part.height >= 4) {
+                drawBand(y + h * 0.47);
+                drawCylinder(x + w * 0.1, y, w * 0.06, h, '#555', false);
+                drawCylinder(x + w * 0.84, y, w * 0.06, h, '#555', false);
             }
 
-            // Rivets along bands
-            ctx.fillStyle = darken(part.accentColor, 30);
-            const rivetSpacing = w / 5;
-            for (let i = 1; i < 5; i++) {
-                ctx.fillRect(x + i * rivetSpacing - pixelSize / 2, y + h * 0.15 + bandH / 2 - pixelSize / 2, pixelSize, pixelSize);
-                ctx.fillRect(x + i * rivetSpacing - pixelSize / 2, y + h * 0.8 + bandH / 2 - pixelSize / 2, pixelSize, pixelSize);
-            }
-
-            // Vertical highlight
-            ctx.fillStyle = 'rgba(255,255,255,0.15)';
-            ctx.fillRect(x + w * 0.15, y + pixelSize * 2, pixelSize * 2, h - pixelSize * 4);
-
-            // Panel lines
-            ctx.strokeStyle = darken(part.color, 50);
-            ctx.lineWidth = 1;
+            ctx.strokeStyle = darken(baseColor, 40);
+            ctx.lineWidth = pixelSize;
             ctx.beginPath();
-            ctx.moveTo(x, y + h * 0.5);
-            ctx.lineTo(x + w, y + h * 0.5);
+            ctx.moveTo(x + w * 0.2, y + h * 0.5);
+            ctx.lineTo(x + w * 0.8, y + h * 0.5);
             ctx.stroke();
+            
+            ctx.fillStyle = 'rgba(255,255,255,0.15)';
+            ctx.fillRect(x + w * 0.1, y, w * 0.1, h);
+            ctx.fillRect(x + w * 0.5, y, w * 0.05, h);
             break;
 
         case 'structure':
             if (part.id === 'nose_cone' || part.id === 'small_nose_cone') {
-                // Nose cone with smooth gradient
                 const noseGrad = ctx.createLinearGradient(x, y, x + w, y);
-                noseGrad.addColorStop(0, darken(part.color, 30));
-                noseGrad.addColorStop(0.3, lighten(part.color, 20));
-                noseGrad.addColorStop(0.5, part.color);
-                noseGrad.addColorStop(1, darken(part.color, 30));
+                noseGrad.addColorStop(0, darken(baseColor, 60));
+                noseGrad.addColorStop(0.2, darken(baseColor, 10));
+                noseGrad.addColorStop(0.5, lighten(baseColor, 50));
+                noseGrad.addColorStop(0.8, baseColor);
+                noseGrad.addColorStop(1, darken(baseColor, 50));
                 ctx.fillStyle = noseGrad;
+                
                 ctx.beginPath();
                 ctx.moveTo(x + w / 2, y);
-                ctx.quadraticCurveTo(x + w * 0.3, y + h * 0.3, x, y + h);
+                ctx.bezierCurveTo(x + w * 0.5, y + h * 0.2, x, y + h * 0.6, x, y + h);
                 ctx.lineTo(x + w, y + h);
-                ctx.quadraticCurveTo(x + w * 0.7, y + h * 0.3, x + w / 2, y);
+                ctx.bezierCurveTo(x + w, y + h * 0.6, x + w * 0.5, y + h * 0.2, x + w / 2, y);
                 ctx.closePath();
                 ctx.fill();
 
-                // Tip highlight
-                ctx.fillStyle = 'rgba(255,255,255,0.5)';
+                ctx.fillStyle = '#dddddd';
                 ctx.beginPath();
-                ctx.arc(x + w / 2 - pixelSize, y + pixelSize * 2, pixelSize * 1.5, 0, Math.PI * 2);
+                ctx.moveTo(x + w / 2, y);
+                ctx.bezierCurveTo(x + w * 0.52, y + h * 0.05, x + w * 0.45, y + h * 0.1, x + w * 0.4, y + h * 0.15);
+                ctx.lineTo(x + w * 0.6, y + h * 0.15);
+                ctx.bezierCurveTo(x + w * 0.55, y + h * 0.1, x + w * 0.48, y + h * 0.05, x + w / 2, y);
                 ctx.fill();
 
-                // Edge highlight
-                ctx.fillStyle = 'rgba(255,255,255,0.2)';
-                ctx.beginPath();
-                ctx.moveTo(x + w * 0.4, y + h * 0.1);
-                ctx.quadraticCurveTo(x + w * 0.25, y + h * 0.5, x + pixelSize, y + h);
-                ctx.lineTo(x + w * 0.15, y + h);
-                ctx.quadraticCurveTo(x + w * 0.3, y + h * 0.4, x + w * 0.45, y + h * 0.1);
-                ctx.closePath();
-                ctx.fill();
-            } else if (part.id === 'small_fairing') {
-                // Small fairing - simplified version of large fairing
+                drawCylinder(x, y + h - h * 0.05, w, h * 0.05, darken(baseColor, 30));
+
+            } else if (part.id === 'fairing' || part.id === 'small_fairing') {
                 const fairingGrad = ctx.createLinearGradient(x, y, x + w, y);
-                fairingGrad.addColorStop(0, darken(part.color, 20));
-                fairingGrad.addColorStop(0.5, part.color);
-                fairingGrad.addColorStop(1, darken(part.color, 20));
+                fairingGrad.addColorStop(0, darken(baseColor, 50));
+                fairingGrad.addColorStop(0.15, baseColor);
+                fairingGrad.addColorStop(0.5, lighten(baseColor, 50));
+                fairingGrad.addColorStop(0.85, baseColor);
+                fairingGrad.addColorStop(1, darken(baseColor, 50));
                 ctx.fillStyle = fairingGrad;
 
-                // Tapered sides
                 ctx.beginPath();
-                ctx.moveTo(x + w * 0.2, y);
-                ctx.lineTo(x, y + h * 0.3);
-                ctx.lineTo(x, y + h);
-                ctx.lineTo(x + w, y + h);
-                ctx.lineTo(x + w, y + h * 0.3);
-                ctx.lineTo(x + w * 0.8, y);
-                ctx.closePath();
-                ctx.fill();
-
-                // Panel lines
-                ctx.strokeStyle = part.accentColor;
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(x + w * 0.5, y);
-                ctx.lineTo(x + w * 0.5, y + h);
-                ctx.stroke();
-            } else if (part.id === 'decoupler') {
-                // Decoupler body
-                ctx.fillStyle = part.color;
-                ctx.fillRect(x, y, w, h);
-
-                // Separation line (yellow/black hazard stripe)
-                const stripeW = w / 10;
-                for (let i = 0; i < 10; i++) {
-                    ctx.fillStyle = i % 2 === 0 ? '#ffcc00' : '#222222';
-                    ctx.fillRect(x + i * stripeW, y + h * 0.35, stripeW, h * 0.3);
+                if (part.id === 'fairing') {
+                    ctx.moveTo(x, y + h);
+                    ctx.quadraticCurveTo(x, y, x + w / 2, y);
+                    ctx.quadraticCurveTo(x + w, y, x + w, y + h);
+                } else {
+                    ctx.moveTo(x + w * 0.2, y);
+                    ctx.lineTo(x, y + h * 0.25);
+                    ctx.lineTo(x, y + h);
+                    ctx.lineTo(x + w, y + h);
+                    ctx.lineTo(x + w, y + h * 0.25);
+                    ctx.lineTo(x + w * 0.8, y);
                 }
-            } else if (part.id === 'fairing') {
-                // Large Fairing (3x3) - Ogive shape
-                const fairingGrad = ctx.createLinearGradient(x, y, x + w, y);
-                fairingGrad.addColorStop(0, darken(part.color, 30));
-                fairingGrad.addColorStop(0.3, part.color);
-                fairingGrad.addColorStop(0.7, lighten(part.color, 20));
-                fairingGrad.addColorStop(1, darken(part.color, 30));
-                ctx.fillStyle = fairingGrad;
-
-                ctx.beginPath();
-                ctx.moveTo(x, y + h); // Bottom Left
-                // Left Curve: Control at Top Left corner, End at Top Center
-                ctx.quadraticCurveTo(x, y, x + w / 2, y);
-                // Right Curve: Control at Top Right corner, End at Bottom Right
-                ctx.quadraticCurveTo(x + w, y, x + w, y + h);
                 ctx.closePath();
                 ctx.fill();
 
-                // Vertical Split Line
-                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-                ctx.lineWidth = 1;
+                ctx.strokeStyle = darken(baseColor, 60);
+                ctx.lineWidth = pixelSize;
                 ctx.beginPath();
                 ctx.moveTo(x + w * 0.5, y);
                 ctx.lineTo(x + w * 0.5, y + h);
                 ctx.stroke();
+                
+                const stripeY = y + h * 0.85;
+                const stripeH = h * 0.05;
+                ctx.fillStyle = '#222';
+                ctx.fillRect(x + w*0.05, stripeY, w * 0.9, stripeH);
 
-                // Horizontal reinforced band
-                ctx.fillStyle = 'rgba(0,0,0,0.1)';
-                ctx.fillRect(x + w * 0.1, y + h * 0.85, w * 0.8, h * 0.05);
+            } else if (part.id === 'decoupler') {
+                drawCylinder(x, y, w, h, baseColor);
+                
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(x, y + h * 0.25, w, h * 0.5);
+                ctx.clip();
+                const stripeW = w / 8;
+                for (let i = -2; i < 10; i++) {
+                    ctx.fillStyle = i % 2 === 0 ? accentColor : '#111';
+                    ctx.beginPath();
+                    ctx.moveTo(x + i * stripeW, y);
+                    ctx.lineTo(x + (i + 2) * stripeW, y + h);
+                    ctx.lineTo(x + (i + 3) * stripeW, y + h);
+                    ctx.lineTo(x + (i + 1) * stripeW, y);
+                    ctx.fill();
+                }
+                ctx.restore();
+                
+                ctx.fillStyle = '#ff3333';
+                ctx.fillRect(x + w * 0.1, y + h * 0.45, w * 0.1, h * 0.1);
+                ctx.fillRect(x + w * 0.8, y + h * 0.45, w * 0.1, h * 0.1);
 
             } else {
-                // Generic structure
-                ctx.fillStyle = part.color;
-                ctx.fillRect(x, y, w, h);
-                ctx.strokeStyle = darken(part.color, 40);
-                ctx.lineWidth = 2 * scale;
-                ctx.strokeRect(x, y, w, h);
+                drawCylinder(x, y, w, h, baseColor);
+                ctx.strokeStyle = darken(baseColor, 50);
+                ctx.lineWidth = pixelSize * 2;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + w, y + h);
+                ctx.moveTo(x + w, y);
+                ctx.lineTo(x, y + h);
+                ctx.stroke();
             }
             break;
 
         case 'control':
-            if (part.id === 'small_fins') {
-                // Small delta fins (Width 1)
+            if (part.id === 'small_fins' || part.id === 'large_fins') {
                 ctx.beginPath();
-                ctx.moveTo(x, y); // Top Left (attached)
-                ctx.lineTo(x + w, y + h); // Tip (Bottom Right)
-                ctx.lineTo(x, y + h); // Bottom Left
+                if (part.id === 'small_fins') {
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + w, y + h);
+                    ctx.lineTo(x, y + h);
+                } else {
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(x + w * 0.5, y);
+                    ctx.lineTo(x + w, y + h * 0.8);
+                    ctx.lineTo(x + w, y + h);
+                    ctx.lineTo(x, y + h);
+                }
                 ctx.closePath();
 
-                // Metallic Gradient
                 const finGrad = ctx.createLinearGradient(x, y, x + w, y + h);
-                finGrad.addColorStop(0, '#666');
-                finGrad.addColorStop(0.5, '#bbb');
-                finGrad.addColorStop(1, '#666');
+                finGrad.addColorStop(0, lighten(baseColor, 20));
+                finGrad.addColorStop(0.3, baseColor);
+                finGrad.addColorStop(0.6, darken(baseColor, 30));
+                finGrad.addColorStop(1, darken(baseColor, 60));
                 ctx.fillStyle = finGrad;
                 ctx.fill();
 
-                // Leading Edge
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = lighten(baseColor, 50);
+                ctx.lineWidth = pixelSize * 1.5;
                 ctx.beginPath();
                 ctx.moveTo(x, y);
-                ctx.lineTo(x + w, y + h);
+                if (part.id === 'small_fins') {
+                    ctx.lineTo(x + w, y + h);
+                } else {
+                    ctx.lineTo(x + w * 0.5, y);
+                    ctx.lineTo(x + w, y + h * 0.8);
+                }
                 ctx.stroke();
 
-            } else if (part.id === 'large_fins') {
-                // Large swept wings (Width 2)
-                ctx.beginPath();
-                ctx.moveTo(x, y); // Top Left (Root)
-                ctx.lineTo(x + w * 0.5, y); // Start of sweep
-                ctx.lineTo(x + w, y + h * 0.8); // Tip Top
-                ctx.lineTo(x + w, y + h); // Tip Bottom
-                ctx.lineTo(x, y + h); // Bottom Left (Root)
-                ctx.closePath();
-
-                // Gradient
-                const lgFinGrad = ctx.createLinearGradient(x, y, x + w, y + h);
-                lgFinGrad.addColorStop(0, '#555');
-                lgFinGrad.addColorStop(0.5, '#999');
-                lgFinGrad.addColorStop(1, '#444');
-                ctx.fillStyle = lgFinGrad;
-                ctx.fill();
-
-                // Control Surface (Flap)
-                ctx.fillStyle = part.accentColor || '#d00';
-                ctx.fillRect(x + w * 0.6, y + h * 0.85, w * 0.4, h * 0.15);
-
-                // Panel Lines
-                ctx.strokeStyle = '#333';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(x + w * 0.5, y);
-                ctx.lineTo(x + w * 0.5, y + h);
-                ctx.stroke();
+                if (part.id === 'large_fins') {
+                    ctx.fillStyle = darken(baseColor, 40);
+                    ctx.fillRect(x + w * 0.6, y + h * 0.82, w * 0.38, h * 0.16);
+                    ctx.strokeStyle = darken(baseColor, 70);
+                    ctx.strokeRect(x + w * 0.6, y + h * 0.82, w * 0.38, h * 0.16);
+                }
 
             } else if (part.id === 'reaction_wheel') {
-                // Background Frame
-                ctx.fillStyle = '#2a2a2a';
-                ctx.fillRect(x, y, w, h);
-
-                // Gold Flywheel
-                ctx.fillStyle = '#ffb300';
+                drawCylinder(x, y, w, h, '#222');
+                
+                const housingGrad = ctx.createRadialGradient(x + w/2, y + h/2, w*0.1, x + w/2, y + h/2, w*0.4);
+                housingGrad.addColorStop(0, '#111');
+                housingGrad.addColorStop(1, '#333');
+                ctx.fillStyle = housingGrad;
                 ctx.beginPath();
-                ctx.arc(x + w / 2, y + h / 2, w * 0.4, 0, Math.PI * 2);
+                ctx.arc(x + w / 2, y + h / 2, w * 0.45, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Spokes (Spinning look)
-                ctx.strokeStyle = '#805500';
-                ctx.lineWidth = 2;
+                ctx.fillStyle = '#ffd700'; 
                 ctx.beginPath();
-                ctx.moveTo(x + w / 2, y + h * 0.1);
-                ctx.lineTo(x + w / 2, y + h * 0.9);
-                ctx.moveTo(x + w * 0.1, y + h / 2);
-                ctx.lineTo(x + w * 0.9, y + h / 2);
-                ctx.stroke();
+                ctx.arc(x + w / 2, y + h / 2, w * 0.35, 0, Math.PI * 2);
+                ctx.fill();
 
-                // Glass Reflection
-                ctx.fillStyle = 'rgba(200, 240, 255, 0.2)';
+                ctx.fillStyle = '#555';
                 ctx.beginPath();
-                ctx.arc(x + w / 2, y + h / 2, w * 0.4, -Math.PI / 4, Math.PI / 2);
+                ctx.arc(x + w / 2, y + h / 2, w * 0.1, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#b8860b'; 
+                ctx.lineWidth = pixelSize * 3;
+                ctx.setLineDash([pixelSize*4, pixelSize*6]);
+                ctx.beginPath();
+                ctx.arc(x + w / 2, y + h / 2, w * 0.25, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.setLineDash([]); 
+
+                const glassGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+                glassGrad.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+                glassGrad.addColorStop(0.5, 'rgba(0, 200, 255, 0.1)');
+                glassGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+                ctx.fillStyle = glassGrad;
+                ctx.beginPath();
+                ctx.arc(x + w / 2, y + h / 2, w * 0.45, 0, Math.PI * 2);
                 ctx.fill();
 
             } else if (part.id === 'gimbal') {
-                // Gimbal Mount
-                // Top Plate
-                ctx.fillStyle = '#444';
-                ctx.fillRect(x, y, w, h * 0.25);
-                // Bottom Plate
-                ctx.fillRect(x, y + h * 0.75, w, h * 0.25);
-
-                // Pivot Sphere
-                const pivotGrad = ctx.createRadialGradient(x + w / 2, y + h / 2, 0, x + w / 2, y + h / 2, w * 0.3);
-                pivotGrad.addColorStop(0, '#eee');
-                pivotGrad.addColorStop(1, '#333');
-                ctx.fillStyle = pivotGrad;
+                drawCylinder(x, y, w, h * 0.2, '#333'); 
+                drawCylinder(x, y + h * 0.8, w, h * 0.2, '#333'); 
+                
+                const ballGrad = ctx.createRadialGradient(x + w/2, y + h/2, w*0.05, x + w/2, y + h/2, w*0.3);
+                ballGrad.addColorStop(0, '#ccc');
+                ballGrad.addColorStop(0.5, '#777');
+                ballGrad.addColorStop(1, '#222');
+                ctx.fillStyle = ballGrad;
                 ctx.beginPath();
                 ctx.arc(x + w / 2, y + h / 2, w * 0.25, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Hydraulic Pistons
-                ctx.fillStyle = '#999';
-                // Left
-                ctx.fillRect(x + w * 0.15, y + h * 0.25, w * 0.1, h * 0.5);
-                // Right
-                ctx.fillRect(x + w * 0.75, y + h * 0.25, w * 0.1, h * 0.5);
-
-            } else {
-                // Fallback Generic
-                ctx.fillStyle = part.color;
-                ctx.fillRect(x, y, w, h);
-                ctx.fillStyle = part.accentColor;
-                ctx.fillRect(x + w * 0.25, y + h * 0.25, w * 0.5, h * 0.5);
+                ctx.fillStyle = '#aaa';
+                ctx.fillRect(x + w * 0.2, y + h * 0.2, w * 0.1, h * 0.6);
+                ctx.fillRect(x + w * 0.7, y + h * 0.2, w * 0.1, h * 0.6);
+                
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(x + w * 0.22, y + h * 0.2, w * 0.06, h * 0.3);
+                ctx.fillRect(x + w * 0.72, y + h * 0.2, w * 0.06, h * 0.3);
             }
             break;
 
         case 'utility':
         case 'payload':
-            // HAB MODULE
             if (part.id === 'habitation_module') {
-                // Hab Module (3x3) - Space Station vibe
-                // Cylinder body gradient
-                const habGrad = ctx.createLinearGradient(x, y, x + w, y);
-                habGrad.addColorStop(0, '#aaa');
-                habGrad.addColorStop(0.5, '#eee');
-                habGrad.addColorStop(1, '#aaa');
-                ctx.fillStyle = habGrad;
-                ctx.beginPath();
-                ctx.roundRect(x, y, w, h, 2 * scale); // Less rounded, more module-like
-                ctx.fill();
+                drawCylinder(x, y, w, h, baseColor);
+                
+                drawCylinder(x, y, w, h * 0.05, darken(baseColor, 40));
+                drawCylinder(x, y + h * 0.95, w, h * 0.05, darken(baseColor, 40));
 
-                // Structural Rings
-                ctx.fillStyle = '#999';
-                ctx.fillRect(x, y + h * 0.2, w, pixelSize * 2);
-                ctx.fillRect(x, y + h * 0.8, w, pixelSize * 2);
+                ctx.fillStyle = '#bbb';
+                ctx.fillRect(x - pixelSize, y + h * 0.2, w + pixelSize*2, h * 0.08);
+                ctx.fillRect(x - pixelSize, y + h * 0.72, w + pixelSize*2, h * 0.08);
 
-                // Windows (Dark with blue reflection)
-                ctx.fillStyle = '#223';
-                ctx.beginPath();
-                ctx.arc(x + w * 0.5, y + h * 0.5, w * 0.15, 0, Math.PI * 2); // Center window
-                ctx.fill();
-
-                // Reflection dot
-                ctx.fillStyle = 'rgba(200, 240, 255, 0.4)';
-                ctx.beginPath();
-                ctx.arc(x + w * 0.5 - w * 0.05, y + h * 0.5 - h * 0.05, w * 0.03, 0, Math.PI * 2);
-                ctx.fill();
-
-                // Ring of windows
-                for (let i = 0; i < 8; i++) {
-                    const angle = (i / 8) * Math.PI * 2;
-                    const wx = x + w * 0.5 + Math.cos(angle) * w * 0.35;
-                    const wy = y + h * 0.5 + Math.sin(angle) * h * 0.35;
-                    ctx.fillStyle = '#223';
-                    ctx.beginPath();
-                    ctx.arc(wx, wy, w * 0.05, 0, Math.PI * 2);
-                    ctx.fill();
+                ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+                ctx.lineWidth = pixelSize;
+                for(let i=0; i<w; i+=w*0.2) {
+                    ctx.beginPath(); ctx.moveTo(x+i, y); ctx.lineTo(x+i, y+h); ctx.stroke();
                 }
-                break;
-            }
+                for(let i=0; i<h; i+=h*0.2) {
+                    ctx.beginPath(); ctx.moveTo(x, y+i); ctx.lineTo(x+w, y+i); ctx.stroke();
+                }
 
-            // SOLAR PANEL
-            if (part.id === 'solar_panel') {
-                // Frame
-                ctx.fillStyle = '#222';
-                ctx.fillRect(x, y, w, h);
-
-                // Solar Cells (Dark Blue with slight gradient)
-                const cellGrad = ctx.createLinearGradient(x, y, x + w, y + h);
-                cellGrad.addColorStop(0, '#113355');
-                cellGrad.addColorStop(1, '#001133');
-                ctx.fillStyle = cellGrad;
-                ctx.fillRect(x + pixelSize, y + pixelSize, w - pixelSize * 2, h - pixelSize * 2);
-
-                // Grid lines (Thicker, darker)
-                ctx.strokeStyle = '#000';
-                ctx.lineWidth = 1;
+                ctx.fillStyle = darken(baseColor, 80);
                 ctx.beginPath();
-                // Vertical split
-                ctx.moveTo(x + w / 2, y);
-                ctx.lineTo(x + w / 2, y + h);
-                // Horizontal splits
-                ctx.moveTo(x, y + h / 3);
-                ctx.lineTo(x + w, y + h / 3);
-                ctx.moveTo(x, y + 2 * h / 3);
-                ctx.lineTo(x + w, y + 2 * h / 3);
+                ctx.arc(x + w * 0.5, y + h * 0.5, w * 0.2, 0, Math.PI * 2);
+                ctx.fill();
+
+                const cupolaGrad = ctx.createRadialGradient(x + w*0.5, y + h*0.5, 0, x + w*0.5, y + h*0.5, w*0.15);
+                cupolaGrad.addColorStop(0, '#ffffff');
+                cupolaGrad.addColorStop(0.3, '#00d4ff');
+                cupolaGrad.addColorStop(1, '#00264d');
+                ctx.fillStyle = cupolaGrad;
+                ctx.beginPath();
+                ctx.arc(x + w * 0.5, y + h * 0.5, w * 0.15, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#222';
+                ctx.lineWidth = pixelSize * 2;
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.35, y + h * 0.5); ctx.lineTo(x + w * 0.65, y + h * 0.5);
+                ctx.moveTo(x + w * 0.5, y + h * 0.35); ctx.lineTo(x + w * 0.5, y + h * 0.65);
                 ctx.stroke();
 
-                // Highlight edge
-                ctx.strokeStyle = '#445566';
-                ctx.lineWidth = 1;
-                ctx.strokeRect(x, y, w, h);
-                break;
-            }
-
-            // Base with gradient (Generic Payloads)
-            const payloadGrad = ctx.createLinearGradient(x, y, x + w, y);
-            payloadGrad.addColorStop(0, darken(part.color, 30));
-            payloadGrad.addColorStop(0.35, lighten(part.color, 20));
-            payloadGrad.addColorStop(0.5, part.color);
-            payloadGrad.addColorStop(1, darken(part.color, 30));
-            ctx.fillStyle = payloadGrad;
-
-            // Draw rect unless it's a specific shape (docking port handled below)
-            if (part.id !== 'docking_port') {
+            } else if (part.id === 'solar_panel') {
+                ctx.fillStyle = '#111';
                 ctx.fillRect(x, y, w, h);
-            }
 
-            // Windows/lights (glowing effect matching style)
-            ctx.fillStyle = part.accentColor;
-            const windowSize = pixelSize * 2;
+                const cellGrad = ctx.createLinearGradient(x, y, x + w, y + h);
+                cellGrad.addColorStop(0, '#0a1930');
+                cellGrad.addColorStop(0.5, '#1e3c72');
+                cellGrad.addColorStop(1, '#0a1930');
+                ctx.fillStyle = cellGrad;
+                ctx.fillRect(x + pixelSize*2, y + pixelSize*2, w - pixelSize*4, h - pixelSize*4);
 
-            if (part.id === 'crew_capsule') {
-                // Multiple windows
-                ctx.fillStyle = '#333'; // Dark glass
-                ctx.fillRect(x + w * 0.2, y + h * 0.3, windowSize, windowSize);
-                ctx.fillRect(x + w * 0.5 - windowSize / 2, y + h * 0.3, windowSize, windowSize);
-                ctx.fillRect(x + w * 0.8 - windowSize, y + h * 0.3, windowSize, windowSize);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.beginPath();
+                ctx.moveTo(x + pixelSize*2, y + pixelSize*2);
+                ctx.lineTo(x + w/2, y + pixelSize*2);
+                ctx.lineTo(x + pixelSize*2, y + h/2);
+                ctx.fill();
 
-                // Glint
-                ctx.fillStyle = '#aaf';
-                ctx.fillRect(x + w * 0.2 + 1, y + h * 0.3 + 1, 1, 1);
-                ctx.fillRect(x + w * 0.5 - windowSize / 2 + 1, y + h * 0.3 + 1, 1, 1);
-                ctx.fillRect(x + w * 0.8 - windowSize + 1, y + h * 0.3 + 1, 1, 1);
+                ctx.strokeStyle = 'rgba(200, 220, 255, 0.7)';
+                ctx.lineWidth = pixelSize;
+                const rows = 4;
+                const cols = 2;
+                for (let r = 1; r < rows; r++) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + pixelSize*2, y + (h / rows) * r);
+                    ctx.lineTo(x + w - pixelSize*2, y + (h / rows) * r);
+                    ctx.stroke();
+                }
+                for (let c = 1; c < cols; c++) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + (w / cols) * c, y + pixelSize*2);
+                    ctx.lineTo(x + (w / cols) * c, y + h - pixelSize*2);
+                    ctx.stroke();
+                }
+
+                ctx.strokeStyle = '#555';
+                ctx.lineWidth = pixelSize * 2;
+                ctx.strokeRect(x, y, w, h);
 
             } else if (part.id === 'docking_port') {
-                // Docking port - Mechanical Ring
-                // Outer ring
-                ctx.fillStyle = '#888';
+                drawCylinder(x, y, w, h, '#d0d0d0');
+                
+                const ringGrad = ctx.createLinearGradient(x, y, x + w, y);
+                ringGrad.addColorStop(0, '#888');
+                ringGrad.addColorStop(0.5, '#eee');
+                ringGrad.addColorStop(1, '#666');
+                ctx.fillStyle = ringGrad;
                 ctx.beginPath();
                 ctx.arc(x + w / 2, y + h / 2, w * 0.45, 0, Math.PI * 2);
                 ctx.fill();
 
-                // Inner dark area
-                ctx.fillStyle = '#222';
+                ctx.fillStyle = '#111';
                 ctx.beginPath();
                 ctx.arc(x + w / 2, y + h / 2, w * 0.35, 0, Math.PI * 2);
                 ctx.fill();
-
-                // Docking mechanism cross
-                ctx.strokeStyle = '#555';
-                ctx.lineWidth = 2 * scale;
+                
+                ctx.strokeStyle = '#444';
+                ctx.lineWidth = pixelSize * 2;
                 ctx.beginPath();
-                ctx.moveTo(x + w * 0.2, y + h / 2);
-                ctx.lineTo(x + w * 0.8, y + h / 2);
-                ctx.moveTo(x + w / 2, y + h * 0.2);
-                ctx.lineTo(x + w / 2, y + h * 0.8);
+                ctx.moveTo(x + w * 0.2, y + h / 2); ctx.lineTo(x + w * 0.8, y + h / 2);
+                ctx.moveTo(x + w / 2, y + h * 0.2); ctx.lineTo(x + w / 2, y + h * 0.8);
                 ctx.stroke();
 
-                // Latch details (dots around ring)
-                ctx.fillStyle = '#aa0';
                 for (let i = 0; i < 4; i++) {
                     const angle = (i / 4) * Math.PI * 2 + (Math.PI / 4);
-                    const dx = x + w / 2 + Math.cos(angle) * w * 0.4;
-                    const dy = y + h / 2 + Math.sin(angle) * w * 0.4;
+                    const dx = x + w / 2 + Math.cos(angle) * w * 0.38;
+                    const dy = y + h / 2 + Math.sin(angle) * w * 0.38;
+                    
+                    ctx.fillStyle = '#777';
+                    ctx.fillRect(dx - pixelSize*2, dy - pixelSize*2, pixelSize*4, pixelSize*4);
+                    
+                    ctx.fillStyle = '#00ff00';
                     ctx.beginPath();
-                    ctx.arc(dx, dy, 2 * scale, 0, Math.PI * 2);
+                    ctx.arc(dx, dy, pixelSize, 0, Math.PI * 2);
                     ctx.fill();
                 }
 
-            } else {
-                // Single indicator
-                ctx.fillStyle = part.accentColor;
-                ctx.shadowColor = part.accentColor;
-                ctx.shadowBlur = 5 * scale;
-                ctx.fillRect(x + w / 2 - windowSize / 2, y + h * 0.3, windowSize, windowSize);
-                ctx.shadowBlur = 0;
-            }
+            } else if (part.id === 'crew_capsule') {
+                const capsuleGrad = ctx.createLinearGradient(x, y, x + w, y);
+                capsuleGrad.addColorStop(0, darken(baseColor, 50));
+                capsuleGrad.addColorStop(0.3, lighten(baseColor, 30));
+                capsuleGrad.addColorStop(0.7, lighten(baseColor, 50));
+                capsuleGrad.addColorStop(1, darken(baseColor, 40));
+                ctx.fillStyle = capsuleGrad;
 
-            // Panel detail lines
-            ctx.strokeStyle = darken(part.color, 40);
-            ctx.lineWidth = 1;
-            if (part.id !== 'docking_port') {
-                ctx.strokeRect(x + 2, y + 2, w - 4, h - 4);
+                ctx.beginPath();
+                ctx.moveTo(x + w * 0.3, y);
+                ctx.lineTo(x, y + h);
+                ctx.lineTo(x + w, y + h);
+                ctx.lineTo(x + w * 0.7, y);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.fillStyle = '#221100'; 
+                ctx.fillRect(x, y + h - h * 0.1, w, h * 0.1);
+
+                const drawWindow = (wx, wy, size) => {
+                    ctx.fillStyle = '#111'; 
+                    ctx.fillRect(wx - pixelSize, wy - pixelSize, size + pixelSize*2, size + pixelSize*2);
+                    
+                    const glassGrad = ctx.createLinearGradient(wx, wy, wx+size, wy+size);
+                    glassGrad.addColorStop(0, '#fff');
+                    glassGrad.addColorStop(0.2, '#0af');
+                    glassGrad.addColorStop(1, '#002');
+                    ctx.fillStyle = glassGrad;
+                    ctx.fillRect(wx, wy, size, size);
+                };
+
+                const wSize = w * 0.15;
+                drawWindow(x + w * 0.25, y + h * 0.4, wSize);
+                drawWindow(x + w * 0.5 - wSize/2, y + h * 0.45, wSize);
+                drawWindow(x + w * 0.75 - wSize, y + h * 0.4, wSize);
+                
+                ctx.strokeStyle = darken(baseColor, 60);
+                ctx.lineWidth = pixelSize;
+                ctx.strokeRect(x + w * 0.4, y + h * 0.6, w * 0.2, h * 0.3);
+
+            } else {
+                drawCylinder(x, y, w, h, baseColor);
+                drawPanelDetails(x, y, w, h, baseColor);
+                
+                ctx.strokeStyle = darken(baseColor, 70);
+                ctx.lineWidth = pixelSize * 2;
+                ctx.beginPath();
+                ctx.moveTo(x + w / 2, y);
+                ctx.lineTo(x + w / 2, y + h);
+                ctx.stroke();
+
+                ctx.fillStyle = accentColor;
+                ctx.fillRect(x + w * 0.3, y + h * 0.2, w * 0.1, h * 0.1);
+                ctx.fillRect(x + w * 0.6, y + h * 0.2, w * 0.1, h * 0.1);
             }
             break;
     }
 
-    // Common outline
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = Math.max(1, 2 * scale);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.lineWidth = pixelSize * 1.5;
 
-    if (part.id !== 'nose_cone' && part.id !== 'docking_port' && part.id !== 'habitation_module' && part.id !== 'solar_panel') {
+    if (!['nose_cone', 'small_nose_cone', 'docking_port', 'habitation_module', 'solar_panel', 'fairing', 'small_fairing', 'small_fins', 'large_fins', 'crew_capsule', 'mammoth_engine'].includes(part.id)) {
         ctx.strokeRect(x, y, w, h);
+    } else if (part.id === 'crew_capsule') {
+        ctx.beginPath();
+        ctx.moveTo(x + w * 0.3, y);
+        ctx.lineTo(x, y + h);
+        ctx.lineTo(x + w, y + h);
+        ctx.lineTo(x + w * 0.7, y);
+        ctx.closePath();
+        ctx.stroke();
     }
 
     ctx.restore();
 }
-
 /**
  * Create a part icon for the parts panel
  */
