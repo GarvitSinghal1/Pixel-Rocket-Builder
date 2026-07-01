@@ -71,6 +71,7 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    height: 100dvh;
     max-width: 1400px;
     margin: 0 auto;
     padding: var(--gap-sm);
@@ -222,6 +223,9 @@ body {
     width: 100%;
     height: 100%;
     cursor: crosshair;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 #launch-pad {
@@ -1545,6 +1549,10 @@ body {
     border-top: 1px solid var(--accent-warning);
 }
 
+.telemetry-row.orbital-data[hidden] {
+    display: none !important;
+}
+
 .data-item.orbital .data-label {
     color: var(--accent-warning);
 }
@@ -1732,4 +1740,288 @@ body {
     color: var(--text-primary);
     font-size: 12px;
     padding: 10px;
+}
+
+/* ============================================
+   RESPONSIVE LAYOUT
+   ============================================ */
+@media (max-width: 900px) {
+    #game-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--gap-xs);
+        padding: var(--gap-sm);
+    }
+
+    .game-title {
+        justify-content: center;
+        font-size: 13px;
+    }
+
+    .mode-buttons {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--gap-xs);
+    }
+
+    .header-actions {
+        display: grid;
+        grid-template-columns: minmax(110px, 1.5fr) repeat(3, minmax(0, 1fr));
+        gap: var(--gap-xs);
+    }
+
+    .mode-btn,
+    .action-btn {
+        min-width: 0;
+        padding: 6px 4px;
+        white-space: nowrap;
+    }
+
+    .planet-select {
+        min-width: 0;
+        width: 100%;
+        margin-right: 0;
+        padding: 6px 4px;
+        font-size: 8px;
+    }
+
+    #stats-bar {
+        justify-content: center;
+    }
+}
+
+@media (max-width: 640px) {
+    html,
+    body {
+        width: 100%;
+        overflow: hidden;
+    }
+
+    #game-container {
+        width: 100%;
+        padding: var(--gap-xs);
+    }
+
+    #game-main,
+    .screen,
+    #build-area {
+        min-width: 0;
+        min-height: 0;
+    }
+
+    .game-title {
+        font-size: 11px;
+        letter-spacing: 1px;
+    }
+
+    .mode-btn,
+    .action-btn {
+        font-size: 6px;
+    }
+
+    .header-actions {
+        grid-template-columns: minmax(100px, 1.5fr) repeat(3, minmax(0, 1fr));
+    }
+
+    #editor-screen.active {
+        flex-direction: column;
+    }
+
+    #parts-panel {
+        width: 100%;
+        height: 168px;
+        flex: 0 0 168px;
+        border-left: 0;
+        border-top: 2px solid var(--border-color);
+    }
+
+    .panel-header {
+        padding: var(--gap-xs) var(--gap-sm);
+    }
+
+    .panel-title {
+        padding: 0;
+        border-bottom: 0;
+    }
+
+    #category-tabs {
+        min-height: 36px;
+    }
+
+    .cat-tab {
+        padding: 4px;
+        font-size: 13px;
+    }
+
+    #parts-list {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(150px, 42vw);
+        gap: var(--gap-xs);
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
+    }
+
+    .part-item {
+        min-width: 0;
+        margin-bottom: 0;
+    }
+
+    #stats-bar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: var(--gap-xs);
+        padding: var(--gap-xs);
+    }
+
+    .stat-group {
+        grid-column: 1 / -1;
+        width: 100%;
+        justify-content: space-around;
+        gap: var(--gap-xs);
+    }
+
+    .stat-label {
+        font-size: 6px;
+    }
+
+    .stat-value {
+        font-size: 9px;
+    }
+
+    .educational-panel {
+        grid-column: 1;
+        min-width: 0;
+        max-width: none;
+    }
+
+    .toggle-label {
+        font-size: 7px;
+    }
+
+    .launch-btn {
+        grid-column: 2;
+        padding: var(--gap-sm);
+        font-size: 8px;
+        white-space: nowrap;
+    }
+
+    #launch-overlay {
+        padding: var(--gap-xs);
+    }
+
+    #flight-data {
+        max-height: calc(100dvh - 260px);
+        padding: var(--gap-xs);
+    }
+
+    .telemetry-row {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--gap-xs);
+    }
+
+    .telemetry-row .data-item {
+        min-width: 0;
+    }
+
+    .data-label {
+        font-size: 6px;
+    }
+
+    .data-value {
+        font-size: 9px;
+    }
+
+    #launch-controls {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--gap-xs);
+        padding: var(--gap-sm);
+    }
+
+    .throttle-control {
+        grid-column: 1 / -1;
+        justify-content: center;
+        font-size: 7px;
+    }
+
+    #throttle-slider {
+        width: min(48vw, 150px);
+    }
+
+    .control-btn {
+        min-width: 0;
+        padding: 6px 4px;
+        font-size: 7px;
+    }
+
+    .ignition-overlay {
+        bottom: 86px;
+    }
+
+    .ignition-status {
+        font-size: 16px;
+    }
+
+    .ignition-btn {
+        padding: 14px 36px;
+        font-size: 24px;
+    }
+
+    .ignition-hint {
+        font-size: 10px;
+    }
+
+    #results-screen {
+        align-items: flex-start;
+        overflow-y: auto;
+        padding: var(--gap-sm);
+    }
+
+    #results-content {
+        width: 100%;
+        max-width: none;
+        padding: var(--gap-md);
+    }
+
+    #results-title {
+        font-size: 13px;
+    }
+
+    #results-actions,
+    .warning-buttons {
+        flex-direction: column;
+    }
+
+    .modal,
+    .preset-modal {
+        padding: var(--gap-sm);
+    }
+
+    .modal-content {
+        width: 100%;
+        max-width: none;
+        padding: var(--gap-md);
+    }
+
+    #level-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    #failure-text {
+        max-width: calc(100vw - 64px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }

@@ -1560,6 +1560,9 @@ function physicsStep(dt) {
     // Only check landing if we've actually lifted off and are now on/below ground
     if (PHYSICS.altitude <= 0 && PHYSICS.hasLiftedOff && radialVel < 0) {
         PHYSICS.altitude = 0;
+        const surfaceScale = planet.radius / dist;
+        PHYSICS.x *= surfaceScale;
+        PHYSICS.y *= surfaceScale;
 
         // Final velocity magnitude for impact check
         const totalVel = PHYSICS.velocity;
@@ -1578,7 +1581,23 @@ function physicsStep(dt) {
 
         PHYSICS.isRunning = false;
     } else if (PHYSICS.altitude < 0 && !PHYSICS.hasLiftedOff) {
-        // Clamp to ground while on pad
+        // Ground reaction: keep the rocket on the surface and remove only its
+        // inward radial velocity. Without this, a low-throttle rocket falls
+        // through the planet even though displayed altitude is clamped to zero.
+        const normalX = PHYSICS.x / dist;
+        const normalY = PHYSICS.y / dist;
+        const surfaceScale = planet.radius / dist;
+        PHYSICS.x *= surfaceScale;
+        PHYSICS.y *= surfaceScale;
+
+        if (radialVel < 0) {
+            PHYSICS.vx -= radialVel * normalX;
+            PHYSICS.vy -= radialVel * normalY;
+            PHYSICS.velocity = Math.sqrt(
+                PHYSICS.vx * PHYSICS.vx + PHYSICS.vy * PHYSICS.vy
+            );
+        }
+
         PHYSICS.altitude = 0;
     }
 
@@ -2056,16 +2075,15 @@ function calculateMomentOfInertia(parts, comY) {
         const def = getPartById(p.partId);
         const m = def.mass + (p.currentFuel || 0);
         const cy = p.y + (def.height * TILE_SIZE) / 2;
-        const dist = cy - comY;
+        const distMeters = (cy - comY) / TILE_SIZE;
 
-        // Parallel Axis Theoremish (Treat parts as point masses at their center for simplicity)
-        // Added baseline I for the part itself (Model as sphere/box: m*r^2/6 approx)
-        // Box height h: I_cm = m * (w^2 + h^2) / 12
-        const h = def.height * TILE_SIZE;
-        const w = def.width * TILE_SIZE;
+        // One editor tile represents one meter for rotational calculations.
+        // I_cm for a rectangular part = m * (w² + h²) / 12.
+        const h = def.height;
+        const w = def.width;
         const I_part = m * (w * w + h * h) / 12;
 
-        I += I_part + m * (dist * dist);
+        I += I_part + m * (distMeters * distMeters);
     });
 
     return I;
@@ -2078,6 +2096,9 @@ function calculateControlTorque(parts, input, comY) {
     if (Math.abs(input) < 0.01) return 0;
 
     let torque = 0;
+    const effectiveThrottle = (typeof getActualThrottle === 'function')
+        ? getActualThrottle()
+        : PHYSICS.throttle;
 
     parts.forEach(p => {
         const def = getPartById(p.partId);
@@ -2087,53 +2108,36 @@ function calculateControlTorque(parts, input, comY) {
             torque += def.torque * input * 5.0; // Multiplier for gameplay feel
         }
 
-        // 2. Gimballed Engines
-        if (def.gimbalRange && def.thrust && p.currentFuel > 0) {
-            // Only if active engine
-            // Check if engine is running (throttle > 0)
-            const throttle = PHYSICS.throttle; // Use global throttle
-            if (throttle > 0) {
-                const cy = p.y + (def.height * TILE_SIZE) / 2;
-                const arm = comY - cy; // Arm from CoM to Engine
-                // Gimbal force = Thrust * sin(angle)
-                // Angle = input * range
-                const maxAngle = (def.gimbalRange * Math.PI) / 180;
-                const angle = input * maxAngle;
-                const thrustN = def.thrust * 1000 * throttle;
+        // 2. Gimbal mounts apply thrust vectoring to directly attached engines.
+        if (def.gimbalRange && effectiveThrottle > 0 && PHYSICS.thrustForce > 0) {
+            const maxAngle = (def.gimbalRange * Math.PI) / 180;
+            const angle = input * maxAngle;
 
-                // Lateral force component
-                const latForce = thrustN * Math.sin(angle);
+            parts.forEach(engine => {
+                const engineDef = getPartById(engine.partId);
+                if (engineDef.category !== 'engines') return;
+                if (!isPhysicallyConnected(p, def, engine)) return;
+                if (getReachableFuelTanks(engine, parts).length === 0) return;
 
-                // Torque = r x F
-                // Engine is usually below CoM (positive Y in canvas? No, 0 is top usually, ground is bottom)
-                // If engine is at bottom (high Y), arm (CoM - cy) is negative.
-                // Force right (positive input) -> pushes Engine LEFT?
-                // Gimbal logic: To turn RIGHT (clockwise), engine should push Tail LEFT.
-                // Inputs: +1 (Right Turn)
-                // Engine Deflection: Nozzle points LEFT (push-back vector points Right?)
-                // Actually: To turn Right, we want Torque > 0 (Clockwise).
-                // Force at Tail (negative arm) should be Left (negative X).
-                // Cross product: r (neg) x F (neg) = + Torque.
-                // So we want Lateral Force to be Negative for Positive Input?
-                // Engine Gimbal: +Input rotates nozzle +Angle. Thrust vector rotates -Angle?
-                // Let's simplify:
-                // Torque += thrust * sin(angle) * arm * -1;
+                const engineCy = engine.y + (engineDef.height * TILE_SIZE) / 2;
+                const armMeters = (comY - engineCy) / TILE_SIZE;
+                const thrustN = engineDef.thrust * 1000 * effectiveThrottle;
 
-                torque += thrustN * Math.sin(angle) * arm * -1;
-            }
+                torque += thrustN * Math.sin(angle) * armMeters * -1;
+            });
         }
 
         // 3. Fins (Aerodynamic)
         if (def.stability && PHYSICS.dynamicPressure > 10) {
             const cy = p.y + (def.height * TILE_SIZE) / 2;
-            const arm = comY - cy;
+            const armMeters = (comY - cy) / TILE_SIZE;
             // Lift = q * Area * Cl * input
             // Area ~ Stability * 10?
             // Torque = Lift * arm
             // Fins at bottom (neg arm) need neg Lift to create Pos Torque.
             // Input +1 -> Fin deflects -> Lift Positive?
             // Simplified: Stability * Q * input * arm
-            torque += def.stability * PHYSICS.dynamicPressure * input * arm * 0.1;
+            torque += def.stability * PHYSICS.dynamicPressure * input * armMeters * 0.1;
         }
     });
 

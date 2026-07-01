@@ -19,8 +19,10 @@ const EDITOR = {
     selection: [],
     // Box selection state
     isBoxSelecting: false,
+    isBoxSelectionPending: false,
     boxStart: { x: 0, y: 0 },
     boxCurrent: { x: 0, y: 0 },
+    boxSelectionThreshold: 6,
 
     // Grid settings
     gridSize: TILE_SIZE,
@@ -40,7 +42,10 @@ const EDITOR = {
 
     // Snapping
     snapLines: { x: null, y: null },
-    centerX: 0
+    centerX: 0,
+
+    // Keep canvas backing size synchronized with responsive layout changes.
+    resizeObserver: null
 };
 
 /**
@@ -61,6 +66,20 @@ function initEditor() {
         resizeEditorCanvas();
         renderEditor();
     });
+
+    if (typeof ResizeObserver !== 'undefined') {
+        EDITOR.resizeObserver = new ResizeObserver(() => {
+            const container = document.getElementById('build-area');
+            const width = Math.round(container.clientWidth);
+            const height = Math.round(container.clientHeight);
+
+            if (width !== EDITOR.width || height !== EDITOR.height) {
+                resizeEditorCanvas();
+                renderEditor();
+            }
+        });
+        EDITOR.resizeObserver.observe(document.getElementById('build-area'));
+    }
 }
 
 /**
@@ -124,18 +143,27 @@ function setupEditorEvents() {
 /**
  * Handle canvas mouse down
  */
-/**
- * Handle canvas mouse down
- */
-function handleCanvasMouseDown(e) {
+function getCanvasCoordinates(clientX, clientY) {
     const rect = EDITOR.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = rect.width > 0 ? EDITOR.canvas.width / rect.width : 1;
+    const scaleY = rect.height > 0 ? EDITOR.canvas.height / rect.height : 1;
+
+    return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+    };
+}
+
+function handleCanvasMouseDown(e) {
+    const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
 
     // Check if clicking on existing part
     const clickedPart = getPartAtPosition(x, y);
 
     const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
+
+    EDITOR.isBoxSelecting = false;
+    EDITOR.isBoxSelectionPending = false;
 
     if (clickedPart) {
         // If clicking a part that is NOT in the current selection, and not holding shift,
@@ -187,10 +215,15 @@ function handleCanvasMouseDown(e) {
 
     } else {
         // Clicked empty space
+        EDITOR.isDragging = false;
+        EDITOR.dragPart = null;
+
         if (!isMultiSelect) {
             EDITOR.selection = [];
         }
-        EDITOR.isBoxSelecting = true;
+        // Delay marquee until pointer moves enough. Small click jitter should
+        // clear selection, not flash a selection rectangle.
+        EDITOR.isBoxSelectionPending = true;
         EDITOR.boxStart = { x, y };
         EDITOR.boxCurrent = { x, y };
     }
@@ -201,13 +234,21 @@ function handleCanvasMouseDown(e) {
 /**
  * Handle canvas mouse move
  */
-/**
- * Handle canvas mouse move
- */
 function handleCanvasMouseMove(e) {
-    const rect = EDITOR.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const { x, y } = getCanvasCoordinates(e.clientX, e.clientY);
+
+    if (EDITOR.isBoxSelectionPending) {
+        EDITOR.boxCurrent = { x, y };
+        const distance = Math.hypot(
+            x - EDITOR.boxStart.x,
+            y - EDITOR.boxStart.y
+        );
+
+        if (distance < EDITOR.boxSelectionThreshold) return;
+
+        EDITOR.isBoxSelectionPending = false;
+        EDITOR.isBoxSelecting = true;
+    }
 
     if (EDITOR.isBoxSelecting) {
         EDITOR.boxCurrent = { x, y };
@@ -311,10 +352,13 @@ function handleCanvasMouseMove(e) {
 /**
  * Handle canvas mouse up
  */
-/**
- * Handle canvas mouse up
- */
 function handleCanvasMouseUp(e) {
+    if (EDITOR.isBoxSelectionPending) {
+        EDITOR.isBoxSelectionPending = false;
+        renderEditor();
+        return;
+    }
+
     // Handle Box Selection Finalize
     if (EDITOR.isBoxSelecting) {
         EDITOR.isBoxSelecting = false;
@@ -430,6 +474,8 @@ function handleTouchEnd(e) {
  * Get part at canvas position
  */
 function getPartAtPosition(x, y) {
+    const hitPadding = 5;
+
     // Check in reverse order (top parts first)
     for (let i = EDITOR.placedParts.length - 1; i >= 0; i--) {
         const placed = EDITOR.placedParts[i];
@@ -438,8 +484,8 @@ function getPartAtPosition(x, y) {
         const partW = partDef.width * TILE_SIZE;
         const partH = partDef.height * TILE_SIZE;
 
-        if (x >= placed.x && x <= placed.x + partW &&
-            y >= placed.y && y <= placed.y + partH) {
+        if (x >= placed.x - hitPadding && x <= placed.x + partW + hitPadding &&
+            y >= placed.y - hitPadding && y <= placed.y + partH + hitPadding) {
             return placed;
         }
     }
@@ -459,6 +505,7 @@ function removePlacedPart(part) {
 function arePartsConnected(part1, part2) {
     const def1 = getPartById(part1.partId);
     const def2 = getPartById(part2.partId);
+    if (!def1 || !def2) return false;
 
     const w1 = def1.width * TILE_SIZE;
     const h1 = def1.height * TILE_SIZE;
@@ -554,6 +601,7 @@ function getLaunchableParts() {
  */
 function isPartOrientationValid(placedPart) {
     const def = getPartById(placedPart.partId);
+    if (!def) return false;
 
     // Nose cones must be at the top (no parts above them)
     if (def.id === 'nose_cone') {
@@ -565,6 +613,7 @@ function isPartOrientationValid(placedPart) {
         return !EDITOR.placedParts.some(other => {
             if (other.id === placedPart.id) return false;
             const otherDef = getPartById(other.partId);
+            if (!otherDef) return false;
             const otherW = otherDef.width * TILE_SIZE;
             const otherCenterX = other.x + otherW / 2;
 
@@ -919,9 +968,9 @@ function setupCanvasDrop() {
         const partDef = getPartById(partId);
         if (!partDef) return;
 
-        const rect = EDITOR.canvas.getBoundingClientRect();
-        let x = e.clientX - rect.left - (partDef.width * TILE_SIZE) / 2;
-        let y = e.clientY - rect.top - (partDef.height * TILE_SIZE) / 2;
+        const point = getCanvasCoordinates(e.clientX, e.clientY);
+        let x = point.x - (partDef.width * TILE_SIZE) / 2;
+        let y = point.y - (partDef.height * TILE_SIZE) / 2;
 
         // Snap to grid
         x = Math.round(x / EDITOR.gridSize) * EDITOR.gridSize;
@@ -1364,7 +1413,6 @@ function formatAltitude(meters) {
  */
 function clearEditor() {
     EDITOR.placedParts = [];
-    EDITOR.placedParts = [];
     EDITOR.selection = [];
     updateStats();
     renderEditor();
@@ -1399,7 +1447,6 @@ function loadRocket() {
     }
 
     const lastSave = savedRockets[savedRockets.length - 1];
-    EDITOR.placedParts = lastSave.parts;
     EDITOR.placedParts = lastSave.parts;
     EDITOR.selection = [];
 

@@ -349,11 +349,10 @@ function setGameMode(mode) {
         setAdvancedMode(mode === 'advanced');
     }
 
-    // Show/hide orbital telemetry
-    const orbitalTelemetry = document.getElementById('orbital-telemetry');
-    if (orbitalTelemetry) {
-        orbitalTelemetry.style.display = mode === 'advanced' ? 'flex' : 'none';
-    }
+    // Show/hide every advanced telemetry row while leaving layout to CSS.
+    document.querySelectorAll('.orbital-data').forEach(row => {
+        row.hidden = mode !== 'advanced';
+    });
 
     // Refresh parts panel (all parts unlocked in fun/advanced)
     renderPartsPanel(EDITOR.currentCategory);
@@ -368,7 +367,7 @@ function showScreen(screenId) {
 
     // Show/hide stats bar
     document.getElementById('stats-bar').style.display =
-        screenId === 'editor' ? 'flex' : 'none';
+        screenId === 'editor' ? '' : 'none';
 }
 
 /**
@@ -836,7 +835,10 @@ function renderLaunchScene(dt) {
 
     // Background color based on altitude (transition to space)
     // Background color based on altitude (transition to space)
-    const spaceProgress = Math.min(1, PHYSICS.altitude / 100000);
+    // Altitude can briefly dip below zero before the ground constraint is applied.
+    // Clamp both ends so color interpolation never receives a negative value.
+    const safeAltitude = Number.isFinite(PHYSICS.altitude) ? PHYSICS.altitude : 0;
+    const spaceProgress = Math.max(0, Math.min(1, safeAltitude / 100000));
     const planet = getCurrentPlanet();
 
     // Draw sky gradient
@@ -994,6 +996,7 @@ function drawRocketAtPosition(ctx, x, y, throttle) {
     // Get rocket dimensions
     const rocketWidth = GAME.rocketBounds.width * scale;
     const rocketHeight = GAME.rocketBounds.height * scale;
+    const drawY = y;
 
     // Get stress levels for visual effects
     const stressLevels = typeof getStressLevels === 'function' ? getStressLevels() : { heat: 0, gForce: 0, pressure: 0 };
@@ -1028,6 +1031,47 @@ function drawRocketAtPosition(ctx, x, y, throttle) {
         const partW = partDef.width * TILE_SIZE;
         const partCX = placedPart.x + partW / 2;
         const flipX = partCX < GAME.rocketBounds.centerX - 1;
+
+        // Draw engine flame if engine is active (before drawing the engine part, so flame is behind the nozzle)
+        if (partDef.category === 'engines' && throttle > 0 && PHYSICS.fuel > 0) {
+            const pW = partDef.width * TILE_SIZE * scale;
+            const pH = partDef.height * TILE_SIZE * scale;
+            const flameX = drawX + pW / 2;
+            const flameY = drawY + pH;
+            const flameHeight = (20 + throttle * 30 + Math.random() * 15) * scale;
+            const flameWidth = pW * 0.6;
+
+            // Flame gradient
+            const flameGradient = ctx.createLinearGradient(flameX, flameY, flameX, flameY + flameHeight);
+            flameGradient.addColorStop(0, '#ffffff');
+            flameGradient.addColorStop(0.15, '#ffffaa');
+            flameGradient.addColorStop(0.3, '#ffff00');
+            flameGradient.addColorStop(0.5, '#ff8800');
+            flameGradient.addColorStop(0.8, '#ff4400');
+            flameGradient.addColorStop(1, 'rgba(255, 68, 0, 0)');
+
+            ctx.fillStyle = flameGradient;
+            ctx.beginPath();
+            ctx.moveTo(flameX - flameWidth / 2, flameY);
+            ctx.quadraticCurveTo(flameX - flameWidth / 4, flameY + flameHeight * 0.5, flameX, flameY + flameHeight);
+            ctx.quadraticCurveTo(flameX + flameWidth / 4, flameY + flameHeight * 0.5, flameX + flameWidth / 2, flameY);
+            ctx.closePath();
+            ctx.fill();
+
+            // Inner hot core
+            const coreGradient = ctx.createLinearGradient(flameX, flameY, flameX, flameY + flameHeight * 0.6);
+            coreGradient.addColorStop(0, '#ffffff');
+            coreGradient.addColorStop(0.5, '#ffffdd');
+            coreGradient.addColorStop(1, 'rgba(255, 255, 200, 0)');
+
+            ctx.fillStyle = coreGradient;
+            ctx.beginPath();
+            ctx.moveTo(flameX - flameWidth / 4, flameY);
+            ctx.quadraticCurveTo(flameX, flameY + flameHeight * 0.4, flameX, flameY + flameHeight * 0.6);
+            ctx.quadraticCurveTo(flameX, flameY + flameHeight * 0.4, flameX + flameWidth / 4, flameY);
+            ctx.closePath();
+            ctx.fill();
+        }
 
         // Draw the part
         drawPart(ctx, partDef, drawX, drawY, scale, flipX);
@@ -1107,64 +1151,6 @@ function drawRocketAtPosition(ctx, x, y, throttle) {
         ctx.stroke();
 
         ctx.restore();
-    }
-
-    // Draw engine flame for all engines
-    if (throttle > 0 && PHYSICS.fuel > 0) {
-        GAME.launchParts.forEach(placedPart => {
-            const partDef = placedPart.partDef;
-            if (partDef.category !== 'engines') return;
-
-            const relX = (placedPart.x - GAME.rocketBounds.minX) * scale;
-            const relY = (placedPart.y - GAME.rocketBounds.minY) * scale;
-            const partW = partDef.width * TILE_SIZE * scale;
-            const partH = partDef.height * TILE_SIZE * scale;
-
-            // Fix: calculate drawX and drawY for the flame
-            const canvasW = ctx.canvas.width;
-            const canvasH = ctx.canvas.height;
-            const rocketW = (GAME.rocketBounds.maxX - GAME.rocketBounds.minX) * scale;
-            const rocketH = (GAME.rocketBounds.maxY - GAME.rocketBounds.minY) * scale;
-
-            const drawX = (canvasW - rocketW) / 2;
-            const drawY = (canvasH - rocketH) / 2;
-
-            const flameX = drawX + relX + partW / 2;
-            const flameY = drawY + relY + partH;
-            const flameHeight = (20 + throttle * 30 + Math.random() * 15) * scale;
-            const flameWidth = partW * 0.6;
-
-            // Flame gradient
-            const flameGradient = ctx.createLinearGradient(flameX, flameY, flameX, flameY + flameHeight);
-            flameGradient.addColorStop(0, '#ffffff');
-            flameGradient.addColorStop(0.15, '#ffffaa');
-            flameGradient.addColorStop(0.3, '#ffff00');
-            flameGradient.addColorStop(0.5, '#ff8800');
-            flameGradient.addColorStop(0.8, '#ff4400');
-            flameGradient.addColorStop(1, 'rgba(255, 68, 0, 0)');
-
-            ctx.fillStyle = flameGradient;
-            ctx.beginPath();
-            ctx.moveTo(flameX - flameWidth / 2, flameY);
-            ctx.quadraticCurveTo(flameX - flameWidth / 4, flameY + flameHeight * 0.5, flameX, flameY + flameHeight);
-            ctx.quadraticCurveTo(flameX + flameWidth / 4, flameY + flameHeight * 0.5, flameX + flameWidth / 2, flameY);
-            ctx.closePath();
-            ctx.fill();
-
-            // Inner hot core
-            const coreGradient = ctx.createLinearGradient(flameX, flameY, flameX, flameY + flameHeight * 0.6);
-            coreGradient.addColorStop(0, '#ffffff');
-            coreGradient.addColorStop(0.5, '#ffffdd');
-            coreGradient.addColorStop(1, 'rgba(255, 255, 200, 0)');
-
-            ctx.fillStyle = coreGradient;
-            ctx.beginPath();
-            ctx.moveTo(flameX - flameWidth / 4, flameY);
-            ctx.quadraticCurveTo(flameX, flameY + flameHeight * 0.4, flameX, flameY + flameHeight * 0.6);
-            ctx.quadraticCurveTo(flameX, flameY + flameHeight * 0.4, flameX + flameWidth / 4, flameY);
-            ctx.closePath();
-            ctx.fill();
-        });
     }
 
     ctx.restore();
